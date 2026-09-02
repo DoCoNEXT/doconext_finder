@@ -15,6 +15,7 @@ import type {
   SearchResponse,
   SearchState,
   StoredSearch,
+  Preferences,
 } from '../types/Search'
 
 const url = (path: string) => generateUrl(`${API_BASE}${path}`)
@@ -141,6 +142,30 @@ export const SearchApi = {
       await axios.post(url(`/searches/${id}/run`))
     } catch {
       // ignored on purpose — see above
+    }
+  },
+
+  async preferences(): Promise<Preferences> {
+    try {
+      const { data } = await axios.get<Preferences>(url('/preferences'))
+      return data
+    } catch (error) {
+      throw describe(error)
+    }
+  },
+
+  /**
+   * Returns what the server actually stored, not what was sent: it drops unknown
+   * columns and appends missing ones, so the client adopts that rather than
+   * holding a copy that quietly disagrees.
+   * @param preferences
+   */
+  async savePreferences(preferences: Preferences): Promise<Preferences> {
+    try {
+      const { data } = await axios.put<Preferences>(url('/preferences'), preferences)
+      return data
+    } catch (error) {
+      throw describe(error)
     }
   },
 }

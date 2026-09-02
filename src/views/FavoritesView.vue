@@ -18,12 +18,17 @@
       </template>
     </NcEmptyContent>
 
-    <FileTable v-else-if="files.length"
-               :files="files"
-               :sort="sort"
-               :descending="descending"
-               @sort="sortBy"
-               @toggle-favorite="unfavorite" />
+    <template v-else-if="files.length">
+      <ViewOptions />
+      <FileTable :files="files"
+                 :sort="sort"
+                 :descending="descending"
+                 :selected-id="selection.file?.fileid"
+                 @sort="sortBy"
+                 @toggle-favorite="unfavorite"
+                 @select="selection.select($event)" />
+    </template>
+
   </div>
 </template>
 
@@ -39,10 +44,13 @@ import {
 import { mdiStarOutline } from '@mdi/js'
 import { useI18n } from '../composables/useI18n'
 import { SearchApi } from '../services/SearchApi'
+import { useSelectionStore } from '../stores/selectionStore'
 import FileTable from '../components/FileTable.vue'
+import ViewOptions from '../components/ViewOptions.vue'
 import type { FileResult } from '../types/Search'
 
 const { t } = useI18n()
+const selection = useSelectionStore()
 
 const files = ref<FileResult[]>([])
 const sort = ref('mtime')

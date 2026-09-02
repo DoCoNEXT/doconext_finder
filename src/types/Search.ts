@@ -92,3 +92,16 @@ export interface SearchHistory {
   saved: StoredSearch[]
   recents: StoredSearch[]
 }
+
+/** A column in the result grid. `label` empty means "use the built-in name". */
+export interface ColumnPref {
+  id: string
+  visible: boolean
+  label: string
+}
+
+export interface Preferences {
+  columns: ColumnPref[]
+  /** '' = no grouping; otherwise 'folder' | 'type' | 'modified'. */
+  grouping: string
+}

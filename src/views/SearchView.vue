@@ -74,12 +74,16 @@
       </template>
     </NcEmptyContent>
 
-    <FileTable v-else-if="store.results.length"
-               :files="store.results"
-               :sort="store.query.sort"
-               :descending="store.query.descending"
-               @sort="store.sortBy(t, $event)"
-               @toggle-favorite="store.toggleFavorite" />
+    <template v-else-if="store.results.length">
+      <ViewOptions :partial="store.hasMore && !store.loadedAll" />
+      <FileTable :files="store.results"
+                 :sort="store.query.sort"
+                 :descending="store.query.descending"
+                 :selected-id="selection.file?.fileid"
+                 @sort="store.sortBy(t, $event)"
+                 @toggle-favorite="store.toggleFavorite"
+                 @select="selection.select($event)" />
+    </template>
 
     <div v-if="store.results.length" class="finder__paging">
       <template v-if="!store.loadedAll">
@@ -99,7 +103,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted } from 'vue'
+import { computed, onMounted, watch } from 'vue'
 import {
   NcButton,
   NcCheckboxRadioSwitch,
@@ -113,14 +117,17 @@ import {
 import { mdiMagnify } from '@mdi/js'
 import { useI18n } from '../composables/useI18n'
 import { useSearchStore } from '../stores/searchStore'
+import { useSelectionStore } from '../stores/selectionStore'
 import { SearchApi } from '../services/SearchApi'
 import { anyTime, anyType, fileTypePresets, modifiedPresets } from '../filters/presets'
 import ConditionRow from '../components/ConditionRow.vue'
 import FileTable from '../components/FileTable.vue'
+import ViewOptions from '../components/ViewOptions.vue'
 import type { FileTypePreset, ModifiedPreset } from '../filters/presets'
 
 const { t } = useI18n()
 const store = useSearchStore()
+const selection = useSelectionStore()
 
 const emit = defineEmits<{ (e: 'saved'): void }>()
 
@@ -128,6 +135,10 @@ const typeOptions = fileTypePresets(t)
 const timeOptions = modifiedPresets(t)
 
 onMounted(() => store.loadSchema())
+
+// A new result set makes the old selection meaningless — and the panel would
+// otherwise keep describing a file that is no longer on screen.
+watch(() => store.results, () => selection.clear())
 
 /**
  * The store keeps preset *ids* (that is what history stores); the dropdowns bind

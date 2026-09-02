@@ -38,11 +38,19 @@
         <SavedSearchesView v-else @run="runStored" />
       </KeepAlive>
     </NcAppContent>
+
+    <!--
+      NcAppSidebar must be a sibling of NcAppContent, not nested inside a page:
+      placed within the content it renders below it instead of beside it.
+    -->
+    <FileDetails :file="selection.file"
+                 @close="selection.clear()"
+                 @toggle-favorite="store.toggleFavorite" />
   </NcContent>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { onMounted, ref } from 'vue'
 import {
   NcAppContent,
   NcAppNavigation,
@@ -53,7 +61,10 @@ import {
 import { mdiContentSaveOutline, mdiMagnify, mdiStar } from '@mdi/js'
 import { useI18n } from './composables/useI18n'
 import { useSearchStore } from './stores/searchStore'
+import { usePreferencesStore } from './stores/preferencesStore'
+import { useSelectionStore } from './stores/selectionStore'
 import { APP_ID } from './constants'
+import FileDetails from './components/FileDetails.vue'
 import SearchView from './views/SearchView.vue'
 import FavoritesView from './views/FavoritesView.vue'
 import SavedSearchesView from './views/SavedSearchesView.vue'
@@ -62,7 +73,13 @@ import type { StoredSearch } from './types/Search'
 const { t } = useI18n()
 const store = useSearchStore()
 
+const preferences = usePreferencesStore()
+const selection = useSelectionStore()
+
 const appId = APP_ID
+
+// Loaded once for the whole app: every page shows the same grid.
+onMounted(() => preferences.load())
 const page = ref<'search' | 'favorites' | 'saved'>('search')
 
 /**
