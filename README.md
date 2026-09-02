@@ -1,55 +1,62 @@
 # DoCoNEXT Finder
 
-A minimal, **working** Nextcloud app that embodies the DoCoNEXT conventions, so
-every new app starts from the same best practices. Scaffold a new app with one
-command.
+A search page for your Nextcloud files, built for people who look things up all
+day. Structured conditions, saved searches, configurable columns and grouping —
+the things the Files app deliberately leaves out.
 
-## Create a new app
+Finder works on a **plain Nextcloud**. When the DoCoNEXT Core app is also
+installed it additionally filters and groups on Core's metadata fields.
 
-```bash
-cp -r doconext_finder doconext_foo
-cd doconext_foo
-./init-app.sh --id doconext_foo --name "Foo" --namespace DcnFoo --db-prefix dcn_foo_
-```
+## Status
 
-`init-app.sh` replaces the placeholders everywhere, resets git to a single
-initial commit, and removes itself:
+Early. What exists today:
 
-| Placeholder | Replaced with | Example |
-|---|---|---|
-| `doconext_finder` | `--id` (app id / folder / bundle names) | `doconext_foo` |
-| `DcnFinder` | `--namespace` (`OCA\<ns>\`) | `DcnFoo` |
-| `dcn_finder_` | `--db-prefix` (DB tables) | `dcn_foo_` |
-| `DoCoNEXT Finder` | `--name` (default display name) | `Foo` |
+- `POST /api/search` — structured file search over the user's own files.
+  A free-text term plus a list of conditions, combined with **and** or **or**.
+- `GET /api/search/fields` — the filterable surface this server offers, so the
+  UI builds its menus from the backend instead of a hardcoded copy.
+- A first search page: term, condition builder, result table, paging.
 
-Then:
+Not yet: saved searches, column configuration, grouping, favorites browsing,
+Core metadata integration. The template's `Note` example is still present and
+unused — removing it is the next cleanup.
 
-```bash
-composer install          # PSR-4 autoloader + dev tools
-npm install && npm run build
-php occ app:enable doconext_foo
-```
+## Why its own app
 
-## What you get
+Finder is published to the Nextcloud app store; Core is not. That makes Finder
+the free, open half of the product and means it must carry **no** dependency on
+Core — no `<dependencies>` entry, no `\OCA\DcnCore\` classes, no shared tables.
+Where the two meet, they meet in the browser, over Core's own HTTP routes.
 
-A three-layer backend + Vue 3 frontend that enables and renders a page, with a
-worked **Note** example (entity → mapper → service → controller → migration →
-Vue list) you replace with your own domain. Plus all the tooling: `composer`
-(lint/cs/psalm/phpunit), `vite`/`eslint`/`stylelint`, `Makefile` (l10n), CI, and
-the standardized `deploy.sh`.
+See `docs/nextcloud-app-migration.md` in the `doconext-finder` (desktop) repo
+for the full rationale.
 
-```
-appinfo/  lib/{AppInfo,Controller,Service,Db,Migration,Settings}  src/  templates/  img/  tests/
-```
-
-See **[CLAUDE.md](CLAUDE.md)** for the full conventions (routing, naming, icons,
-i18n, quality gates) — it's inherited by every scaffolded app.
-
-## Dev commands
+## Development
 
 ```bash
-npm run watch            # rebuild frontend on change
-php occ maintenance:repair   # after changing route attributes
-composer cs:fix          # auto-format PHP
-./deploy.sh --app <id> --user root --host <host> [--container <name>] [--update]
+composer install                     # PSR-4 autoloader + dev tools
+npm install && npm run build         # or: npm run watch
+php occ app:enable doconext_finder
 ```
+
+Note: `vimeo/psalm ^5` does not support PHP 8.5, so run `composer` inside the
+Nextcloud container (PHP 8.2) rather than on a host with a newer PHP.
+
+### Search backend
+
+Search goes through `\OCP\Files\Folder::search()` — the same engine the WebDAV
+DASL backend drives, reached directly. That matters: DASL only exposes the
+properties `FileSearchBackend` chooses to declare, whereas the operator tree
+accepts every filecache column in `SearchBuilder::$fieldTypes` (`path`,
+`favorite` and `tagname` among them) and arbitrary and/or/not nesting.
+
+Two sharp edges are handled in `lib/Search/FileCondition.php`, both verified
+against a live server:
+
+- **Not every operator works on every field.** `SearchBuilder::validateComparison()`
+  has a per-field whitelist; the cross-product would otherwise produce 500s.
+- **`favorite` is a presence flag, not a boolean.** The builder rewrites it to
+  `tag.category = <favorite tag>` and *discards* the supplied value, so
+  `favorite eq false` would silently return favorites. Negating it does not help
+  either — tag fields are joined, so `NOT` compares a NULL column and matches
+  nothing. "Not favorited" is therefore rejected rather than answered wrongly.
