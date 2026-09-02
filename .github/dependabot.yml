@@ -1,0 +1,37 @@
+# Dependabot opens PRs to patch vulnerable/outdated dependencies. It is the
+# *fixer* half of the loop; the CI audit gate (ci.yml `security` job) is the
+# *blocker* half that fails the build while a moderate+ advisory ships.
+version: 2
+updates:
+  # PHP (Composer) packages.
+  - package-ecosystem: composer
+    directory: "/"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 10
+
+  # JavaScript (npm) packages.
+  - package-ecosystem: npm
+    directory: "/"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 10
+    groups:
+      nextcloud:
+        patterns:
+          - "@nextcloud/*"
+    ignore:
+      # @nextcloud/vite-config pins vite to 7.x. Vite 8 needs the breaking
+      # rolldown migration shipping in @nextcloud/vite-config v3.0.0
+      # (nextcloud-libraries/nextcloud-vite-config#864). Block vite majors
+      # until then — otherwise the bump PR can't resolve peer deps. Remove
+      # this once v3.0.0 is released and bump vite + vite-config together.
+      - dependency-name: "vite"
+        update-types: ["version-update:semver-major"]
+
+  # GitHub Actions used by the workflows.
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5

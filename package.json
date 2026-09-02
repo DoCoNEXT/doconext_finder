@@ -1,0 +1,47 @@
+{
+  "name": "doconext_finder",
+  "version": "0.1.0",
+  "license": "AGPL-3.0-or-later",
+  "type": "module",
+  "scripts": {
+    "build": "vite build",
+    "dev": "vite --mode development build",
+    "watch": "vite --mode development build --watch",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "eslint src",
+    "stylelint": "stylelint src/**/*.vue src/**/*.scss src/**/*.css"
+  },
+  "browserslist": [
+    "extends @nextcloud/browserslist-config"
+  ],
+  "dependencies": {
+    "@nextcloud/axios": "^2.5.2",
+    "@nextcloud/dialogs": "^7.4.0",
+    "@nextcloud/initial-state": "^3.0.0",
+    "@nextcloud/l10n": "^3.3.0",
+    "@nextcloud/router": "^3.0.1",
+    "@nextcloud/vue": "^9.3.1",
+    "pinia": "^3.0.4",
+    "vue": "^3.5.25"
+  },
+  "devDependencies": {
+    "@eslint/compat": "^2.1.0",
+    "@eslint/eslintrc": "^3.3.5",
+    "@nextcloud/browserslist-config": "^3.1.2",
+    "@nextcloud/eslint-config": "^8.4.2",
+    "@nextcloud/stylelint-config": "^3.2.2",
+    "@nextcloud/vite-config": "^2.5.2",
+    "@typescript-eslint/eslint-plugin": "^8.0.0",
+    "@typescript-eslint/parser": "^8.0.0",
+    "@vue/tsconfig": "^0.8.1",
+    "typescript": "^5.9.3",
+    "vite": "^7.2.7",
+    "vitest": "^3.2.6",
+    "vue-eslint-parser": "^10.0.0"
+  },
+  "engines": {
+    "node": "^24.0.0",
+    "npm": "^11.3.0"
+  }
+}

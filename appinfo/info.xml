@@ -1,0 +1,37 @@
+<?xml version="1.0"?>
+<!--
+  App metadata. The <id> MUST equal the app's directory name and the composer
+  PSR-4 namespace segment. init-app.sh rewrites the id / name / namespace / DB
+  prefix across the whole tree — don't hand-edit these placeholders in a real
+  app, run the script.
+-->
+<info>
+	<id>doconext_finder</id>
+	<name>DoCoNEXT Finder</name>
+	<summary>Starter template for DoCoNEXT Nextcloud apps</summary>
+	<description><![CDATA[
+A minimal, working Nextcloud app that embodies the DoCoNEXT conventions:
+three-layer backend (Controller → Service → Mapper), attribute-based routing,
+Vue 3 + TypeScript frontend, configurable display name, admin/personal
+settings, migrations, l10n, quality gates, CI, and the standardized deploy.sh.
+
+Use scripts/init-app.sh to stamp out a new app from this template.
+	]]></description>
+	<version>0.1.0</version>
+	<licence>AGPL-3.0-or-later</licence>
+	<author mail="support@doconext.com" homepage="https://doconext.com">DoCoNEXT</author>
+	<namespace>DcnFinder</namespace>
+	<category>tools</category>
+	<website>https://doconext.com</website>
+	<bugs>https://github.com/DoCoNEXT/doconext_finder/issues</bugs>
+	<repository type="git">https://github.com/DoCoNEXT/doconext_finder.git</repository>
+	<dependencies>
+		<nextcloud min-version="31" max-version="34" />
+	</dependencies>
+	<settings>
+		<admin>OCA\DcnFinder\Settings\AdminSettings</admin>
+		<admin-section>OCA\DcnFinder\Settings\AdminSection</admin-section>
+		<personal>OCA\DcnFinder\Settings\PersonalSettings</personal>
+		<personal-section>OCA\DcnFinder\Settings\PersonalSection</personal-section>
+	</settings>
+</info>

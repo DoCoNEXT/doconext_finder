@@ -1,0 +1,42 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  php:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          coverage: none
+      - name: Install PHP deps
+        run: composer install --no-interaction --no-progress
+      - name: PHP lint
+        run: composer lint
+      - name: Coding standards
+        run: composer cs:check
+      - name: Psalm
+        run: composer psalm
+
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install
+        run: npm ci
+      - name: Lint
+        run: npm run lint
+      - name: Stylelint
+        run: npm run stylelint
+      - name: Build
+        run: npm run build
+      - name: Unit tests
+        run: npm test
