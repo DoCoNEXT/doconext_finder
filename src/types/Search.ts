@@ -23,6 +23,8 @@ export interface FileResult {
 	mtime: number
 	creationTime: number
 	permissions: number
+	/** Mutated optimistically by the star toggle. */
+	favorite: boolean
 }
 
 export interface SearchResponse {
@@ -46,6 +48,13 @@ export interface FieldsResponse {
 export interface SearchRequest {
 	term?: string
 	conditions?: Condition[]
+	/**
+	 * Preset filters. Kept apart from `conditions` because they AND with
+	 * everything: "match any" must not widen the chosen type or date range.
+	 */
+	mimetypes?: string[]
+	/** Unix seconds; only files modified after this. */
+	modifiedAfter?: number
 	matchAny?: boolean
 	limit?: number
 	offset?: number

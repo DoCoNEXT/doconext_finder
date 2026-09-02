@@ -40,4 +40,18 @@ export const SearchApi = {
       throw describe(error)
     }
   },
+
+  /**
+   * Nextcloud has no OCS favorites route; this is the app's own endpoint.
+   * @param fileId
+   * @param favorite
+   */
+  async setFavorite(fileId: number, favorite: boolean): Promise<void> {
+    try {
+      const path = `/files/${fileId}/favorite`
+      await (favorite ? axios.post(url(path)) : axios.delete(url(path)))
+    } catch (error) {
+      throw describe(error)
+    }
+  },
 }

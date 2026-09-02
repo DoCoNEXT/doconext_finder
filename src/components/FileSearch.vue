@@ -1,12 +1,32 @@
 <template>
   <div class="finder">
+    <!-- Search + the two presets people reach for, on one line. -->
     <div class="finder__bar">
       <NcTextField v-model="term"
                    class="finder__term"
                    :label="t('Search files')"
                    :label-outside="true"
-                   :placeholder="t('Search files…')"
-                   @keydown.enter="run(0)" />
+                   :placeholder="t('Search by name…')"
+                   @keydown.enter="run(0)">
+        <template #icon>
+          <NcIconSvgWrapper :path="mdiMagnify" :size="20" />
+        </template>
+      </NcTextField>
+
+      <NcSelect v-model="fileType"
+                class="finder__preset"
+                label="label"
+                :options="typeOptions"
+                :clearable="false"
+                :input-label="t('Type')" />
+
+      <NcSelect v-model="modified"
+                class="finder__preset"
+                label="label"
+                :options="timeOptions"
+                :clearable="false"
+                :input-label="t('Modified')" />
+
       <NcButton variant="primary" :disabled="loading" @click="run(0)">
         {{ t('Search') }}
       </NcButton>
@@ -30,12 +50,11 @@
                       :key="index"
                       :condition="condition"
                       :schema="schema"
-                      @update:condition="replaceCondition(index, $event)"
-                      @update:negate="setNegate(index, $event)"
+                      @update:condition="conditions.splice(index, 1, $event)"
                       @remove="conditions.splice(index, 1)" />
 
         <NcButton @click="addCondition">
-          {{ t('+ Add condition') }}
+          {{ t('Add condition') }}
         </NcButton>
       </template>
       <NcLoadingIcon v-else :size="20" />
@@ -47,26 +66,43 @@
 
     <NcEmptyContent v-else-if="searched && results.length === 0"
                     :name="t('No files found')"
-                    :description="t('Try a different term, or loosen the conditions.')" />
+                    :description="t('Try a different term, or loosen the filters.')">
+      <template #icon>
+        <NcIconSvgWrapper :path="mdiMagnify" />
+      </template>
+    </NcEmptyContent>
 
-    <table v-else-if="results.length" class="finder__results">
+    <table v-else-if="results.length" class="results">
       <thead>
         <tr>
-          <th>{{ t('Name') }}</th>
+          <th class="results__star" />
+          <th><SortHeader field="name" :sort="sort" :descending="descending" @sort="sortBy">{{ t('Name') }}</SortHeader></th>
           <th>{{ t('Folder') }}</th>
-          <th class="numeric">{{ t('Size') }}</th>
-          <th>{{ t('Modified') }}</th>
+          <th class="numeric"><SortHeader field="size" :sort="sort" :descending="descending" @sort="sortBy">{{ t('Size') }}</SortHeader></th>
+          <th><SortHeader field="mtime" :sort="sort" :descending="descending" @sort="sortBy">{{ t('Modified') }}</SortHeader></th>
         </tr>
       </thead>
       <tbody>
         <tr v-for="file in results" :key="file.fileid">
+          <td class="results__star">
+            <NcButton :aria-label="file.favorite ? t('Remove from favorites') : t('Add to favorites')"
+                      variant="tertiary"
+                      @click="toggleFavorite(file)">
+              <template #icon>
+                <NcIconSvgWrapper :path="file.favorite ? mdiStar : mdiStarOutline"
+                                  :size="20"
+                                  :class="{ 'results__star--on': file.favorite }" />
+              </template>
+            </NcButton>
+          </td>
           <td>
-            <a :href="fileLink(file)" target="_blank" rel="noreferrer noopener">
-              {{ file.isFolder ? '📁' : '📄' }} {{ file.name }}
+            <a class="results__name" :href="fileLink(file)" target="_blank" rel="noreferrer noopener">
+              <NcIconSvgWrapper :path="iconFor(file.mimetype, file.isFolder)" :size="20" />
+              <span>{{ file.name }}</span>
             </a>
           </td>
           <td class="muted">{{ folderOf(file) }}</td>
-          <td class="numeric">{{ formatSize(file.size) }}</td>
+          <td class="numeric">{{ file.isFolder ? '—' : formatSize(file.size) }}</td>
           <td class="muted">{{ formatDate(file.mtime) }}</td>
         </tr>
       </tbody>
@@ -74,10 +110,10 @@
 
     <div v-if="results.length" class="finder__paging">
       <NcButton :disabled="offset === 0 || loading" @click="run(offset - pageSize)">
-        {{ t('‹ Previous') }}
+        {{ t('Previous') }}
       </NcButton>
       <NcButton :disabled="!hasMore || loading" @click="run(offset + pageSize)">
-        {{ t('Next ›') }}
+        {{ t('Next') }}
       </NcButton>
       <span class="muted">{{ rangeLabel }}</span>
     </div>
@@ -90,14 +126,27 @@ import {
   NcButton,
   NcCheckboxRadioSwitch,
   NcEmptyContent,
+  NcIconSvgWrapper,
   NcLoadingIcon,
   NcNoteCard,
+  NcSelect,
   NcTextField,
 } from '@nextcloud/vue'
+import { mdiMagnify, mdiStar, mdiStarOutline } from '@mdi/js'
 import { generateUrl } from '@nextcloud/router'
 import { useI18n } from '../composables/useI18n'
 import { SearchApi } from '../services/SearchApi'
+import {
+  anyTime,
+  anyType,
+  fileTypePresets,
+  modifiedAfter,
+  modifiedPresets,
+} from '../filters/presets'
+import type { FileTypePreset, ModifiedPreset } from '../filters/presets'
+import { iconFor } from '../filters/fields'
 import ConditionRow from './ConditionRow.vue'
+import SortHeader from './SortHeader.vue'
 import type { Condition, FieldsResponse, FileResult } from '../types/Search'
 
 const { t } = useI18n()
@@ -105,8 +154,15 @@ const { t } = useI18n()
 const pageSize = 50
 
 const term = ref('')
+const typeOptions = fileTypePresets(t)
+const timeOptions = modifiedPresets(t)
+const fileType = ref<FileTypePreset>(anyType(t))
+const modified = ref<ModifiedPreset>(anyTime(t))
 const conditions = ref<Condition[]>([])
 const matchMode = ref<'all' | 'any'>('all')
+const sort = ref('mtime')
+const descending = ref(true)
+
 const schema = ref<FieldsResponse>()
 const results = ref<FileResult[]>([])
 const hasMore = ref(false)
@@ -125,8 +181,8 @@ onMounted(async () => {
 
 const filterSummary = computed(() =>
   conditions.value.length
-    ? t('Filters ({count})', { count: conditions.value.length })
-    : t('Filters'))
+    ? t('Advanced filters ({count})', { count: conditions.value.length })
+    : t('Advanced filters'))
 
 const rangeLabel = computed(() => {
   const first = offset.value + 1
@@ -146,20 +202,28 @@ function addCondition() {
   conditions.value.push({ field, operator, value: '' })
 }
 
-function replaceCondition(index: number, condition: Condition) {
-  conditions.value.splice(index, 1, condition)
-}
-
-function setNegate(index: number, negate: boolean) {
-  const current = conditions.value[index]
-  if (current) {
-    conditions.value.splice(index, 1, { ...current, negate })
+/**
+ * Clicking a sortable header re-runs from page 1 — sorting is server-side.
+ * @param field
+ */
+function sortBy(field: string) {
+  if (sort.value === field) {
+    descending.value = !descending.value
+  } else {
+    sort.value = field
+    descending.value = true
   }
+  run(0)
 }
 
 async function run(nextOffset: number) {
-  if (!term.value.trim() && conditions.value.length === 0) {
-    error.value = t('Enter a search term, or add a condition.')
+  const hasFilter = term.value.trim()
+    || conditions.value.length > 0
+    || fileType.value.mimetypes.length > 0
+    || modified.value.seconds !== null
+
+  if (!hasFilter) {
+    error.value = t('Enter a search term, or pick a filter.')
     return
   }
 
@@ -168,8 +232,12 @@ async function run(nextOffset: number) {
   try {
     const response = await SearchApi.search({
       term: term.value.trim(),
-      conditions: conditions.value.map(normalise),
+      conditions: conditions.value.filter(usable),
+      mimetypes: fileType.value.mimetypes,
+      modifiedAfter: modifiedAfter(modified.value) ?? undefined,
       matchAny: matchMode.value === 'any',
+      sort: sort.value,
+      descending: descending.value,
       limit: pageSize,
       offset: Math.max(0, nextOffset),
     })
@@ -187,18 +255,23 @@ async function run(nextOffset: number) {
 }
 
 /**
- * The value box is always text; coerce to what the field's type expects.
+ * A half-filled row would fail the whole request, so skip rows with no value
+ * rather than making the user delete them before searching.
  * @param condition
  */
-function normalise(condition: Condition): Condition {
-  const kind = schema.value?.fields[condition.field]
-  if (kind === 'integer') {
-    return { ...condition, value: Number(condition.value) || 0 }
+function usable(condition: Condition): boolean {
+  return condition.value !== '' && condition.value !== null && condition.value !== undefined
+}
+
+async function toggleFavorite(file: FileResult) {
+  const next = !file.favorite
+  file.favorite = next // optimistic: the star should not lag the click
+  try {
+    await SearchApi.setFavorite(file.fileid, next)
+  } catch (e) {
+    file.favorite = !next
+    error.value = (e as Error).message
   }
-  if (kind === 'boolean') {
-    return { ...condition, value: true }
-  }
-  return condition
 }
 
 function folderOf(file: FileResult): string {
@@ -231,73 +304,98 @@ function formatDate(unixSeconds: number): string {
 
 <style scoped lang="scss">
 .finder {
-	max-width: 1100px;
-	margin: 0 auto;
-	padding: 24px;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 24px 24px;
 
-	&__bar {
-		display: flex;
-		align-items: end;
-		gap: 8px;
-		margin-bottom: 16px;
-	}
+  &__bar {
+    display: flex;
+    align-items: end;
+    gap: 8px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+  }
 
-	&__term {
-		flex: 1 1 auto;
-	}
+  &__term {
+    flex: 2 1 260px;
+  }
 
-	&__filters {
-		margin-bottom: 16px;
+  &__preset {
+    flex: 1 1 170px;
+    min-width: 170px;
+  }
 
-		summary {
-			cursor: pointer;
-			padding: 4px 0;
-		}
-	}
+  &__filters {
+    margin-bottom: 16px;
 
-	&__match {
-		display: flex;
-		align-items: center;
-		gap: 12px;
-		margin: 8px 0 12px;
-		color: var(--color-text-maxcontrast);
-	}
+    summary {
+      cursor: pointer;
+      padding: 4px 0;
+      color: var(--color-text-maxcontrast);
+    }
+  }
 
-	&__loading {
-		margin: 32px auto;
-	}
+  &__match {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 8px 0 12px;
+    color: var(--color-text-maxcontrast);
+  }
 
-	&__results {
-		width: 100%;
-		border-collapse: collapse;
+  &__loading {
+    margin: 32px auto;
+  }
 
-		th,
-		td {
-			text-align: start;
-			padding: 6px 8px;
-			border-bottom: 1px solid var(--color-border);
-		}
+  &__paging {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 16px;
+  }
+}
 
-		th {
-			color: var(--color-text-maxcontrast);
-			font-weight: 600;
-		}
+.results {
+  width: 100%;
+  border-collapse: collapse;
 
-		.numeric {
-			text-align: end;
-			white-space: nowrap;
-		}
+  th,
+  td {
+    text-align: start;
+    padding: 4px 8px;
+    border-bottom: 1px solid var(--color-border);
+  }
 
-		.muted {
-			color: var(--color-text-maxcontrast);
-		}
-	}
+  th {
+    color: var(--color-text-maxcontrast);
+    font-weight: 600;
+  }
 
-	&__paging {
-		display: flex;
-		align-items: center;
-		gap: 8px;
-		margin-top: 16px;
-	}
+  &__star {
+    width: 44px;
+
+    &--on {
+      color: var(--color-favorite);
+    }
+  }
+
+  &__name {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    &:hover span {
+      text-decoration: underline;
+    }
+  }
+}
+
+.numeric {
+  text-align: end;
+  white-space: nowrap;
+}
+
+.muted {
+  color: var(--color-text-maxcontrast);
 }
 </style>

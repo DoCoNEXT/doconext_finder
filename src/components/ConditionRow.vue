@@ -1,48 +1,83 @@
 <template>
   <div class="condition">
-    <NcSelect v-model="field"
+    <NcSelect v-model="fieldOption"
               class="condition__field"
-              :options="fieldNames"
+              label="label"
+              :options="fieldOptions"
               :clearable="false"
-              :aria-label-combobox="t('Field')" />
+              :input-label="t('Field')" />
 
-    <NcSelect v-model="operator"
+    <NcSelect v-model="operatorOption"
               class="condition__operator"
-              :options="allowedOperators"
+              label="label"
+              :options="operatorOptions"
               :clearable="false"
-              :aria-label-combobox="t('Operator')" />
+              :input-label="t('Condition')" />
 
-    <component :is="valueComponent"
-               v-if="valueKind !== 'boolean'"
-               v-model="value"
-               class="condition__value"
-               :type="valueKind === 'integer' ? 'number' : 'text'"
-               :label="valueLabel"
-               :label-outside="true"
-               :placeholder="valueLabel" />
+    <NcDateTimePicker v-if="input === 'date'"
+                      v-model="dateValue"
+                      class="condition__value"
+                      type="date"
+                      :placeholder="t('Pick a date')" />
+
+    <NcTextField v-else-if="input === 'size'"
+                 v-model="sizeValue"
+                 class="condition__value"
+                 type="number"
+                 :label="t('Size in MB')"
+                 :label-outside="true"
+                 :placeholder="t('Size in MB')" />
+
+    <NcTextField v-else-if="input === 'text'"
+                 v-model="textValue"
+                 class="condition__value"
+                 :label="t('Value')"
+                 :label-outside="true"
+                 :placeholder="hint || t('Value')" />
+
     <span v-else class="condition__value condition__value--fixed">
-      {{ t('is favorited') }}
+      {{ t('Only favorited files') }}
     </span>
 
     <NcCheckboxRadioSwitch v-if="canNegate"
-                           :model-value="negate"
+                           :model-value="condition.negate ?? false"
                            class="condition__negate"
-                           @update:model-value="$emit('update:negate', $event)">
+                           @update:model-value="patch({ negate: $event })">
       {{ t('not') }}
     </NcCheckboxRadioSwitch>
 
     <NcButton :aria-label="t('Remove condition')"
               variant="tertiary"
               @click="$emit('remove')">
-      ✕
+      <template #icon>
+        <NcIconSvgWrapper :path="mdiClose" :size="20" />
+      </template>
     </NcButton>
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import { NcButton, NcCheckboxRadioSwitch, NcSelect, NcTextField } from '@nextcloud/vue'
+import {
+  NcButton,
+  NcCheckboxRadioSwitch,
+  NcDateTimePicker,
+  NcIconSvgWrapper,
+  NcSelect,
+  NcTextField,
+} from '@nextcloud/vue'
+import { mdiClose } from '@mdi/js'
 import { useI18n } from '../composables/useI18n'
+import {
+  fieldHint,
+  fieldInput,
+  fieldLabel,
+  operatorLabel,
+  toBytes,
+  toDateInput,
+  toMegabytes,
+  toUnix,
+} from '../filters/fields'
 import type { Condition, FieldsResponse, Operator } from '../types/Search'
 
 const { t } = useI18n()
@@ -54,90 +89,109 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: 'update:condition', value: Condition): void
-  (e: 'update:negate', value: boolean): void
   (e: 'remove'): void
 }>()
 
-const valueComponent = NcTextField
+interface Option { id: string, label: string }
 
-const fieldNames = computed(() => Object.keys(props.schema.fields))
+const fieldOptions = computed<Option[]>(() =>
+  Object.keys(props.schema.fields).map((id) => ({ id, label: fieldLabel(t, id) })))
 
 /** Only the operators this field accepts — the server rejects the rest. */
-const allowedOperators = computed<Operator[]>(
-  () => props.schema.operators[props.condition.field] ?? [],
-)
+const operatorOptions = computed<Option[]>(() =>
+  (props.schema.operators[props.condition.field] ?? [])
+    .map((id) => ({ id, label: operatorLabel(t, props.condition.field, id) })))
 
-const valueKind = computed(() => props.schema.fields[props.condition.field] ?? 'string')
+const input = computed(() => fieldInput(props.condition.field))
+const hint = computed(() => fieldHint(t, props.condition.field))
 
 /**
- * "favorite" is join-backed: the backend can only match favorited files, and
- * negating it matches nothing, so the toggle is hidden for it.
+ * "favorite" and "tagname" are reached through a join, so negating them
+ * compares a NULL column and matches nothing. The backend refuses it; don't
+ * offer it.
  */
 const canNegate = computed(() => !['favorite', 'tagname'].includes(props.condition.field))
-
-const valueLabel = computed(() => {
-  switch (valueKind.value) {
-    case 'integer':
-      return isDate.value ? t('Unix seconds') : t('Value')
-    default:
-      return t('Value')
-  }
-})
-
-const isDate = computed(() => ['mtime', 'creation_time'].includes(props.condition.field))
 
 function patch(changes: Partial<Condition>) {
   emit('update:condition', { ...props.condition, ...changes })
 }
 
-const field = computed({
-  get: () => props.condition.field,
-  set: (next: string) => {
-    // The new field may not accept the current operator; fall back to its first.
-    const operators = props.schema.operators[next] ?? []
-    const operator = operators.includes(props.condition.operator)
+const fieldOption = computed({
+  get: () => ({ id: props.condition.field, label: fieldLabel(t, props.condition.field) }),
+  set: (next: Option | null) => {
+    if (!next) {
+      return
+    }
+    // The new field may not accept the current operator, and its value is in a
+    // different unit — reset both rather than carry a nonsense pairing across.
+    const operators = props.schema.operators[next.id] ?? []
+    const operator = (operators.includes(props.condition.operator)
       ? props.condition.operator
-      : (operators[0] ?? props.condition.operator)
-    patch({ field: next, operator, negate: false })
+      : operators[0]) as Operator
+    patch({ field: next.id, operator, value: next.id === 'favorite' ? true : '', negate: false })
   },
 })
 
-const operator = computed({
-  get: () => props.condition.operator,
-  set: (next: Operator) => patch({ operator: next }),
+const operatorOption = computed({
+  get: () => ({
+    id: props.condition.operator,
+    label: operatorLabel(t, props.condition.field, props.condition.operator),
+  }),
+  set: (next: Option | null) => next && patch({ operator: next.id as Operator }),
 })
 
-const value = computed({
+const textValue = computed({
   get: () => String(props.condition.value ?? ''),
   set: (next: string) => patch({ value: next }),
 })
 
-const negate = computed(() => props.condition.negate ?? false)
+// The condition carries wire units (Unix seconds, bytes); the boxes show
+// dates and megabytes. Convert at the edge so the request needs no fixing up.
+const sizeValue = computed({
+  get: () => toMegabytes(props.condition.value as number),
+  set: (next: string) => patch({ value: toBytes(next) }),
+})
+
+const dateValue = computed({
+  get: () => {
+    const iso = toDateInput(props.condition.value as number)
+    return iso ? new Date(`${iso}T00:00:00`) : null
+  },
+  set: (next: Date | null) => {
+    if (!next) {
+      patch({ value: '' })
+      return
+    }
+    const pad = (n: number) => String(n).padStart(2, '0')
+    const iso = `${next.getFullYear()}-${pad(next.getMonth() + 1)}-${pad(next.getDate())}`
+    patch({ value: toUnix(iso) })
+  },
+})
 </script>
 
 <style scoped lang="scss">
 .condition {
-	display: flex;
-	align-items: center;
-	gap: 8px;
-	margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
 
-	&__field,
-	&__operator {
-		min-width: 150px;
-	}
+  &__field,
+  &__operator {
+    min-width: 170px;
+  }
 
-	&__value {
-		flex: 1 1 auto;
-		min-width: 120px;
+  &__value {
+    flex: 1 1 auto;
+    min-width: 140px;
 
-		&--fixed {
-			color: var(--color-text-maxcontrast);
-		}
-	}
+    &--fixed {
+      color: var(--color-text-maxcontrast);
+    }
+  }
 
-	&__negate {
-		flex: 0 0 auto;
-	}
+  &__negate {
+    flex: 0 0 auto;
+  }
 }
 </style>

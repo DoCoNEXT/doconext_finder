@@ -18,6 +18,7 @@ use OCP\Files\Search\ISearchBinaryOperator;
 use OCP\Files\Search\ISearchComparison;
 use OCP\Files\Search\ISearchOperator;
 use OCP\Files\Search\ISearchOrder;
+use OCP\ITagManager;
 use OCP\IUserManager;
 
 /**
@@ -39,7 +40,30 @@ class FileSearchService
     public function __construct(
         private IRootFolder $rootFolder,
         private IUserManager $userManager,
+        private ITagManager $tagManager,
     ) {
+    }
+
+    /**
+     * Marks or unmarks a file as one of the user's favorites.
+     *
+     * Favorites are per-user tags, so this is already scoped to the caller — but
+     * we still resolve the id through the user's own folder, so an id they cannot
+     * see cannot be tagged.
+     *
+     * @throws NotFoundException when the id is not reachable by this user
+     */
+    public function setFavorite(string $uid, int $fileId, bool $favorite): void
+    {
+        $node = $this->rootFolder->getUserFolder($uid)->getFirstNodeById($fileId);
+        if ($node === null) {
+            throw new NotFoundException('No such file: ' . $fileId);
+        }
+
+        $tags = $this->tagManager->load('files', [], false, $uid);
+        $favorite
+            ? $tags->addToFavorites($fileId)
+            : $tags->removeFromFavorites($fileId);
     }
 
     /**
@@ -70,8 +94,15 @@ class FileSearchService
             $nodes = array_slice($nodes, 0, $query->limit);
         }
 
+        // One lookup for the page rather than one per row: the tag store returns
+        // every favorited id for the user, and the page is at most a few hundred.
+        $favorites = array_flip($this->tagManager->load('files', [], false, $uid)->getFavorites());
+
         return [
-            'results' => array_map(fn (Node $n) => $this->toArray($n, $userFolder->getPath()), $nodes),
+            'results' => array_map(
+                fn (Node $n) => $this->toArray($n, $userFolder->getPath(), isset($favorites[$n->getId()])),
+                $nodes
+            ),
             'hasMore' => $hasMore,
             'offset'  => $query->offset,
             'limit'   => $query->limit,
@@ -91,6 +122,30 @@ class FileSearchService
                 ISearchComparison::COMPARE_LIKE,
                 'name',
                 '%' . addcslashes($query->term, '%_\\') . '%',
+            );
+        }
+
+        // Preset filters AND with everything, so "match any" on the advanced conditions
+        // never widens the chosen type or date range.
+        if ($query->mimetypes !== []) {
+            $mimes = array_map(
+                static fn (string $m) => new SearchComparison(
+                    str_ends_with($m, '/%') ? ISearchComparison::COMPARE_LIKE : ISearchComparison::COMPARE_EQUAL,
+                    'mimetype',
+                    $m,
+                ),
+                $query->mimetypes,
+            );
+            $parts[] = count($mimes) === 1
+                ? $mimes[0]
+                : new SearchBinaryOperator(ISearchBinaryOperator::OPERATOR_OR, $mimes);
+        }
+
+        if ($query->modifiedAfter !== null) {
+            $parts[] = new SearchComparison(
+                ISearchComparison::COMPARE_GREATER_THAN,
+                'mtime',
+                $query->modifiedAfter,
             );
         }
 
@@ -126,7 +181,7 @@ class FileSearchService
     }
 
     /** @return array<string,mixed> */
-    private function toArray(Node $node, string $userFolderPath): array
+    private function toArray(Node $node, string $userFolderPath, bool $favorite): array
     {
         $path = $node->getPath();
         $relative = str_starts_with($path, $userFolderPath)
@@ -143,6 +198,7 @@ class FileSearchService
             'mtime'        => $node->getMTime(),
             'creationTime' => $node->getCreationTime(),
             'permissions'  => $node->getPermissions(),
+            'favorite'     => $favorite,
         ];
     }
 }
