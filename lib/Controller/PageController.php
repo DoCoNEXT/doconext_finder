@@ -36,8 +36,15 @@ class PageController extends Controller
     #[FrontpageRoute(verb: 'GET', url: '/')]
     public function index(): TemplateResponse
     {
-        // Util::addScript auto-prefixes "<appId>/js/" — never include js/ here.
+        // Util::addScript/addStyle auto-prefix "<appId>/js/" and "<appId>/css/" —
+        // never include js/ or css/ here.
+        //
+        // The stylesheet is NOT optional: without it the page renders with no app
+        // styles at all (no content container, so the Nextcloud background shows
+        // through). Both Settings classes already add theirs; the main page was
+        // the one place the template omitted it.
         Util::addScript(AppConstants::APP_ID, AppConstants::APP_ID . '-main');
+        Util::addStyle(AppConstants::APP_ID, AppConstants::APP_ID . '-main');
         $this->initialState->provide();
 
         return new TemplateResponse(AppConstants::APP_ID, 'index');

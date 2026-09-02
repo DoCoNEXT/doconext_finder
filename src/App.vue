@@ -1,7 +1,7 @@
 <template>
   <NcContent :app-name="appId">
     <NcAppContent>
-      <h2 class="app-title">{{ productName }}</h2>
+      <h2 class="app-title">{{ PRODUCT_NAME }}</h2>
       <FileSearch />
     </NcAppContent>
   </NcContent>
@@ -9,7 +9,7 @@
 
 <script setup lang="ts">
 import { NcContent, NcAppContent } from '@nextcloud/vue'
-import { APP_ID, productName } from './constants'
+import { APP_ID, PRODUCT_NAME } from './constants'
 import FileSearch from './components/FileSearch.vue'
 
 const appId = APP_ID
