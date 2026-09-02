@@ -61,3 +61,34 @@ export interface SearchRequest {
 	sort?: string
 	descending?: boolean
 }
+
+/**
+ * The interface state that reproduces a search — what saved searches and recents
+ * store. Deliberately holds preset *ids* rather than the values they resolve to:
+ * storing the timestamp behind "Last 7 days" would freeze it to the week it was
+ * saved.
+ */
+export interface SearchState {
+  term: string
+  typePreset: string
+  modifiedPreset: string
+  conditions: Condition[]
+  matchAny: boolean
+  sort: string
+  descending: boolean
+}
+
+export interface StoredSearch {
+  id: number
+  kind: 'saved' | 'recent'
+  name: string | null
+  description: string | null
+  query: SearchState
+  /** Unix seconds. */
+  lastRun: number
+}
+
+export interface SearchHistory {
+  saved: StoredSearch[]
+  recents: StoredSearch[]
+}

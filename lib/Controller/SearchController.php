@@ -74,10 +74,41 @@ class SearchController extends ApiController
 
         try {
             return new DataResponse($this->service->search($uid, $query));
+        } catch (\InvalidArgumentException $e) {
+            // The query builder rejects some operator/field pairings we cannot detect
+            // up front. Report its own words rather than a blank failure.
+            $this->logger->warning('File search rejected', ['exception' => $e, 'app' => $this->appName]);
+
+            return new DataResponse(
+                ['error' => $this->explain($e->getMessage())],
+                Http::STATUS_BAD_REQUEST,
+            );
         } catch (\Throwable $e) {
             $this->logger->error('File search failed', ['exception' => $e, 'app' => $this->appName]);
 
             return new DataResponse(['error' => 'search failed'], Http::STATUS_INTERNAL_SERVER_ERROR);
         }
+    }
+
+    /**
+     * Turns a query-builder rejection into something the user can act on.
+     *
+     * The Group folders app filters search results by ACL with
+     * `NOT(path IN <forbidden paths>)`. Core's SplitLargeIn optimizer rewrites an
+     * IN of more than 1000 values into `OR(IN, IN, …)`, and SearchBuilder refuses a
+     * binary operator inside a NOT — so for an account with that many ACL-denied
+     * paths, *every* file search fails, including the Files app's own. Nothing the
+     * client sends changes this, so say so rather than implying a bad query.
+     */
+    private function explain(string $message): string
+    {
+        if (str_contains($message, 'Binary operators inside "not"')) {
+            return 'This account cannot be searched on this server: the Group folders app '
+                . 'builds an access filter that the search backend rejects when an account '
+                . 'has more than 1000 access-denied paths. File search fails the same way in '
+                . 'the Files app for this account. Try an account with fewer group folders.';
+        }
+
+        return $message;
     }
 }

@@ -1,26 +1,86 @@
 <template>
   <NcContent :app-name="appId">
+    <NcAppNavigation>
+      <template #list>
+        <NcAppNavigationItem :name="t('Search')"
+                             :active="page === 'search'"
+                             @click="page = 'search'">
+          <template #icon>
+            <NcIconSvgWrapper :path="mdiMagnify" :size="20" />
+          </template>
+        </NcAppNavigationItem>
+        <NcAppNavigationItem :name="t('Favorites')"
+                             :active="page === 'favorites'"
+                             @click="page = 'favorites'">
+          <template #icon>
+            <NcIconSvgWrapper :path="mdiStar" :size="20" />
+          </template>
+        </NcAppNavigationItem>
+        <NcAppNavigationItem :name="t('Saved searches')"
+                             :active="page === 'saved'"
+                             @click="page = 'saved'">
+          <template #icon>
+            <NcIconSvgWrapper :path="mdiContentSaveOutline" :size="20" />
+          </template>
+        </NcAppNavigationItem>
+      </template>
+    </NcAppNavigation>
+
     <NcAppContent>
-      <h2 class="app-title">{{ PRODUCT_NAME }}</h2>
-      <FileSearch />
+      <!--
+        The three pages are kept alive rather than re-created: switching to
+        Saved searches and back should not throw away the results you were
+        looking at, which is the whole reason to leave the page.
+      -->
+      <KeepAlive>
+        <SearchView v-if="page === 'search'" @saved="page = 'saved'" />
+        <FavoritesView v-else-if="page === 'favorites'" />
+        <SavedSearchesView v-else @run="runStored" />
+      </KeepAlive>
     </NcAppContent>
   </NcContent>
 </template>
 
 <script setup lang="ts">
-import { NcContent, NcAppContent } from '@nextcloud/vue'
-import { APP_ID, PRODUCT_NAME } from './constants'
-import FileSearch from './components/FileSearch.vue'
+import { ref } from 'vue'
+import {
+  NcAppContent,
+  NcAppNavigation,
+  NcAppNavigationItem,
+  NcContent,
+  NcIconSvgWrapper,
+} from '@nextcloud/vue'
+import { mdiContentSaveOutline, mdiMagnify, mdiStar } from '@mdi/js'
+import { useI18n } from './composables/useI18n'
+import { useSearchStore } from './stores/searchStore'
+import { APP_ID } from './constants'
+import SearchView from './views/SearchView.vue'
+import FavoritesView from './views/FavoritesView.vue'
+import SavedSearchesView from './views/SavedSearchesView.vue'
+import type { StoredSearch } from './types/Search'
+
+const { t } = useI18n()
+const store = useSearchStore()
 
 const appId = APP_ID
+const page = ref<'search' | 'favorites' | 'saved'>('search')
+
+/**
+ * Running a stored search loads it into the live search and switches to it, so
+ * the result arrives somewhere you can refine it — not on a list page.
+ * @param entry the saved or recent search to run
+ */
+function runStored(entry: StoredSearch) {
+  store.apply(entry.query)
+  page.value = 'search'
+  // Re-running from history is not itself a new search worth recording; the
+  // entry already exists and its timestamp was just bumped.
+  store.run(t, 0, entry.kind !== 'saved')
+}
 </script>
 
 <style scoped lang="scss">
-.app-title {
-	max-width: 1100px;
-	margin: 0 auto;
-	padding: 24px 24px 0;
-	font-size: 22px;
-	font-weight: 700;
+:deep(.app-content-wrapper) {
+  padding-top: 16px;
 }
 </style>

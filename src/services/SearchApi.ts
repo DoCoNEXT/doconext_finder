@@ -8,7 +8,14 @@
 import axios from '@nextcloud/axios'
 import { generateUrl } from '@nextcloud/router'
 import { API_BASE } from '../constants'
-import type { FieldsResponse, SearchRequest, SearchResponse } from '../types/Search'
+import type {
+  FieldsResponse,
+  SearchHistory,
+  SearchRequest,
+  SearchResponse,
+  SearchState,
+  StoredSearch,
+} from '../types/Search'
 
 const url = (path: string) => generateUrl(`${API_BASE}${path}`)
 
@@ -52,6 +59,88 @@ export const SearchApi = {
       await (favorite ? axios.post(url(path)) : axios.delete(url(path)))
     } catch (error) {
       throw describe(error)
+    }
+  },
+
+  async history(): Promise<SearchHistory> {
+    try {
+      const { data } = await axios.get<SearchHistory>(url('/searches'))
+      return data
+    } catch (error) {
+      throw describe(error)
+    }
+  },
+
+  /**
+   * Records that a search ran. Best-effort by design: history is a convenience,
+   * and a failure here must never make a successful search look broken.
+   * @param query the interface state that reproduces the search
+   */
+  async recordRecent(query: SearchState): Promise<void> {
+    try {
+      await axios.post(url('/searches/recent'), { query })
+    } catch {
+      // ignored on purpose — see above
+    }
+  },
+
+  /**
+   * @param name
+   * @param description
+   * @param query
+   */
+  async save(name: string, description: string, query: SearchState): Promise<StoredSearch> {
+    try {
+      const { data } = await axios.post<StoredSearch>(url('/searches'), { name, description, query })
+      return data
+    } catch (error) {
+      throw describe(error)
+    }
+  },
+
+  /**
+   * @param id
+   * @param name
+   * @param description
+   */
+  async rename(id: number, name: string, description: string): Promise<StoredSearch> {
+    try {
+      const { data } = await axios.put<StoredSearch>(url(`/searches/${id}`), { name, description })
+      return data
+    } catch (error) {
+      throw describe(error)
+    }
+  },
+
+  /**
+   * @param id
+   */
+  async remove(id: number): Promise<void> {
+    try {
+      await axios.delete(url(`/searches/${id}`))
+    } catch (error) {
+      throw describe(error)
+    }
+  },
+
+  async clearRecents(): Promise<void> {
+    try {
+      await axios.delete(url('/searches/recent'))
+    } catch (error) {
+      throw describe(error)
+    }
+  },
+
+  /**
+   * Moves a saved search to the top of the list. Best-effort: ordering is not
+   * worth failing a run over.
+   * @param id
+   */
+  async markRun(id: number): Promise<void> {
+    try {
+      await axios.post(url(`/searches/${id}/run`))
+    } catch {
+      // ignored on purpose — see above
     }
   },
 }

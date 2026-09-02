@@ -1,0 +1,268 @@
+<template>
+  <div class="finder">
+    <div class="finder__bar">
+      <NcTextField v-model="store.query.term"
+                   class="finder__term"
+                   :label="t('Search files')"
+                   :label-outside="true"
+                   :placeholder="t('Search by name…')"
+                   @keydown.enter="search">
+        <template #icon>
+          <NcIconSvgWrapper :path="mdiMagnify" :size="20" />
+        </template>
+      </NcTextField>
+
+      <NcSelect v-model="typeOption"
+                class="finder__preset"
+                label="label"
+                :options="typeOptions"
+                :clearable="false"
+                :input-label="t('Type')" />
+
+      <NcSelect v-model="timeOption"
+                class="finder__preset"
+                label="label"
+                :options="timeOptions"
+                :clearable="false"
+                :input-label="t('Modified')" />
+
+      <NcButton variant="primary" :disabled="store.loading" @click="search">
+        {{ t('Search') }}
+      </NcButton>
+      <NcButton :disabled="!store.hasCriteria" @click="save">
+        {{ t('Save') }}
+      </NcButton>
+    </div>
+
+    <details class="finder__filters" :open="store.query.conditions.length > 0">
+      <summary>{{ filterSummary }}</summary>
+
+      <div class="finder__match">
+        <span>{{ t('Match:') }}</span>
+        <NcCheckboxRadioSwitch v-model="matchMode" type="radio" value="all" name="match">
+          {{ t('all conditions') }}
+        </NcCheckboxRadioSwitch>
+        <NcCheckboxRadioSwitch v-model="matchMode" type="radio" value="any" name="match">
+          {{ t('any condition') }}
+        </NcCheckboxRadioSwitch>
+      </div>
+
+      <template v-if="store.schema">
+        <ConditionRow v-for="(condition, index) in store.query.conditions"
+                      :key="index"
+                      :condition="condition"
+                      :schema="store.schema"
+                      @update:condition="store.query.conditions.splice(index, 1, $event)"
+                      @remove="store.query.conditions.splice(index, 1)" />
+
+        <NcButton @click="addCondition">
+          {{ t('Add condition') }}
+        </NcButton>
+      </template>
+      <NcLoadingIcon v-else :size="20" />
+    </details>
+
+    <NcNoteCard v-if="message" :type="messageType">{{ message }}</NcNoteCard>
+
+    <NcLoadingIcon v-if="store.loading" class="finder__loading" :size="32" />
+
+    <NcEmptyContent v-else-if="store.searched && store.results.length === 0"
+                    :name="t('No files found')"
+                    :description="t('Try a different term, or loosen the filters.')">
+      <template #icon>
+        <NcIconSvgWrapper :path="mdiMagnify" />
+      </template>
+    </NcEmptyContent>
+
+    <FileTable v-else-if="store.results.length"
+               :files="store.results"
+               :sort="store.query.sort"
+               :descending="store.query.descending"
+               @sort="store.sortBy(t, $event)"
+               @toggle-favorite="store.toggleFavorite" />
+
+    <div v-if="store.results.length" class="finder__paging">
+      <template v-if="!store.loadedAll">
+        <NcButton :disabled="store.offset === 0 || store.loading" @click="page(-1)">
+          {{ t('Previous') }}
+        </NcButton>
+        <NcButton :disabled="!store.hasMore || store.loading" @click="page(1)">
+          {{ t('Next') }}
+        </NcButton>
+        <NcButton v-if="store.hasMore" :disabled="store.loading" @click="store.loadAll(t)">
+          {{ t('Load all') }}
+        </NcButton>
+      </template>
+      <span class="muted">{{ rangeLabel }}</span>
+    </div>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { computed, onMounted } from 'vue'
+import {
+  NcButton,
+  NcCheckboxRadioSwitch,
+  NcEmptyContent,
+  NcIconSvgWrapper,
+  NcLoadingIcon,
+  NcNoteCard,
+  NcSelect,
+  NcTextField,
+} from '@nextcloud/vue'
+import { mdiMagnify } from '@mdi/js'
+import { useI18n } from '../composables/useI18n'
+import { useSearchStore } from '../stores/searchStore'
+import { SearchApi } from '../services/SearchApi'
+import { anyTime, anyType, fileTypePresets, modifiedPresets } from '../filters/presets'
+import ConditionRow from '../components/ConditionRow.vue'
+import FileTable from '../components/FileTable.vue'
+import type { FileTypePreset, ModifiedPreset } from '../filters/presets'
+
+const { t } = useI18n()
+const store = useSearchStore()
+
+const emit = defineEmits<{ (e: 'saved'): void }>()
+
+const typeOptions = fileTypePresets(t)
+const timeOptions = modifiedPresets(t)
+
+onMounted(() => store.loadSchema())
+
+/**
+ * The store keeps preset *ids* (that is what history stores); the dropdowns bind
+ * whole option objects. Translate between the two here rather than storing the
+ * objects, so a stored search never carries a stale label.
+ */
+const typeOption = computed<FileTypePreset>({
+  get: () => typeOptions.find((o) => o.id === store.query.typePreset) ?? anyType(t),
+  set: (next) => { store.query.typePreset = next?.id ?? 'any' },
+})
+
+const timeOption = computed<ModifiedPreset>({
+  get: () => timeOptions.find((o) => o.id === store.query.modifiedPreset) ?? anyTime(t),
+  set: (next) => { store.query.modifiedPreset = next?.id ?? 'any' },
+})
+
+const matchMode = computed<'all' | 'any'>({
+  get: () => (store.query.matchAny ? 'any' : 'all'),
+  set: (next) => { store.query.matchAny = next === 'any' },
+})
+
+const filterSummary = computed(() =>
+  store.query.conditions.length
+    ? t('Advanced filters ({count})', { count: store.query.conditions.length })
+    : t('Advanced filters'))
+
+const rangeLabel = computed(() => {
+  const first = store.offset + 1
+  const last = store.offset + store.results.length
+  if (store.loadedAll) {
+    return t('Showing all {count}', { count: store.results.length })
+  }
+  return store.hasMore
+    ? t('Showing {first}–{last}+', { first, last })
+    : t('Showing {first}–{last}', { first, last })
+})
+
+/** Store errors are codes for cases the view words itself; the rest pass through. */
+const message = computed(() => {
+  switch (store.error) {
+    case '': return ''
+    case 'no-criteria': return t('Enter a search term, or pick a filter.')
+    case 'capped': return t('Stopped after {count} results. Narrow the search to see the rest.', { count: store.results.length })
+    default: return store.error
+  }
+})
+
+const messageType = computed(() => (store.error === 'capped' ? 'warning' : 'error'))
+
+function search() {
+  store.run(t, 0)
+}
+
+function page(direction: number) {
+  store.run(t, store.offset + direction * store.pageSize, false)
+}
+
+function addCondition() {
+  const schema = store.schema
+  const field = schema && Object.keys(schema.fields)[0]
+  const operator = field ? schema.operators[field]?.[0] : undefined
+  if (!field || !operator) {
+    return
+  }
+  store.query.conditions.push({ field, operator, value: '' })
+}
+
+async function save() {
+  const name = window.prompt(t('Name this search'), store.query.term || t('Saved search'))
+  if (name === null) {
+    return
+  }
+  try {
+    await SearchApi.save(name, '', { ...store.query })
+    emit('saved')
+  } catch (e) {
+    store.error = (e as Error).message
+  }
+}
+</script>
+
+<style scoped lang="scss">
+.finder {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 24px 24px;
+
+  &__bar {
+    display: flex;
+    align-items: end;
+    gap: 8px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+  }
+
+  &__term {
+    flex: 2 1 240px;
+  }
+
+  &__preset {
+    flex: 1 1 170px;
+    min-width: 170px;
+  }
+
+  &__filters {
+    margin-bottom: 16px;
+
+    summary {
+      cursor: pointer;
+      padding: 4px 0;
+      color: var(--color-text-maxcontrast);
+    }
+  }
+
+  &__match {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 8px 0 12px;
+    color: var(--color-text-maxcontrast);
+  }
+
+  &__loading {
+    margin: 32px auto;
+  }
+
+  &__paging {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 16px;
+  }
+}
+
+.muted {
+  color: var(--color-text-maxcontrast);
+}
+</style>
