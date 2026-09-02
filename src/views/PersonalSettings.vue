@@ -1,9 +1,9 @@
 <template>
-	<NcSettingsSection :name="productName" :description="t('Your personal settings for this app.')">
-		<p class="hint">
-			{{ t('Add per-user preferences here. Persist them via a backend endpoint + per-user config.') }}
-		</p>
-	</NcSettingsSection>
+  <NcSettingsSection :name="productName" :description="t('Your personal settings for this app.')">
+    <p class="hint">
+      {{ t('Add per-user preferences here. Persist them via a backend endpoint + per-user config.') }}
+    </p>
+  </NcSettingsSection>
 </template>
 
 <script setup lang="ts">

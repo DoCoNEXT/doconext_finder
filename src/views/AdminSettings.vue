@@ -1,9 +1,9 @@
 <template>
-	<NcSettingsSection :name="productName" :description="t('Admin settings for this app.')">
-		<p class="hint">
-			{{ t('Add your admin controls here (e.g. a display-name field, feature toggles). Wire them to a backend endpoint + app-config.') }}
-		</p>
-	</NcSettingsSection>
+  <NcSettingsSection :name="productName" :description="t('Admin settings for this app.')">
+    <p class="hint">
+      {{ t('Add your admin controls here (e.g. a display-name field, feature toggles). Wire them to a backend endpoint + app-config.') }}
+    </p>
+  </NcSettingsSection>
 </template>
 
 <script setup lang="ts">

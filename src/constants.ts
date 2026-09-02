@@ -16,12 +16,12 @@ interface AppConfig {
 
 let config: AppConfig
 try {
-	config = loadState<AppConfig>('doconext_finder', 'config')
+  config = loadState<AppConfig>('doconext_finder', 'config')
 } catch {
-	throw new Error(
-		'[doconext_finder] Initial state missing — the PHP handler that '
+  throw new Error(
+    '[doconext_finder] Initial state missing — the PHP handler that '
 		+ 'loaded this bundle must call InitialStateProvider::provide() first.',
-	)
+  )
 }
 
 export const APP_ID = config.appId
@@ -38,7 +38,7 @@ export const DISPLAY_NAME = config.displayName ?? ''
  * @param fallback label to use when no custom display name is configured
  */
 export function productName(fallback: string = DEFAULT_PRODUCT_NAME): string {
-	return DISPLAY_NAME || fallback
+  return DISPLAY_NAME || fallback
 }
 
 export const PRODUCT_NAME = productName()
