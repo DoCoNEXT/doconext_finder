@@ -36,6 +36,18 @@ const active = computed(() => props.sort === props.field)
   color: inherit;
   cursor: pointer;
 
+  // NcIconSvgWrapper's box takes the height of the row's line box and leaves
+  // the 18px arrow sitting against its top edge — about 8px above the middle
+  // of the label it belongs to. Pinning the box to the arrow's own size lets
+  // the flex row centre it on the text.
+  :deep(.icon-vue) {
+    display: flex;
+    align-items: center;
+    flex: 0 0 auto;
+    width: 18px;
+    height: 18px;
+  }
+
   &:hover {
     color: var(--color-main-text);
   }
