@@ -22,11 +22,14 @@ things up all day.
 - **Grouping** — group results by type, folder or date to see the shape of a
   result set instead of a flat list.
 - **Favorites** — browse and toggle your favorite files from the same grid.
+- **File commands** — open in Files or in the desktop app, jump to the
+  containing folder, preview, download, upload a new version or add files to a
+  folder, straight from the result row.
 
 Everything works on a plain Nextcloud. When the DoCoNEXT Core app is also
 installed, Finder additionally filters and groups on Core's metadata fields.
 	]]></description>
-	<version>0.7.0</version>
+	<version>0.8.0</version>
 	<licence>AGPL-3.0-or-later</licence>
 	<author mail="support@doconext.com" homepage="https://doconext.com">DoCoNEXT</author>
 	<namespace>DcnFinder</namespace>
