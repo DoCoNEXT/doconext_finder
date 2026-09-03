@@ -1,6 +1,12 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16">
-	<!-- Top app-menu icon: WHITE-filled solid silhouette with negative-space
-	     detail (the folded corner). The platform masks + recolors it. Replace
-	     with your own filled silhouette (never a stroke outline). -->
-	<path fill="#ffffff" fill-rule="evenodd" d="M3 1.5A1.5 1.5 0 0 1 4.5 0h5L13 3.5v11A1.5 1.5 0 0 1 11.5 16h-7A1.5 1.5 0 0 1 3 14.5v-13Zm6.5 0V4H12L9.5 1.5Z"/>
+	<!-- Top app-menu icon: WHITE-filled solid silhouette. The platform masks + recolors it.
+	     A magnifier whose lens holds a list of results: the app is a search page
+	     over your files, and a plain document said nothing about searching.
+	     Filled silhouette with negative-space detail — never a stroke outline,
+	     which collapses when the platform force-fills currentColor. -->
+	<path fill="#ffffff" fill-rule="evenodd" d="M6.6 1a5.6 5.6 0 1 0 0 11.2A5.6 5.6 0 0 0 6.6 1Zm0 1.6a4 4 0 1 1 0 8 4 4 0 0 1 0-8Z"/>
+	<path fill="#ffffff" d="M9.85 11.27 11.27 9.85l4.34 4.34a1 1 0 0 1-1.42 1.42Z"/>
+	<rect fill="#ffffff" x="3.8" y="4.4" width="5.6" height="1.1" rx="0.55"/>
+	<rect fill="#ffffff" x="3.8" y="6.05" width="5.6" height="1.1" rx="0.55"/>
+	<rect fill="#ffffff" x="3.8" y="7.7" width="4" height="1.1" rx="0.55"/>
 </svg>
