@@ -25,6 +25,12 @@ export interface FileResult {
 	permissions: number
 	/** Mutated optimistically by the star toggle. */
 	favorite: boolean
+	/** uid of the file's owner. */
+	owner: string
+	/** Display name of the owner — the nearest thing Nextcloud keeps to a creator. */
+	createdBy: string
+	/** Display name of whoever wrote the current revision; the owner when unrecorded. */
+	modifiedBy: string
 	/** Registry key → displayable value, for keys this file actually carries. */
 	metadata: Record<string, string>
 }

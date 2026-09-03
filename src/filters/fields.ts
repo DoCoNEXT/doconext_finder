@@ -35,6 +35,7 @@ const FIELD_INPUTS: Record<string, InputKind> = {
   creation_time: 'date',
   favorite: 'none',
   tagname: 'text',
+  owner: 'text',
 }
 
 export function fieldInput(field: string): InputKind {
@@ -62,6 +63,9 @@ export function fieldLabel(t: Translate, field: string): string {
     case 'creation_time': return t('Created')
     case 'favorite': return t('Favorite')
     case 'tagname': return t('Tag')
+    // The owner is the nearest thing Nextcloud keeps to a creator; the column
+    // showing it is called the same.
+    case 'owner': return t('Created by')
     default: return field
   }
 }
@@ -70,6 +74,9 @@ export function fieldHint(t: Translate, field: string): string {
   switch (field) {
     case 'path': return t('e.g. Legal/Dossiers')
     case 'mimetype': return t('e.g. application/pdf')
+    // Matched against the account id, not the display name — the search backend
+    // compares uid_owner.
+    case 'owner': return t('a user id, e.g. alice')
     default: return ''
   }
 }

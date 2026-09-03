@@ -46,6 +46,7 @@ class FileSearchService
         private ITagManager $tagManager,
         private IFilesMetadataManager $metadataManager,
         private MetadataFields $metadataFields,
+        private FileAuthorService $authors,
     ) {
     }
 
@@ -104,6 +105,10 @@ class FileSearchService
         $fileIds = array_map(static fn (Node $n) => $n->getId(), $nodes);
         $metadata = $fileIds === [] ? [] : $this->metadataManager->getMetadataForFiles($fileIds);
 
+        // And one revision lookup: "modified by" is per file, but asking per row
+        // would turn a page into hundreds of queries.
+        $editors = $this->authors->lastEditors(array_values($fileIds));
+
         return [
             'results' => array_map(
                 fn (Node $n) => $this->toArray(
@@ -111,6 +116,7 @@ class FileSearchService
                     $userFolder->getPath(),
                     isset($favorites[$n->getId()]),
                     $this->metadataFields->values($n->getId(), $metadata),
+                    $editors[$n->getId()] ?? '',
                 ),
                 $nodes
             ),
@@ -238,14 +244,25 @@ class FileSearchService
 
     /**
      * @param array<string,string> $metadata
+     * @param string $editor uid that wrote the current revision, '' when unknown
      * @return array<string,mixed>
      */
-    private function toArray(Node $node, string $userFolderPath, bool $favorite, array $metadata): array
-    {
+    private function toArray(
+        Node $node,
+        string $userFolderPath,
+        bool $favorite,
+        array $metadata,
+        string $editor,
+    ): array {
         $path = $node->getPath();
         $relative = str_starts_with($path, $userFolderPath)
             ? ltrim(substr($path, strlen($userFolderPath)), '/')
             : ltrim($path, '/');
+
+        // The owner is the closest thing Nextcloud keeps to a creator; with no
+        // recorded editor the owner is also the only person known to have
+        // written the file. See FileAuthorService for why.
+        $owner = $node->getOwner()?->getUID() ?? '';
 
         return [
             'fileid'       => $node->getId(),
@@ -258,6 +275,9 @@ class FileSearchService
             'creationTime' => $node->getCreationTime(),
             'permissions'  => $node->getPermissions(),
             'favorite'     => $favorite,
+            'owner'        => $owner,
+            'createdBy'    => $this->authors->displayName($owner),
+            'modifiedBy'   => $this->authors->displayName($editor !== '' ? $editor : $owner),
             'metadata'     => $metadata,
         ];
     }

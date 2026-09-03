@@ -130,11 +130,12 @@ const input = computed(() =>
 const hint = computed(() => fieldHint(t, props.condition.field))
 
 /**
- * "favorite" and "tagname" are reached through a join, so negating them
+ * "favorite", "tagname" and "owner" are reached through a join, so negating them
  * compares a NULL column and matches nothing. The backend refuses it; don't
  * offer it.
  */
-const canNegate = computed(() => !['favorite', 'tagname'].includes(props.condition.field))
+const canNegate = computed(() =>
+  !['favorite', 'tagname', 'owner'].includes(props.condition.field))
 
 function patch(changes: Partial<Condition>) {
   emit('update:condition', { ...props.condition, ...changes })

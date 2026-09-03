@@ -25,14 +25,23 @@ class PreferencesService
 {
     private const KEY = 'preferences';
 
-    /** Columns the grid can show, in their default order. */
-    public const COLUMNS = ['name', 'folder', 'size', 'modified', 'created', 'type'];
+    /**
+     * Columns the grid can show, in their default order.
+     *
+     * `type` and `mimetype` are deliberately both here: "Type" is the readable
+     * category a person filters by ("Spreadsheets"), `mimetype` the exact media
+     * type a person pastes into a condition. Collapsing them loses one or the
+     * other.
+     */
+    public const COLUMNS = [
+        'name', 'folder', 'size', 'modified', 'created', 'type', 'mimetype', 'createdBy', 'modifiedBy',
+    ];
 
-    /** Shown unless the user says otherwise; `created` and `type` start hidden. */
+    /** Shown unless the user says otherwise; the rest start hidden. */
     private const DEFAULT_VISIBLE = ['name', 'folder', 'size', 'modified'];
 
     /** Built-in grouping fields. A `meta:` key also works. */
-    public const GROUPINGS = ['folder', 'type', 'modified'];
+    public const GROUPINGS = ['folder', 'type', 'mimetype', 'modified', 'createdBy', 'modifiedBy'];
 
     /**
      * Grouping levels a user may stack. Beyond a handful the headers outnumber

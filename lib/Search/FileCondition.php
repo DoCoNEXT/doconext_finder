@@ -27,6 +27,9 @@ final class FileCondition
         'creation_time' => 'integer',
         'favorite'      => 'boolean',
         'tagname'       => 'string',
+        // Mapped to the storage's uid_owner by SearchBuilder, and equality-only
+        // there — it is a join column, not a filecache one.
+        'owner'         => 'string',
     ];
 
     /**
@@ -44,13 +47,14 @@ final class FileCondition
         'creation_time' => ['eq', 'lt', 'lte', 'gt', 'gte'],
         'favorite'      => ['eq'],
         'tagname'       => ['eq', 'contains'],
+        'owner'         => ['eq'],
     ];
 
     /**
      * Fields the query builder reaches through a join rather than a filecache column.
      * `NOT` on these compares a NULL column and matches nothing, so negation is refused.
      */
-    public const JOIN_BACKED = ['favorite', 'tagname'];
+    public const JOIN_BACKED = ['favorite', 'tagname', 'owner'];
 
     /**
      * Metadata is stored as one indexed string column whatever the declared type,

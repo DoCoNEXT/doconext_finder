@@ -22,7 +22,10 @@ export function groupLabel(t: Translate, grouping: string): string {
   switch (grouping) {
     case 'folder': return t('Folder')
     case 'type': return t('Type')
+    case 'mimetype': return t('Media type')
     case 'modified': return t('Modified date')
+    case 'createdBy': return t('Created by')
+    case 'modifiedBy': return t('Modified by')
     default: return grouping
   }
 }
@@ -139,7 +142,10 @@ function keyFor(t: Translate, file: FileResult, grouping: string): string {
   switch (grouping) {
     case 'folder': return folderOf(file) || '/'
     case 'type': return typeName(t, file)
+    case 'mimetype': return file.isFolder ? t('Folders') : file.mimetype
     case 'modified': return new Date(file.mtime * 1000).toLocaleDateString()
+    case 'createdBy': return file.createdBy || t('(not set)')
+    case 'modifiedBy': return file.modifiedBy || t('(not set)')
     default: return ''
   }
 }
