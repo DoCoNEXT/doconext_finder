@@ -48,8 +48,31 @@ $rail-breakpoint: 1024px;
 :deep(.app-navigation__search) {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
+  // flex-start, not flex-end: an app that puts something of its own in this row
+  // lets that grow (see below), which lands the toggle at the far edge anyway.
+  // An app with nothing there gets a toggle in line with the icons under it,
+  // rather than one stranded across an empty row.
+  justify-content: flex-start;
+  gap: var(--default-grid-baseline, 4px);
+  padding: var(--app-navigation-padding) var(--app-navigation-padding) 0;
   min-width: 0;
+}
+
+// Empty (mobile, where no rail toggle renders) it keeps no padding at all.
+:deep(.app-navigation__search:empty) {
+  padding: 0;
+}
+
+// The list's own top padding would put a step between the header row and the
+// first entry that the entries do not have between themselves. Matched to the
+// gap they do have — and only when there is a header row above it to separate
+// from, so an app without one keeps the library's own inset.
+// One :deep() around the whole chain, not one per part: only the first is
+// processed, and a second is left in the output as a literal `:deep(...)`,
+// which is not a selector any browser knows — the rule then matches nothing,
+// silently.
+:deep(.app-navigation__search:not(:empty) ~ .app-navigation__list) {
+  padding-top: var(--default-grid-baseline, 4px);
 }
 
 // Whatever the app put up there takes the rest of the row, so its own content
@@ -76,7 +99,7 @@ $rail-breakpoint: 1024px;
 // against a real render, where the vendor rule won and this one silently did
 // nothing.
 :deep(.app-navigation) .nav-rail-toggle {
-  margin: var(--app-navigation-padding);
+  margin: 0;
 }
 
 .app--rail {

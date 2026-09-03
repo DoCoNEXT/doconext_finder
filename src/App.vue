@@ -17,7 +17,7 @@
                   :title="railToggleLabel"
                   @click="toggleRail">
           <template #icon>
-            <NcIconSvgWrapper :path="railed ? mdiMenu : mdiMenuOpen" :size="20" />
+            <NcIconSvgWrapper :svg="railed ? panelLeftOpen : panelLeftClose" :size="20" />
           </template>
         </NcButton>
       </template>
@@ -107,13 +107,12 @@ import {
   mdiCogOutline,
   mdiContentSaveOutline,
   mdiMagnify,
-  mdiMenu,
-  mdiMenuOpen,
   mdiStar,
 } from '@mdi/js'
 import { generateUrl } from '@nextcloud/router'
 import { useI18n } from './composables/useI18n'
 import { useNavigationRail } from './composables/useNavigationRail'
+import { panelLeftClose, panelLeftOpen } from './icons/panelLeft'
 import { useSearchStore } from './stores/searchStore'
 import { usePreferencesStore } from './stores/preferencesStore'
 import { useSelectionStore } from './stores/selectionStore'
@@ -258,6 +257,5 @@ function openSettings() {
   list-style: none;
   margin: 0;
   padding: var(--app-navigation-padding, 8px);
-  border-top: 1px solid var(--color-border);
 }
 </style>
