@@ -122,10 +122,15 @@ export interface ColumnPref {
   label: string
 }
 
+/** The result lists that keep their own view options. */
+export type GroupScope = 'search' | 'favorites'
+
 export interface Preferences {
   columns: ColumnPref[]
-  /** Ordered grouping levels, outermost first; empty = no grouping. */
+  /** Ordered grouping levels for the search results, outermost first. */
   grouping: string[]
+  /** The same, for the favorites list — a separate page, so separate levels. */
+  favoritesGrouping: string[]
   pageSize: number
   sort: string
   descending: boolean

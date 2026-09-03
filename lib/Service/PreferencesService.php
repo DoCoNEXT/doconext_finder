@@ -96,6 +96,10 @@ class PreferencesService
         return [
             'columns'       => $this->sanitiseColumns($raw['columns'] ?? null),
             'grouping'      => $this->sanitiseGrouping($raw['grouping'] ?? []),
+            // Favorites is its own list with its own shape; grouping it by folder
+            // while the search results are grouped by type is a normal thing to
+            // want, so the two keep separate levels.
+            'favoritesGrouping' => $this->sanitiseGrouping($raw['favoritesGrouping'] ?? []),
             'pageSize'      => in_array($pageSize, self::PAGE_SIZES, true) ? $pageSize : 50,
             // A metadata key is a valid sort too, as long as it is still indexed.
             'sort'          => $this->sanitiseSort($sort),

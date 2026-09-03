@@ -62,26 +62,9 @@
             </td>
 
             <td class="results__actions">
-              <NcActions :aria-label="t('Actions')" @click.stop>
-                <NcActionLink :href="fileLink(row.file)" target="_blank">
-                  <template #icon>
-                    <NcIconSvgWrapper :path="mdiOpenInNew" :size="20" />
-                  </template>
-                  {{ t('Open in Files') }}
-                </NcActionLink>
-                <NcActionLink :href="folderLink(row.file)" target="_blank">
-                  <template #icon>
-                    <NcIconSvgWrapper :path="mdiFolderOpen" :size="20" />
-                  </template>
-                  {{ t('Open containing folder') }}
-                </NcActionLink>
-                <NcActionButton v-if="!row.file.isFolder" @click="downloadFile(row.file)">
-                  <template #icon>
-                    <NcIconSvgWrapper :path="mdiDownload" :size="20" />
-                  </template>
-                  {{ t('Download') }}
-                </NcActionButton>
-              </NcActions>
+              <FileCommands :file="row.file"
+                            @toggle-favorite="$emit('toggle-favorite', $event)"
+                            @changed="$emit('changed', $event)" />
             </td>
           </tr>
         </template>
@@ -92,65 +75,51 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { NcActionButton, NcActionLink, NcActions, NcButton, NcIconSvgWrapper } from '@nextcloud/vue'
+import { NcButton, NcIconSvgWrapper } from '@nextcloud/vue'
 import {
   mdiChevronDown,
   mdiChevronRight,
-  mdiDownload,
-  mdiFolderOpen,
-  mdiOpenInNew,
   mdiStar,
   mdiStarOutline,
 } from '@mdi/js'
-import { generateUrl } from '@nextcloud/router'
-import { downloadFile } from '../services/download'
 import { useI18n } from '../composables/useI18n'
 import { usePreferencesStore } from '../stores/preferencesStore'
 import { useSearchStore } from '../stores/searchStore'
-import { isMetadataField, metadataKeyOf } from '../filters/metadata'
+import { useFileCommands } from '../composables/useFileCommands'
 import { iconFor } from '../filters/fields'
-import { buildRows, folderOf, typeName } from '../filters/grouping'
+import { columnLabel, columnSortField, columnValue, isNumericColumn } from '../filters/columns'
+import { buildRows } from '../filters/grouping'
+import FileCommands from './FileCommands.vue'
 import SortHeader from './SortHeader.vue'
-import type { ColumnPref, FileResult } from '../types/Search'
+import type { ColumnPref, FileResult, GroupScope } from '../types/Search'
 
 const { t } = useI18n()
 const preferences = usePreferencesStore()
 const search = useSearchStore()
-
-const metadataField = (id: string) => search.schema?.metadata.find((f) => f.field === id)
-
-/**
- * Falls back to the bare key, so an uninstalled app leaves a heading not a blank.
- * @param id
- */
-function metadataLabel(id: string): string {
-  return metadataField(id)?.label ?? metadataKeyOf(id)
-}
-
-/**
- * Double-click opens the file where Nextcloud itself would.
- * @param file
- */
-function open(file: FileResult) {
-  window.open(fileLink(file), '_blank', 'noreferrer')
-}
+const { fileLink, folderLink } = useFileCommands()
 
 const props = defineProps<{
   files: FileResult[]
   sort: string
   descending: boolean
   selectedId?: number
+  /** Which list this is; grouping levels are kept per list. */
+  scope: GroupScope
 }>()
 
 defineEmits<{
   (e: 'sort', field: string): void
   (e: 'toggle-favorite', file: FileResult): void
   (e: 'select', file: FileResult): void
+  (e: 'changed', file: FileResult): void
 }>()
+
+const metadata = computed(() => search.schema?.metadata ?? [])
 
 const columns = computed(() => preferences.visibleColumns)
 
-const allRows = computed(() => buildRows(t, props.files, preferences.grouping))
+const allRows = computed(() =>
+  buildRows(t, props.files, preferences.groupingFor(props.scope)))
 
 /**
  * Collapsed groups are held by id, and the ids carry the group path — so a group
@@ -205,7 +174,7 @@ function activate(file: FileResult) {
     case 'none':
       break
     default:
-      open(file)
+      window.open(fileLink(file), '_blank', 'noreferrer')
   }
 }
 
@@ -214,87 +183,19 @@ function activate(file: FileResult) {
  * @param column
  */
 function headerOf(column: ColumnPref): string {
-  if (column.label) {
-    return column.label
-  }
-  if (isMetadataField(column.id)) {
-    return metadataLabel(column.id)
-  }
-  switch (column.id) {
-    case 'name': return t('Name')
-    case 'folder': return t('Folder')
-    case 'size': return t('Size')
-    case 'modified': return t('Modified')
-    case 'created': return t('Created')
-    case 'type': return t('Type')
-    default: return column.id
-  }
+  return column.label || columnLabel(t, column.id, metadata.value)
 }
 
-/**
- * Which backend sort field a column maps to, or null when it is not sortable.
- * @param id
- */
 function sortableAs(id: string): string | null {
-  if (isMetadataField(id)) {
-    // Only indexed keys have anything to sort on.
-    return metadataField(id)?.filterable ? id : null
-  }
-  switch (id) {
-    case 'name': return 'name'
-    case 'size': return 'size'
-    case 'modified': return 'mtime'
-    case 'created': return 'creation_time'
-    default: return null
-  }
+  return columnSortField(id, metadata.value)
 }
 
 function cellClass(id: string): string {
-  return id === 'size' ? 'numeric' : ''
+  return isNumericColumn(id) ? 'numeric' : ''
 }
 
 function cellText(file: FileResult, id: string): string {
-  if (isMetadataField(id)) {
-    return file.metadata?.[metadataKeyOf(id)] ?? ''
-  }
-  switch (id) {
-    case 'folder': return folderOf(file)
-    case 'size': return file.isFolder ? '—' : formatSize(file.size)
-    case 'modified': return formatDate(file.mtime)
-    case 'created': return file.creationTime > 0 ? formatDate(file.creationTime) : '—'
-    case 'type': return typeName(t, file)
-    default: return ''
-  }
-}
-
-/**
- * /f/{id} is Nextcloud's own permalink; it resolves folders as well as files.
- * @param file
- */
-function fileLink(file: FileResult): string {
-  return generateUrl(`/f/${file.fileid}`)
-}
-
-function folderLink(file: FileResult): string {
-  return `${generateUrl('/apps/files/files')}?dir=${encodeURIComponent('/' + folderOf(file))}`
-}
-
-function formatSize(bytes: number): string {
-  if (bytes < 1024) {
-    return `${bytes} B`
-  }
-  const units = ['KB', 'MB', 'GB', 'TB']
-  let value = bytes / 1024
-  let unit = 0
-  while (value >= 1024 && unit < units.length - 1) {
-    value /= 1024
-    unit++
-  }
-  return `${value.toFixed(value < 10 ? 1 : 0)} ${units[unit]}`
-}
-
-function formatDate(unixSeconds: number): string {
-  return new Date(unixSeconds * 1000).toLocaleString()
+  return columnValue(t, file, id)
 }
 </script>
 

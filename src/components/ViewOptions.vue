@@ -3,29 +3,29 @@
     <!-- Grouping is a stack of levels, applied outermost first, like the desktop app. -->
     <span class="muted">{{ t('Group by:') }}</span>
 
-    <div v-if="preferences.grouping.length" class="view-options__levels">
-      <span v-for="(level, index) in preferences.grouping" :key="level" class="chip">
+    <div v-if="levels.length" class="view-options__levels">
+      <span v-for="(level, index) in levels" :key="level" class="chip">
         <span class="chip__label">{{ levelLabel(level) }}</span>
         <button v-if="index > 0"
                 class="chip__button"
                 :aria-label="t('Move outward')"
-                @click="preferences.moveGrouping(level, -1)">‹</button>
-        <button v-if="index < preferences.grouping.length - 1"
+                @click="preferences.moveGrouping(scope, level, -1)">‹</button>
+        <button v-if="index < levels.length - 1"
                 class="chip__button"
                 :aria-label="t('Move inward')"
-                @click="preferences.moveGrouping(level, 1)">›</button>
+                @click="preferences.moveGrouping(scope, level, 1)">›</button>
         <button class="chip__button"
                 :aria-label="t('Remove level')"
-                @click="preferences.removeGrouping(level)">✕</button>
+                @click="preferences.removeGrouping(scope, level)">✕</button>
       </span>
-      <NcButton variant="tertiary" @click="preferences.clearGrouping()">
+      <NcButton variant="tertiary" @click="preferences.clearGrouping(scope)">
         {{ t('Clear') }}
       </NcButton>
     </div>
 
     <select v-if="addableLevels.length" :value="''" @change="onAddLevel">
       <option value="">
-        {{ preferences.grouping.length ? t('Add a level…') : t('Nothing') }}
+        {{ levels.length ? t('Add a level…') : t('Nothing') }}
       </option>
       <optgroup :label="t('File')">
         <option v-for="level in addableBuiltins" :key="level" :value="level">
@@ -135,8 +135,9 @@ import { useI18n } from '../composables/useI18n'
 import { MAX_GROUPING_LEVELS, usePreferencesStore } from '../stores/preferencesStore'
 import { useSearchStore } from '../stores/searchStore'
 import { groupLabel } from '../filters/grouping'
-import { isMetadataField, metadataKeyOf } from '../filters/metadata'
-import type { ColumnPref } from '../types/Search'
+import { columnLabel } from '../filters/columns'
+import { isMetadataField } from '../filters/metadata'
+import type { ColumnPref, GroupScope } from '../types/Search'
 
 const { t } = useI18n()
 const preferences = usePreferencesStore()
@@ -145,21 +146,28 @@ const search = useSearchStore()
 const props = defineProps<{
   /** True when only part of the result set is loaded — grouping then misleads. */
   partial?: boolean
+  /** Which result list these options belong to; grouping is kept per list. */
+  scope: GroupScope
 }>()
+
+const scope = computed(() => props.scope)
+
+/** The grouping levels of this list only — the other page keeps its own. */
+const levels = computed(() => preferences.groupingFor(props.scope))
 
 const columnsOpen = ref(false)
 
-const BUILTIN_LEVELS = ['folder', 'type', 'modified']
+const BUILTIN_LEVELS = ['folder', 'type', 'mimetype', 'modified', 'createdBy', 'modifiedBy']
 
 const metadataFields = computed(() => search.schema?.metadata ?? [])
 
-const atMaxLevels = computed(() => preferences.grouping.length >= MAX_GROUPING_LEVELS)
+const atMaxLevels = computed(() => levels.value.length >= MAX_GROUPING_LEVELS)
 
 const addableBuiltins = computed(() =>
-  (atMaxLevels.value ? [] : BUILTIN_LEVELS.filter((l) => !preferences.grouping.includes(l))))
+  (atMaxLevels.value ? [] : BUILTIN_LEVELS.filter((l) => !levels.value.includes(l))))
 
 const addableMetadata = computed(() =>
-  (atMaxLevels.value ? [] : metadataFields.value.filter((f) => !preferences.grouping.includes(f.field))))
+  (atMaxLevels.value ? [] : metadataFields.value.filter((f) => !levels.value.includes(f.field))))
 
 const addableLevels = computed(() => [...addableBuiltins.value, ...addableMetadata.value])
 
@@ -174,16 +182,14 @@ const addableFields = computed(() => {
  * page rather than the search. Say so rather than letting it read as a summary.
  */
 const hint = computed(() =>
-  (preferences.grouping.length && props.partial
+  (levels.value.length && props.partial
     ? t('Grouping covers the loaded results only — use Load all for the whole set.')
     : ''))
 
-function metadataLabel(id: string): string {
-  return metadataFields.value.find((f) => f.field === id)?.label ?? metadataKeyOf(id)
-}
-
 function levelLabel(level: string): string {
-  return isMetadataField(level) ? metadataLabel(level) : groupLabel(t, level)
+  return isMetadataField(level)
+    ? columnLabel(t, level, metadataFields.value)
+    : groupLabel(t, level)
 }
 
 /**
@@ -191,18 +197,7 @@ function levelLabel(level: string): string {
  * @param column
  */
 function defaultHeaderOf(column: ColumnPref): string {
-  if (isMetadataField(column.id)) {
-    return metadataLabel(column.id)
-  }
-  switch (column.id) {
-    case 'name': return t('Name')
-    case 'folder': return t('Folder')
-    case 'size': return t('Size')
-    case 'modified': return t('Modified')
-    case 'created': return t('Created')
-    case 'type': return t('Type')
-    default: return column.id
-  }
+  return columnLabel(t, column.id, metadataFields.value)
 }
 
 /**
@@ -219,7 +214,7 @@ function consume(event: Event, apply: (value: string) => void) {
 }
 
 function onAddLevel(event: Event) {
-  consume(event, (value) => preferences.addGrouping(value))
+  consume(event, (value) => preferences.addGrouping(props.scope, value))
 }
 
 function onAddColumn(event: Event) {

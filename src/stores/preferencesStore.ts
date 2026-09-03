@@ -7,7 +7,7 @@
  */
 import { defineStore } from 'pinia'
 import { SearchApi } from '../services/SearchApi'
-import type { ColumnPref, Preferences } from '../types/Search'
+import type { ColumnPref, GroupScope, Preferences } from '../types/Search'
 
 /** Mirrors the server's cap; offering more levels would silently drop them. */
 export const MAX_GROUPING_LEVELS = 4
@@ -20,8 +20,10 @@ interface State {
    * adopting it reverts that change on screen until the second response lands.
    */
   revision: number
-  /** Ordered grouping levels, outermost first. */
+  /** Ordered grouping levels for the search results, outermost first. */
   grouping: string[]
+  /** The same, for the favorites list. */
+  favoritesGrouping: string[]
   pageSize: number
   sort: string
   descending: boolean
@@ -34,6 +36,7 @@ export const usePreferencesStore = defineStore('preferences', {
   state: (): State => ({
     columns: [],
     grouping: [],
+    favoritesGrouping: [],
     pageSize: 50,
     sort: 'mtime',
     descending: true,
@@ -45,6 +48,15 @@ export const usePreferencesStore = defineStore('preferences', {
 
   getters: {
     visibleColumns: (state): ColumnPref[] => state.columns.filter((c) => c.visible),
+
+    /**
+     * The grouping levels of one result list. Search and Favorites are separate
+     * pages showing different sets, so they keep separate levels — grouping the
+     * search by "Type" should not silently regroup the favorites too.
+     * @param state
+     */
+    groupingFor: (state) => (scope: GroupScope): string[] =>
+      (scope === 'favorites' ? state.favoritesGrouping : state.grouping),
   },
 
   actions: {
@@ -63,6 +75,7 @@ export const usePreferencesStore = defineStore('preferences', {
     adopt(preferences: Preferences) {
       this.columns = preferences.columns
       this.grouping = preferences.grouping
+      this.favoritesGrouping = preferences.favoritesGrouping ?? []
       this.pageSize = preferences.pageSize
       this.sort = preferences.sort
       this.descending = preferences.descending
@@ -77,6 +90,7 @@ export const usePreferencesStore = defineStore('preferences', {
         const stored = await SearchApi.savePreferences({
           columns: this.columns,
           grouping: this.grouping,
+          favoritesGrouping: this.favoritesGrouping,
           pageSize: this.pageSize,
           sort: this.sort,
           descending: this.descending,
@@ -144,37 +158,57 @@ export const usePreferencesStore = defineStore('preferences', {
       this.save()
     },
 
-    addGrouping(level: string) {
-      if (!level || this.grouping.includes(level) || this.grouping.length >= MAX_GROUPING_LEVELS) {
+    /**
+     * The levels of one scope, as a mutable array.
+     * @param scope which result list
+     */
+    levels(scope: GroupScope): string[] {
+      return scope === 'favorites' ? this.favoritesGrouping : this.grouping
+    },
+
+    addGrouping(scope: GroupScope, level: string) {
+      const levels = this.levels(scope)
+      if (!level || levels.includes(level) || levels.length >= MAX_GROUPING_LEVELS) {
         return
       }
-      this.grouping.push(level)
+      levels.push(level)
       this.save()
     },
 
-    removeGrouping(level: string) {
-      this.grouping = this.grouping.filter((g) => g !== level)
+    removeGrouping(scope: GroupScope, level: string) {
+      const kept = this.levels(scope).filter((g) => g !== level)
+      if (scope === 'favorites') {
+        this.favoritesGrouping = kept
+      } else {
+        this.grouping = kept
+      }
       this.save()
     },
 
     /**
      * Order matters: the levels nest outermost first.
+     * @param scope which result list
      * @param level
      * @param direction
      */
-    moveGrouping(level: string, direction: -1 | 1) {
-      const from = this.grouping.indexOf(level)
+    moveGrouping(scope: GroupScope, level: string, direction: -1 | 1) {
+      const levels = this.levels(scope)
+      const from = levels.indexOf(level)
       const to = from + direction
-      if (from === -1 || to < 0 || to >= this.grouping.length) {
+      if (from === -1 || to < 0 || to >= levels.length) {
         return
       }
-      const [moved] = this.grouping.splice(from, 1)
-      this.grouping.splice(to, 0, moved!)
+      const [moved] = levels.splice(from, 1)
+      levels.splice(to, 0, moved!)
       this.save()
     },
 
-    clearGrouping() {
-      this.grouping = []
+    clearGrouping(scope: GroupScope) {
+      if (scope === 'favorites') {
+        this.favoritesGrouping = []
+      } else {
+        this.grouping = []
+      }
       this.save()
     },
 
@@ -207,6 +241,7 @@ export const usePreferencesStore = defineStore('preferences', {
     async reset() {
       this.columns = []
       this.grouping = []
+      this.favoritesGrouping = []
       this.pageSize = 50
       this.sort = 'mtime'
       this.descending = true

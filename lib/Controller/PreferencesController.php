@@ -46,13 +46,15 @@ class PreferencesController extends ApiController
      * instead of holding a copy that quietly disagrees.
      *
      * @param list<array<string,mixed>> $columns
-     * @param list<string> $grouping ordered grouping levels, outermost first
+     * @param list<string> $grouping ordered grouping levels for the search results
+     * @param list<string> $favoritesGrouping the same, for the favorites list
      */
     #[NoAdminRequired]
     #[FrontpageRoute(verb: 'PUT', url: '/api/preferences')]
     public function update(
         array $columns = [],
         array $grouping = [],
+        array $favoritesGrouping = [],
         int $pageSize = 50,
         string $sort = 'mtime',
         bool $descending = true,
@@ -64,13 +66,14 @@ class PreferencesController extends ApiController
         return $uid === null
             ? new DataResponse(['error' => 'not authenticated'], Http::STATUS_UNAUTHORIZED)
             : new DataResponse($this->service->set($uid, [
-                'columns'       => $columns,
-                'grouping'      => $grouping,
-                'pageSize'      => $pageSize,
-                'sort'          => $sort,
-                'descending'    => $descending,
-                'doubleClick'   => $doubleClick,
-                'sidebarPinned' => $sidebarPinned,
+                'columns'           => $columns,
+                'grouping'          => $grouping,
+                'favoritesGrouping' => $favoritesGrouping,
+                'pageSize'          => $pageSize,
+                'sort'              => $sort,
+                'descending'        => $descending,
+                'doubleClick'       => $doubleClick,
+                'sidebarPinned'     => $sidebarPinned,
             ]));
     }
 }

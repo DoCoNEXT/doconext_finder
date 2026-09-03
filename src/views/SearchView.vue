@@ -64,7 +64,9 @@
 
     <NcNoteCard v-if="message" :type="messageType">{{ message }}</NcNoteCard>
 
-    <ViewOptions v-if="store.results.length" :partial="store.hasMore && !store.loadedAll" />
+    <ViewOptions v-if="store.results.length"
+                 scope="search"
+                 :partial="store.hasMore && !store.loadedAll" />
 
     <div class="finder__results">
       <NcLoadingIcon v-if="store.loading" class="finder__loading" :size="32" />
@@ -79,6 +81,7 @@
 
       <template v-else-if="store.results.length">
         <FileTable :files="store.results"
+                   scope="search"
                    :sort="store.query.sort"
                    :descending="store.query.descending"
                    :selected-id="selection.file?.fileid"

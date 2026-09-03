@@ -3,14 +3,41 @@
                 :name="file.name"
                 :subname="folderOf(file) || '/'"
                 :active="activeTab"
+                :starred="file.favorite"
+                @update:starred="$emit('toggle-favorite', file)"
                 @close="$emit('close')"
                 @update:active="activeTab = $event">
+    <!--
+      Every command lives in the header menu, the way Core and Finder for
+      desktop do it: a row of buttons at the foot of the panel put the most
+      useful actions where you had to scroll to reach them, and grew with every
+      command added. The menu sizes itself and never pushes the details down.
+    -->
     <template #secondary-actions>
+      <NcActionLink v-for="command in linkCommands"
+                    :key="command.id"
+                    :href="command.href"
+                    :target="command.target">
+        <template #icon>
+          <NcIconSvgWrapper :path="command.icon" :size="20" />
+        </template>
+        {{ command.label }}
+      </NcActionLink>
+      <NcActionButton v-for="command in buttonCommands"
+                      :key="command.id"
+                      @click="command.run?.()">
+        <template #icon>
+          <NcIconSvgWrapper :path="command.icon" :size="20" />
+        </template>
+        {{ command.label }}
+      </NcActionButton>
+      <NcActionSeparator />
       <NcActionCheckbox :model-value="preferences.sidebarPinned"
                         @update:model-value="preferences.setSidebarPinned($event)">
         {{ t('Keep this panel open') }}
       </NcActionCheckbox>
     </template>
+
     <NcAppSidebarTab id="details" :name="t('Details')" :order="1">
       <template #icon>
         <NcIconSvgWrapper :path="mdiInformationOutline" :size="20" />
@@ -20,20 +47,32 @@
         <dt>{{ t('Type') }}</dt>
         <dd>{{ typeName(t, file) }}</dd>
 
+        <dt>{{ t('Media type') }}</dt>
+        <dd class="details__mime">{{ file.isFolder ? t('Folder') : file.mimetype }}</dd>
+
         <dt>{{ t('Size') }}</dt>
         <dd>{{ file.isFolder ? t('Folder') : formatSize(file.size) }}</dd>
 
         <dt>{{ t('Modified') }}</dt>
         <dd>{{ formatDate(file.mtime) }}</dd>
 
-        <dt v-if="file.creationTime > 0">{{ t('Created') }}</dt>
-        <dd v-if="file.creationTime > 0">{{ formatDate(file.creationTime) }}</dd>
+        <template v-if="file.modifiedBy">
+          <dt>{{ t('Modified by') }}</dt>
+          <dd>{{ file.modifiedBy }}</dd>
+        </template>
+
+        <template v-if="file.creationTime > 0">
+          <dt>{{ t('Created') }}</dt>
+          <dd>{{ formatDate(file.creationTime) }}</dd>
+        </template>
+
+        <template v-if="file.createdBy">
+          <dt>{{ t('Created by') }}</dt>
+          <dd>{{ file.createdBy }}</dd>
+        </template>
 
         <dt>{{ t('Folder') }}</dt>
         <dd>{{ folderOf(file) || '/' }}</dd>
-
-        <dt>{{ t('Media type') }}</dt>
-        <dd class="details__mime">{{ file.mimetype }}</dd>
       </dl>
 
       <!--
@@ -50,18 +89,6 @@
           </template>
         </dl>
       </template>
-
-      <div class="details__actions">
-        <NcButton variant="primary" :href="fileLink(file)" target="_blank">
-          {{ t('Open in Files') }}
-        </NcButton>
-        <NcButton v-if="!file.isFolder" @click="downloadFile(file)">
-          {{ t('Download') }}
-        </NcButton>
-        <NcButton @click="$emit('toggle-favorite', file)">
-          {{ file.favorite ? t('Remove from favorites') : t('Add to favorites') }}
-        </NcButton>
-      </div>
     </NcAppSidebarTab>
 
     <!--
@@ -102,20 +129,23 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import {
+  NcActionButton,
   NcActionCheckbox,
+  NcActionLink,
+  NcActionSeparator,
   NcAppSidebar,
   NcAppSidebarTab,
-  NcButton,
   NcEmptyContent,
   NcIconSvgWrapper,
 } from '@nextcloud/vue'
 import { mdiEyeOutline, mdiInformationOutline } from '@mdi/js'
 import { generateUrl } from '@nextcloud/router'
-import { downloadFile } from '../services/download'
 import { useI18n } from '../composables/useI18n'
 import { useSearchStore } from '../stores/searchStore'
 import { usePreferencesStore } from '../stores/preferencesStore'
+import { useFileCommands } from '../composables/useFileCommands'
 import { folderOf, typeName } from '../filters/grouping'
+import { formatDate, formatSize } from '../filters/columns'
 import RichPreview from './RichPreview.vue'
 import { HAS_RICH_PREVIEW } from '../constants'
 import type { FileResult } from '../types/Search'
@@ -126,10 +156,25 @@ const preferences = usePreferencesStore()
 
 const props = defineProps<{ file: FileResult | null }>()
 
-defineEmits<{
+const emit = defineEmits<{
   (e: 'close'): void
   (e: 'toggle-favorite', file: FileResult): void
+  (e: 'changed', file: FileResult): void
 }>()
+
+const { commandsFor } = useFileCommands((file) => emit('changed', file))
+
+/**
+ * The star lives in the sidebar header, so the favorite command is left out of
+ * the menu — two controls for one flag read as two different things.
+ */
+const commands = computed(() => (props.file ? commandsFor(props.file) : []))
+
+// NcActions renders links and buttons alike, but they are different components,
+// so the list is split rather than branched inside one v-for: a v-if/v-else
+// pair inside a <template v-for> is invisible to the sidebar's own NcActions.
+const linkCommands = computed(() => commands.value.filter((c) => c.href))
+const buttonCommands = computed(() => commands.value.filter((c) => !c.href))
 
 /**
  * Only the keys this file actually carries, labelled and sorted, so the panel
@@ -172,28 +217,6 @@ const previewUrl = computed(() => {
   }
   return generateUrl(`/core/preview?fileId=${file.fileid}&x=512&y=512&a=1`)
 })
-
-function fileLink(file: FileResult): string {
-  return generateUrl(`/f/${file.fileid}`)
-}
-
-function formatSize(bytes: number): string {
-  if (bytes < 1024) {
-    return `${bytes} B`
-  }
-  const units = ['KB', 'MB', 'GB', 'TB']
-  let value = bytes / 1024
-  let unit = 0
-  while (value >= 1024 && unit < units.length - 1) {
-    value /= 1024
-    unit++
-  }
-  return `${value.toFixed(value < 10 ? 1 : 0)} ${units[unit]}`
-}
-
-function formatDate(unixSeconds: number): string {
-  return new Date(unixSeconds * 1000).toLocaleString()
-}
 </script>
 
 <style scoped lang="scss">
@@ -230,12 +253,24 @@ function formatDate(unixSeconds: number): string {
     font-family: monospace;
     font-size: 90%;
   }
+}
 
-  &__actions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    margin-top: 16px;
+// Two tabs stacked icon-over-label take a whole band of the panel. Laid out as
+// a row they read as a switch instead of as two buttons, and give the details
+// back the space.
+:deep(.app-sidebar-tabs__nav) {
+  padding-inline: 8px;
+
+  ul {
+    gap: 4px;
+  }
+
+  button {
+    flex-direction: row;
+    gap: 6px;
+    min-height: 34px;
+    padding-block: 2px 4px;
+    font-size: 95%;
   }
 }
 </style>

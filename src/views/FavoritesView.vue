@@ -2,13 +2,20 @@
   <div class="favorites">
     <div class="favorites__heading">
       <h3>{{ t('Favorites') }}</h3>
-      <NcButton variant="tertiary" :disabled="loading" @click="load">
-        {{ t('Refresh') }}
+      <NcButton variant="tertiary"
+                :disabled="loading"
+                :aria-label="t('Refresh')"
+                :title="t('Refresh')"
+                @click="load">
+        <template #icon>
+          <NcLoadingIcon v-if="loading" :size="20" />
+          <NcIconSvgWrapper v-else :path="mdiRefresh" :size="20" />
+        </template>
       </NcButton>
     </div>
 
     <NcNoteCard v-if="error" type="error">{{ error }}</NcNoteCard>
-    <NcLoadingIcon v-if="loading" :size="32" class="favorites__loading" />
+    <NcLoadingIcon v-if="loading && !loaded" :size="32" class="favorites__loading" />
 
     <NcEmptyContent v-else-if="loaded && files.length === 0"
                     :name="t('No favorites yet')"
@@ -19,23 +26,24 @@
     </NcEmptyContent>
 
     <template v-else-if="files.length">
-      <ViewOptions />
+      <ViewOptions scope="favorites" />
       <div class="favorites__results">
         <FileTable :files="files"
+                   scope="favorites"
                    :sort="sort"
                    :descending="descending"
                    :selected-id="selection.file?.fileid"
                    @sort="sortBy"
                    @toggle-favorite="unfavorite"
+                   @changed="load"
                    @select="selection.select($event, preferences.sidebarPinned)" />
       </div>
     </template>
-
   </div>
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { onActivated, onMounted, ref } from 'vue'
 import {
   NcButton,
   NcEmptyContent,
@@ -43,7 +51,7 @@ import {
   NcLoadingIcon,
   NcNoteCard,
 } from '@nextcloud/vue'
-import { mdiStarOutline } from '@mdi/js'
+import { mdiRefresh, mdiStarOutline } from '@mdi/js'
 import { useI18n } from '../composables/useI18n'
 import { SearchApi } from '../services/SearchApi'
 import { useSelectionStore } from '../stores/selectionStore'
@@ -64,6 +72,17 @@ const loaded = ref(false)
 const error = ref('')
 
 onMounted(load)
+
+// The page is kept alive between visits, so onMounted fires once. Anything you
+// starred in the results since would be missing until you pressed Refresh —
+// which read as "favorites don't work".
+onActivated(() => {
+  if (loaded.value) {
+    load()
+  }
+})
+
+defineExpose({ load })
 
 async function load() {
   loading.value = true
@@ -106,6 +125,10 @@ async function unfavorite(file: FileResult) {
   try {
     await SearchApi.setFavorite(file.fileid, false)
     files.value = files.value.filter((f) => f.fileid !== file.fileid)
+    // The panel was describing a row that is no longer in this list.
+    if (selection.file?.fileid === file.fileid) {
+      selection.clear()
+    }
   } catch (e) {
     error.value = (e as Error).message
   }
@@ -126,7 +149,7 @@ async function unfavorite(file: FileResult) {
     gap: 8px;
 
     h3 {
-      margin: 16px 0 8px;
+      margin: 8px 0;
       font-weight: 700;
     }
   }
