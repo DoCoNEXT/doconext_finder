@@ -46,14 +46,13 @@
 
       <!--
         Settings belongs at the foot of the navigation, where Nextcloud's own
-        apps put it: it is not one of the places you work, it is where you go to
-        change how they behave.
+        apps put it. The preferences themselves live on the app's own Personal
+        Settings page, not in here — this just opens it, the way Nextcloud's own
+        apps do, so it stays reachable from Settings even without the app open.
       -->
       <template #footer>
         <ul class="finder-nav__footer">
-          <NcAppNavigationItem :name="t('Settings')"
-                               :active="page === 'settings'"
-                               @click="go('settings')">
+          <NcAppNavigationItem :name="t('Settings')" @click="openSettings">
             <template #icon>
               <NcIconSvgWrapper :path="mdiCogOutline" :size="20" />
             </template>
@@ -72,7 +71,6 @@
         <SearchView v-if="page === 'search'" @saved="go('searches')" />
         <FavoritesView v-else-if="page === 'favorites'" ref="favorites" />
         <SearchesView v-else-if="page === 'searches'" @run="runStored" />
-        <SettingsView v-else />
       </KeepAlive>
     </NcAppContent>
 
@@ -111,6 +109,7 @@ import {
   mdiMenuOpen,
   mdiStar,
 } from '@mdi/js'
+import { generateUrl } from '@nextcloud/router'
 import { useI18n } from './composables/useI18n'
 import { useNavigationRail } from './composables/useNavigationRail'
 import { useSearchStore } from './stores/searchStore'
@@ -123,10 +122,9 @@ import FilePreviewDialog from './components/FilePreviewDialog.vue'
 import SearchView from './views/SearchView.vue'
 import FavoritesView from './views/FavoritesView.vue'
 import SearchesView from './views/SearchesView.vue'
-import SettingsView from './views/SettingsView.vue'
 import type { FileResult, StoredSearch } from './types/Search'
 
-type Page = 'search' | 'favorites' | 'searches' | 'settings'
+type Page = 'search' | 'favorites' | 'searches'
 
 const { t } = useI18n()
 const store = useSearchStore()
@@ -209,6 +207,14 @@ function runStored(entry: StoredSearch) {
   // Re-running from history is not itself a new search worth recording; the
   // entry already exists and its timestamp was just bumped.
   store.run(t, 0, entry.kind !== 'saved')
+}
+
+/**
+ * Opens the app's Personal Settings page in its own tab, rather than
+ * navigating away from the app in this one.
+ */
+function openSettings() {
+  window.open(generateUrl(`/settings/user/${APP_ID}`), '_blank', 'noopener')
 }
 </script>
 
