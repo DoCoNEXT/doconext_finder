@@ -12,6 +12,8 @@ interface AppConfig {
 	appName: string
 	/** Admin-configured display name, or '' when unset — see productName(). */
 	displayName: string
+	/** True when the Files Preview app is installed and its bundle was loaded. */
+	richPreview: boolean
 }
 
 let config: AppConfig
@@ -25,6 +27,13 @@ try {
 }
 
 export const APP_ID = config.appId
+
+/**
+ * Whether the page loaded the Files Preview bundle. It registers a
+ * <doconext-file-preview> custom element; without it the details panel falls
+ * back to Nextcloud's own thumbnail.
+ */
+export const HAS_RICH_PREVIEW = config.richPreview === true
 export const API_BASE = `/apps/${APP_ID}/api`
 
 const DEFAULT_PRODUCT_NAME = config.appName

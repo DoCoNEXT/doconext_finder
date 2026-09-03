@@ -12,6 +12,7 @@ use OCP\AppFramework\Http\Attribute\NoAdminRequired;
 use OCP\AppFramework\Http\Attribute\NoCSRFRequired;
 use OCP\AppFramework\Http\Attribute\OpenAPI;
 use OCP\AppFramework\Http\TemplateResponse;
+use OCP\App\IAppManager;
 use OCP\IRequest;
 use OCP\Util;
 
@@ -22,10 +23,14 @@ use OCP\Util;
  */
 class PageController extends Controller
 {
+    /** Optional companion app providing rich file previews. */
+    private const PREVIEW_APP_ID = 'doconext_files_preview';
+
     public function __construct(
         string $appName,
         IRequest $request,
         private InitialStateProvider $initialState,
+        private IAppManager $appManager,
     ) {
         parent::__construct($appName, $request);
     }
@@ -45,6 +50,16 @@ class PageController extends Controller
         // the one place the template omitted it.
         Util::addScript(AppConstants::APP_ID, AppConstants::APP_ID . '-main');
         Util::addStyle(AppConstants::APP_ID, AppConstants::APP_ID . '-main');
+
+        // Rich previews are a progressive enhancement. When the Files Preview app
+        // is installed we load its bundle, which registers a <doconext-file-preview>
+        // custom element; without it the details panel falls back to Nextcloud's
+        // own thumbnail. Only the app id is referenced — no classes, no dependency,
+        // so Finder still installs and runs on its own.
+        if ($this->appManager->isEnabledForUser(self::PREVIEW_APP_ID)) {
+            Util::addScript(self::PREVIEW_APP_ID, self::PREVIEW_APP_ID . '-main');
+            Util::addStyle(self::PREVIEW_APP_ID, self::PREVIEW_APP_ID . '-main');
+        }
         $this->initialState->provide();
 
         return new TemplateResponse(AppConstants::APP_ID, 'index');

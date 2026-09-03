@@ -15,11 +15,14 @@
       </template>
 
       <!--
-        Previews come from Nextcloud's own /core/preview endpoint. It only has
-        one for types a provider handles, so the image is shown optimistically
-        and removed if it fails, rather than probing first.
+        With the Files Preview app installed, its renderer handles email,
+        markdown, PDF, media and text properly. Without it, Nextcloud's own
+        /core/preview thumbnail: only some types have one, so the image is shown
+        optimistically and removed if it fails rather than probed first.
       -->
-      <img v-if="previewUrl && !previewFailed"
+      <RichPreview v-if="richPreview && !file.isFolder" :file="file" />
+
+      <img v-else-if="previewUrl && !previewFailed"
            class="details__preview"
            :src="previewUrl"
            :alt="t('Preview of {name}', { name: file.name })"
@@ -91,6 +94,8 @@ import { useI18n } from '../composables/useI18n'
 import { useSearchStore } from '../stores/searchStore'
 import { usePreferencesStore } from '../stores/preferencesStore'
 import { folderOf, typeName } from '../filters/grouping'
+import RichPreview from './RichPreview.vue'
+import { HAS_RICH_PREVIEW } from '../constants'
 import type { FileResult } from '../types/Search'
 
 const { t } = useI18n()
@@ -120,6 +125,8 @@ const metadata = computed(() => {
     }))
     .sort((a, b) => a.label.localeCompare(b.label))
 })
+
+const richPreview = HAS_RICH_PREVIEW
 
 const previewFailed = ref(false)
 

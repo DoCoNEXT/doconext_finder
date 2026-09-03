@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OCA\DcnFinder\Service;
 
 use OCA\DcnFinder\AppInfo\AppConstants;
+use OCP\App\IAppManager;
 use OCP\AppFramework\Services\IInitialState;
 use OCP\IAppConfig;
 
@@ -18,9 +19,13 @@ use OCP\IAppConfig;
  */
 class InitialStateProvider
 {
+    /** Optional companion app providing rich file previews. */
+    private const PREVIEW_APP_ID = 'doconext_files_preview';
+
     public function __construct(
         private IInitialState $initialState,
         private IAppConfig $appConfig,
+        private IAppManager $appManager,
     ) {
     }
 
@@ -32,6 +37,9 @@ class InitialStateProvider
             'appId'       => AppConstants::APP_ID,
             'appName'     => AppConstants::DEFAULT_DISPLAY_NAME,
             'displayName' => $displayName,
+            // Whether the page loaded the Files Preview bundle, so the frontend
+            // knows to wait for its custom element instead of guessing.
+            'richPreview' => $this->appManager->isEnabledForUser(self::PREVIEW_APP_ID),
         ]);
     }
 }
