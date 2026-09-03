@@ -15,6 +15,18 @@
       <NcButton :disabled="!store.hasCriteria" @click="save">
         {{ t('Save') }}
       </NcButton>
+      <!--
+        Clearing by hand meant emptying the box, putting both presets back on
+        "any" and deleting every condition row one by one — five actions to get
+        back to where the page starts.
+      -->
+      <NcButton variant="tertiary"
+                :disabled="!store.hasCriteria && !store.searched"
+                :aria-label="t('New search')"
+                :title="t('Clear the term, the filters and the results')"
+                @click="store.reset()">
+        {{ t('New search') }}
+      </NcButton>
     </div>
 
     <div class="finder__presets">
