@@ -20,6 +20,7 @@ use OCP\IAppConfig;
  * what a local application can open, and that follows the file's extension —
  * a .msg is refused by a mail client whatever mime type the server assigned it.
  */
+/** @see AppConstants::BRIDGE_APP_ID for why this is filed under its own namespace. */
 class BridgeSettings
 {
     public function __construct(private IAppConfig $appConfig)
@@ -35,7 +36,7 @@ class BridgeSettings
     public function extensions(): array
     {
         $raw = $this->appConfig->getValueString(
-            AppConstants::APP_ID,
+            AppConstants::BRIDGE_APP_ID,
             AppConstants::BRIDGE_EXTENSIONS_KEY,
             AppConstants::DEFAULT_BRIDGE_EXTENSIONS,
         );
@@ -51,7 +52,7 @@ class BridgeSettings
     {
         $extensions = self::parse($raw);
         $this->appConfig->setValueString(
-            AppConstants::APP_ID,
+            AppConstants::BRIDGE_APP_ID,
             AppConstants::BRIDGE_EXTENSIONS_KEY,
             implode(',', $extensions),
         );
