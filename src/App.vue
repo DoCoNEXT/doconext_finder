@@ -27,14 +27,14 @@
                              :active="page === 'search'"
                              @click="go('search')">
           <template #icon>
-            <NcIconSvgWrapper :path="mdiMagnify" :size="20" />
+            <NcIconSvgWrapper :svg="search" :size="20" />
           </template>
         </NcAppNavigationItem>
         <NcAppNavigationItem :name="t('Favorites')"
                              :active="page === 'favorites'"
                              @click="go('favorites')">
           <template #icon>
-            <NcIconSvgWrapper :path="mdiStar" :size="20" />
+            <NcIconSvgWrapper :svg="star" :size="20" />
           </template>
         </NcAppNavigationItem>
         <NcAppNavigationItem :name="t('Searches')"
@@ -46,7 +46,7 @@
               searches as well as saved ones, and a save icon claimed it was
               only the saved half.
             -->
-            <NcIconSvgWrapper :path="mdiTextSearch" :size="20" />
+            <NcIconSvgWrapper :svg="textSearch" :size="20" />
           </template>
         </NcAppNavigationItem>
       </template>
@@ -108,15 +108,10 @@ import {
   NcContent,
   NcIconSvgWrapper,
 } from '@nextcloud/vue'
-import {
-  mdiMagnify,
-  mdiStar,
-  mdiTextSearch,
-} from '@mdi/js'
 import { generateUrl } from '@nextcloud/router'
 import { useI18n } from './composables/useI18n'
 import { useNavigationRail } from './composables/useNavigationRail'
-import { cog, panelLeftClose, panelLeftOpen } from './icons/lucide'
+import { cog, panelLeftClose, panelLeftOpen, search, star, textSearch } from './icons/lucide'
 import { useSearchStore } from './stores/searchStore'
 import { usePreferencesStore } from './stores/preferencesStore'
 import { useSelectionStore } from './stores/selectionStore'
