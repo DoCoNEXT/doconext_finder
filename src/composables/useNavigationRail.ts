@@ -17,24 +17,59 @@
  * rail would sit on top of the content — so there it keeps its normal
  * open/closed behaviour and this stays out of the way.
  *
- * Reusable as-is: pair it with styles/navigation-rail.scss, render a toggle
- * bound to `toggleRail` while `canRail`, and put `railClass` on NcContent.
+ * Reusable as-is: pair it with styles/navigation-rail.scss (or a plain-CSS
+ * port of it), render a toggle bound to `toggleRail` while `canRail` inside
+ * NcAppNavigation's `#search` slot, and put `railClass` on NcContent.
+ *
+ * `collapsed` is a module-level singleton rather than a fresh ref per call —
+ * mirroring how @nextcloud/vue's own useIsMobile() shares one ref across every
+ * caller. An app can need the same live answer in more than one place at once:
+ * NcContent's class and the toggle button both live in the shell, and a bigger
+ * app can also have its navigation split across a couple of components (a
+ * settings sidebar with its own instance, say), each wanting to know the same
+ * thing. A ref created fresh inside the function would only agree on the
+ * localStorage key between those call sites — not on live state, so toggling
+ * in one place would go unnoticed by another until a full reload.
  */
 import { computed, ref } from 'vue'
 import { useIsMobile } from '@nextcloud/vue'
+import { APP_ID } from '../constants'
 
 /** The class the stylesheet keys off. Put it on NcContent. */
 export const RAIL_CLASS = 'app--rail'
 
 /**
- * @param storageKey where to remember the choice. A collapsed sidebar is
- *   expected to stay collapsed across reloads, and it is a per-device layout
- *   preference, so it belongs in this browser rather than on the account.
+ * A collapsed sidebar is expected to stay collapsed across reloads, and it is a
+ * per-device layout preference, so it belongs in this browser rather than on
+ * the account. Keyed by app id: several DoCoNEXT apps can share one Nextcloud
+ * session's localStorage, and each remembers its own rail independently.
  */
-export function useNavigationRail(storageKey = 'navigation-rail') {
-  const isMobile = useIsMobile()
+const STORAGE_KEY = `${APP_ID}-navigation-rail`
 
-  const collapsed = ref(read())
+function read(): boolean {
+  try {
+    return window.localStorage.getItem(STORAGE_KEY) === 'collapsed'
+  } catch {
+    // Private windows and blocked site data throw on access; a forgotten
+    // layout preference is not worth failing the app over.
+    return false
+  }
+}
+
+function write(value: boolean) {
+  try {
+    window.localStorage.setItem(STORAGE_KEY, value ? 'collapsed' : 'expanded')
+  } catch {
+    // ignored on purpose — see above
+  }
+}
+
+// Read once, at module load, not inside useNavigationRail(): every caller
+// across the whole page must land on this same ref instance, not a copy of it.
+const collapsed = ref(read())
+
+export function useNavigationRail() {
+  const isMobile = useIsMobile()
 
   /** A rail only makes sense where the navigation is a column beside content. */
   const canRail = computed(() => !isMobile.value)
@@ -44,24 +79,6 @@ export function useNavigationRail(storageKey = 'navigation-rail') {
   function toggleRail() {
     collapsed.value = !collapsed.value
     write(collapsed.value)
-  }
-
-  function read(): boolean {
-    try {
-      return window.localStorage.getItem(storageKey) === 'collapsed'
-    } catch {
-      // Private windows and blocked site data throw on access; a forgotten
-      // layout preference is not worth failing the app over.
-      return false
-    }
-  }
-
-  function write(value: boolean) {
-    try {
-      window.localStorage.setItem(storageKey, value ? 'collapsed' : 'expanded')
-    } catch {
-      // ignored on purpose — see above
-    }
   }
 
   return { railed, canRail, railClass, toggleRail }

@@ -135,7 +135,7 @@ const preferences = usePreferencesStore()
 const selection = useSelectionStore()
 const history = useHistoryStore()
 
-const { railed, canRail, railClass, toggleRail } = useNavigationRail(`${APP_ID}-navigation-rail`)
+const { railed, canRail, railClass, toggleRail } = useNavigationRail()
 
 const railToggleLabel = computed(() => (railed.value ? t('Expand menu') : t('Collapse menu')))
 
