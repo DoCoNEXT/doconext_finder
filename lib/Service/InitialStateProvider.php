@@ -27,6 +27,7 @@ class InitialStateProvider
         private IAppConfig $appConfig,
         private IAppManager $appManager,
         private BridgeSettings $bridgeSettings,
+        private FileTypeFilterSettings $fileTypeFilterSettings,
     ) {
     }
 
@@ -44,6 +45,11 @@ class InitialStateProvider
             // Which files go to DoCoNEXT Bridge instead of the desktop client. The
             // rule is the server's so every frontend answers the same way.
             'bridgeExtensions' => $this->bridgeSettings->extensions(),
+            // The search page's "Type" filter categories, admin-configured order
+            // and selection. Builtin labels/mimetypes still come from the
+            // frontend registry; this only says which ids to show and in what
+            // order, plus any admin-authored custom categories.
+            'fileTypeFilters' => $this->fileTypeFilterSettings->list(),
         ]);
     }
 }

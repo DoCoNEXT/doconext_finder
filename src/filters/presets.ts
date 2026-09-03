@@ -13,6 +13,8 @@
  * Passing `t` in also keeps this module free of a dependency on the composable.
  */
 
+import { FILE_TYPE_FILTERS } from '../constants'
+
 export type Translate = (_text: string, _vars?: Record<string, unknown>) => string
 
 export interface FileTypePreset {
@@ -34,9 +36,23 @@ export function anyType(t: Translate): FileTypePreset {
   return { id: 'any', label: t('Any type'), mimetypes: [] }
 }
 
-export function fileTypePresets(t: Translate): FileTypePreset[] {
+/**
+ * Every builtin category this app ships, labelled and with its mimetype list —
+ * the registry {@link fileTypePresets} resolves admin-configured ids against.
+ * Ids here must stay in sync with `AppConstants::BUILTIN_FILE_TYPE_IDS` on the
+ * server, which validates admin-submitted ids against the same set.
+ * @param t
+ */
+export function builtinFileTypeDefinitions(t: Translate): FileTypePreset[] {
   return [
-    anyType(t),
+    {
+      id: 'files',
+      label: t('Files'),
+      // The complement of 'folders': every top-level mimetype family except
+      // httpd/unix-directory. Spelled out because the backend takes a list of
+      // mimetypes to match, and has no way to express "anything but".
+      mimetypes: ['application/%', 'text/%', 'image/%', 'video/%', 'audio/%', 'message/%'],
+    },
     {
       id: 'documents',
       label: t('Documents'),
@@ -90,6 +106,26 @@ export function fileTypePresets(t: Translate): FileTypePreset[] {
     },
     { id: 'folders', label: t('Folders'), mimetypes: ['httpd/unix-directory'] },
   ]
+}
+
+/**
+ * The type filter dropdown's options: "Any type" plus whatever the admin
+ * configured, in their configured order. A builtin entry is resolved against
+ * {@link builtinFileTypeDefinitions} (dropped if its id is no longer known —
+ * e.g. an app update retired it); a custom entry carries its own label and
+ * mimetype list already.
+ * @param t
+ */
+export function fileTypePresets(t: Translate): FileTypePreset[] {
+  const builtins = new Map(builtinFileTypeDefinitions(t).map((preset) => [preset.id, preset]))
+
+  const configured = FILE_TYPE_FILTERS.map((entry) => (
+    entry.type === 'custom'
+      ? { id: entry.id, label: entry.label, mimetypes: entry.mimetypes }
+      : builtins.get(entry.id)
+  )).filter((preset): preset is FileTypePreset => preset !== undefined)
+
+  return [anyType(t), ...configured]
 }
 
 export interface ModifiedPreset {

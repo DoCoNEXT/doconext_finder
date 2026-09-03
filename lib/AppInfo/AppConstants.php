@@ -43,4 +43,20 @@ final class AppConstants
      * An admin can extend this as other such formats turn up.
      */
     public const DEFAULT_BRIDGE_EXTENSIONS = 'eml,msg';
+
+    /**
+     * app-config key for the ordered list of categories the search page's "Type"
+     * filter offers. See {@see \OCA\DcnFinder\Service\FileTypeFilterSettings}.
+     */
+    public const FILE_TYPE_FILTERS_KEY = 'file_type_filters';
+
+    /**
+     * The built-in categories, in their default order. Only the id is stored
+     * server-side — label and mimetype list are translated client-side, in
+     * src/filters/presets.ts, and must stay in sync with this list.
+     */
+    public const BUILTIN_FILE_TYPE_IDS = [
+        'files', 'documents', 'spreadsheets', 'presentations', 'pdf',
+        'images', 'video', 'audio', 'email', 'archives', 'folders',
+    ];
 }

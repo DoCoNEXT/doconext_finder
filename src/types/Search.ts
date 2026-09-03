@@ -125,6 +125,23 @@ export interface ColumnPref {
 /** The result lists that keep their own view options. */
 export type GroupScope = 'search' | 'favorites'
 
+/** Admin-configured "Type" filter entry — see GET config.fileTypeFilters. */
+export interface BuiltinFileTypeFilterEntry {
+	type: 'builtin'
+	/** One of the ids src/filters/presets.ts defines a label + mimetype list for. */
+	id: string
+}
+
+/** Admin-authored, shown as typed — never passed through translation. */
+export interface CustomFileTypeFilterEntry {
+	type: 'custom'
+	id: string
+	label: string
+	mimetypes: string[]
+}
+
+export type FileTypeFilterEntry = BuiltinFileTypeFilterEntry | CustomFileTypeFilterEntry
+
 export interface Preferences {
   columns: ColumnPref[]
   /** Ordered grouping levels for the search results, outermost first. */

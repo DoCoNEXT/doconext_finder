@@ -99,8 +99,12 @@ final class FileQuery
      * SearchBuilder resolves an exact "type/subtype" to a numeric mimetype id and
      * accepts only a trailing "type/%" as a pattern; anything else throws. Reject
      * the rest here rather than letting it surface as a 500.
+     *
+     * Public so other callers validating a mimetype pattern — admin-configured
+     * custom file-type filters, in particular — apply the same rule rather than
+     * a second copy of it. See {@see \OCA\DcnFinder\Service\FileTypeFilterSettings}.
      */
-    private static function validMimetype(string $mime): ?string
+    public static function validMimetype(string $mime): ?string
     {
         $mime = trim($mime);
         if ($mime === '') {

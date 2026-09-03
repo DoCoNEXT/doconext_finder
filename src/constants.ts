@@ -6,6 +6,7 @@
  * InitialStateProvider::provide(), or this module throws on import.
  */
 import { loadState } from '@nextcloud/initial-state'
+import type { FileTypeFilterEntry } from './types/Search'
 
 interface AppConfig {
 	appId: string
@@ -16,6 +17,8 @@ interface AppConfig {
 	richPreview: boolean
 	/** Extensions "Open in local app" hands to DoCoNEXT Bridge; admin-configurable. */
 	bridgeExtensions: string[]
+	/** The search page's "Type" filter categories, admin-configured order + selection. */
+	fileTypeFilters: FileTypeFilterEntry[]
 }
 
 let config: AppConfig
@@ -45,6 +48,14 @@ export const HAS_RICH_PREVIEW = config.richPreview === true
  * duplicated across two frontends is a rule that will disagree with itself.
  */
 export const BRIDGE_EXTENSIONS: string[] = config.bridgeExtensions ?? []
+
+/**
+ * Which categories the search page's "Type" filter offers, and in what order.
+ * Resolved against the builtin registry (label + mimetypes) by
+ * src/filters/presets.ts — this array only says which ids to show.
+ */
+export const FILE_TYPE_FILTERS: FileTypeFilterEntry[] = config.fileTypeFilters ?? []
+
 export const API_BASE = `/apps/${APP_ID}/api`
 
 const DEFAULT_PRODUCT_NAME = config.appName
