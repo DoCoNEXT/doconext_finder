@@ -26,27 +26,57 @@ $rail-breakpoint: 1024px;
   }
 }
 
-// ...and stands exactly where that one stood. These offsets are the library's
-// own, so the control does not move when it changes hands: at the navigation's
-// inline-end edge, spilling over the content, one clickable area wide. Anchored
-// to .app-navigation, which is the positioned ancestor, so it follows the rail
-// in and out without anything having to know the width.
+// The toggle sits in the navigation's own header row (NcAppNavigation's
+// `search` slot), in normal flow — not floating over the content the way
+// Nextcloud's own toggle does.
+// That is the whole point of putting it there: a control that overhangs the
+// content forces every page to reserve a clickable area of empty space at the
+// top forever, so that the first row of anything is not sitting underneath it.
+// Sixty pixels off the top of every screen, permanently, for a button most
+// people press twice a day. In the navigation it costs nothing the navigation
+// did not already have room for, and the content starts at the top again.
+// Aligned to the inline-end so it keeps the horizontal position it had while it
+// overhung — the navigation's far edge — which is also where every desktop app
+// that collapses a drawer puts the control. Railed, the entry is exactly one
+// button wide, so "at the end" and "centred" are the same place, and it lands
+// on the same column as the icons below it.
+// The wrapper is a flex row rather than the button being pushed with a margin,
+// so that an empty slot (mobile, where no rail toggle renders) collapses to
+// nothing instead of leaving its padding behind. An app with something of its
+// own up there — a workspace switcher, say — puts it in the same slot and gets
+// a header row; this one has nothing, so the row holds only the toggle.
+:deep(.app-navigation__search) {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  min-width: 0;
+}
+
+// Whatever the app put up there takes the rest of the row, so its own content
+// stays aligned with the list below rather than being pushed along by the
+// toggle. Not left to the library's own `width: 100%` for a navigation entry:
+// that rule is scoped to the library's own components, and an app's hand-rolled
+// header element carries the class without the scope attribute that rule needs.
+:deep(.app-navigation__search) > *:not(.nav-rail-toggle) {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+// Railed there is no room for two things side by side, so the row becomes a
+// column with the toggle on top — the way you reach for it first once the
+// labels are gone.
+.app--rail :deep(.app-navigation__search) {
+  flex-direction: column-reverse;
+}
+
 // Qualified with the .app-navigation ancestor rather than written as a bare
-// `.nav-rail-toggle` rule: NcButton's own stylesheet sets `position: relative`
-// on `.button-vue` at the same specificity (one class, one scope attribute), so
-// whichever of the two rules Vite happens to concatenate later would otherwise
-// win — verified against a real render, where relative won and the button sat
-// in flow at the top of the list instead of over the content. The extra class
-// in the selector is not decoration: it is what makes this rule outrank that
-// one on specificity alone, regardless of chunk order.
+// `.nav-rail-toggle` rule: NcButton's own stylesheet sets properties on
+// `.button-vue` at a specificity this would otherwise only tie, and which of the
+// two rules Vite happens to concatenate later would decide the tie — verified
+// against a real render, where the vendor rule won and this one silently did
+// nothing.
 :deep(.app-navigation) .nav-rail-toggle {
-  position: absolute;
-  z-index: 2;
-  top: var(--app-navigation-padding);
-  inset-inline-end: calc(0px - var(--app-navigation-padding));
-  margin-inline-end: calc(-1 * var(--default-clickable-area));
-  // The content shows through underneath it.
-  background-color: var(--color-main-background);
+  margin: var(--app-navigation-padding);
 }
 
 .app--rail {

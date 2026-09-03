@@ -2,10 +2,12 @@
   <NcContent :app-name="appId" :class="railClass">
     <NcAppNavigation :aria-label="productName">
       <!--
-        The rail toggle stands exactly where Nextcloud's own toggle stands, and
-        replaces it above the mobile breakpoint. This slot is the top of the
-        navigation and .app-navigation is the positioned ancestor, so the
-        stylesheet can pin it there without knowing how wide the sidebar is.
+        The navigation's header row. The toggle lives in it rather than floating
+        over the content the way Nextcloud's own does, which is what lets every
+        page start at the top instead of reserving a strip for it; the stylesheet
+        explains the trade. It replaces the library's toggle above the mobile
+        breakpoint, and an app with something of its own to put up here would
+        share the row with it.
       -->
       <template #search>
         <NcButton v-if="canRail"
@@ -231,17 +233,23 @@ function openSettings() {
 // default slot in .app-content-wrapper when it also has a `list` slot, and this
 // app has none — so the rule that used to name the wrapper matched nothing.
 //
-// The top padding is not decoration: the navigation toggle floats over the top
-// inline-start corner of the content — the library's below the mobile
-// breakpoint, ours above it — and without the clearance it sits on the first row
-// of controls. It ends one clickable area below its own offset, so the clearance
-// has to clear that, not merely approach it.
+// Below the mobile breakpoint the library's own toggle floats over the top
+// inline-start corner of the content, and without clearance it sits on the first
+// row of controls; it ends one clickable area below its own offset, so the
+// clearance has to clear that rather than merely approach it. Above the
+// breakpoint our own toggle lives inside the navigation instead of over the
+// content, and the page gets those sixty pixels back.
 :deep(.app-content) {
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
   min-height: 0;
-  padding-top: calc(var(--default-clickable-area, 44px) + var(--app-navigation-padding, 8px) * 2);
+}
+
+@media only screen and (width < 1024px) {
+  :deep(.app-content) {
+    padding-top: calc(var(--default-clickable-area, 44px) + var(--app-navigation-padding, 8px) * 2);
+  }
 }
 
 // The footer slot sits outside NcAppNavigationList, so it brings its own list
