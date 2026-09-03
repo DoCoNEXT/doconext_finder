@@ -1,0 +1,71 @@
+// The rail's looks. See composables/useNavigationRail.ts for why the navigation
+// is never actually "closed" — everything here styles an open navigation that
+// has been made narrow, which is why none of it needs !important.
+// Meant to be @use'd from the shell component's scoped block, so `:deep()`
+// reaches into NcAppNavigation from the NcContent root.
+
+// Mirrors MOBILE_BREAKPOINT from @nextcloud/vue: below it the navigation is an
+// overlay over the content, where a permanent rail would be in the way.
+$rail-breakpoint: 1024px;
+
+// The width change is the whole animation; the library only transitions the
+// transform and margin it uses to slide the sidebar out of view.
+:deep(.app-navigation) {
+  transition:
+    width var(--animation-quick),
+    transform var(--animation-quick),
+    margin var(--animation-quick);
+}
+
+// Above the breakpoint the rail toggle replaces the library's own, which hides
+// the navigation outright. Two controls that both look like "collapse" but do
+// different things is worse than either.
+@media only screen and (min-width: $rail-breakpoint) {
+  :deep(.app-navigation-toggle-wrapper) {
+    display: none;
+  }
+}
+
+.app--rail {
+  :deep(.app-navigation) {
+    width: calc(var(--default-clickable-area) + var(--app-navigation-padding) * 2);
+
+    // Only the icon survives; everything that needs the missing width goes.
+    .app-navigation-entry__name,
+    .app-navigation-entry__utils,
+    .app-navigation-caption,
+    .app-navigation-entry__children {
+      display: none;
+    }
+
+    // The list reserves a scrollbar gutter unconditionally. At full width that
+    // costs nothing; at rail width it takes a third of the entry, and the icon
+    // — a fixed square that does not shrink — is pushed inline-start until it
+    // sits on the stripe marking the active page. Give the entry its width back
+    // rather than nudging the icon to compensate.
+    .app-navigation__body {
+      overflow-y: auto;
+      scrollbar-width: none;
+    }
+
+    // The end padding keeps a label off the edge. With no label it only eats
+    // into the icon's own box, which is already exactly one clickable area —
+    // the same box, at the same inline offset, as when the labels are there.
+    .app-navigation-entry-link,
+    .app-navigation-entry-button {
+      padding-inline-end: 0;
+    }
+
+    // A counter has no room beside a hidden label, but the number is often the
+    // reason the entry is worth looking at — so it rides the icon as a dot.
+    .app-navigation-entry__counter-wrapper {
+      position: absolute;
+      inset-block-start: 2px;
+      inset-inline-start: calc(var(--default-clickable-area) - 18px);
+      margin: 0;
+      pointer-events: none;
+      transform: scale(0.7);
+      transform-origin: top right;
+    }
+  }
+}

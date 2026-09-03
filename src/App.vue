@@ -1,5 +1,5 @@
 <template>
-  <NcContent :app-name="appId" :class="{ 'finder-app--rail': railed }">
+  <NcContent :app-name="appId" :class="railClass">
     <NcAppNavigation :aria-label="productName">
       <template #list>
         <NcAppNavigationItem :name="t('Search')"
@@ -28,10 +28,19 @@
       <!--
         Settings belongs at the foot of the navigation, where Nextcloud's own
         apps put it: it is not one of the places you work, it is where you go to
-        change how they behave.
+        change how they behave. The rail toggle keeps it company — it is the
+        same kind of thing, and the stylesheet hides the library's own toggle
+        wherever this one is offered.
       -->
       <template #footer>
         <ul class="finder-nav__footer">
+          <NcAppNavigationItem v-if="canRail"
+                               :name="railed ? t('Expand menu') : t('Collapse menu')"
+                               @click="toggleRail">
+            <template #icon>
+              <NcIconSvgWrapper :path="railed ? mdiMenu : mdiMenuOpen" :size="20" />
+            </template>
+          </NcAppNavigationItem>
           <NcAppNavigationItem :name="t('Settings')"
                                :active="page === 'settings'"
                                @click="go('settings')">
@@ -83,7 +92,14 @@ import {
   NcContent,
   NcIconSvgWrapper,
 } from '@nextcloud/vue'
-import { mdiCogOutline, mdiContentSaveOutline, mdiMagnify, mdiStar } from '@mdi/js'
+import {
+  mdiCogOutline,
+  mdiContentSaveOutline,
+  mdiMagnify,
+  mdiMenu,
+  mdiMenuOpen,
+  mdiStar,
+} from '@mdi/js'
 import { useI18n } from './composables/useI18n'
 import { useNavigationRail } from './composables/useNavigationRail'
 import { useSearchStore } from './stores/searchStore'
@@ -108,7 +124,7 @@ const preferences = usePreferencesStore()
 const selection = useSelectionStore()
 const history = useHistoryStore()
 
-const { railed } = useNavigationRail()
+const { railed, canRail, railClass, toggleRail } = useNavigationRail(`${APP_ID}-navigation-rail`)
 
 const appId = APP_ID
 const productName = PRODUCT_NAME
@@ -184,6 +200,10 @@ function runStored(entry: StoredSearch) {
 </script>
 
 <style scoped lang="scss">
+// The rail itself: shared with the other DoCoNEXT apps, so it lives in a
+// stylesheet of its own rather than in this component.
+@use './styles/navigation-rail';
+
 // The pages lay themselves out as full-height columns so their controls can stay
 // put while the results scroll; that only works if their parent hands down its
 // height rather than growing with the content.
@@ -192,59 +212,16 @@ function runStored(entry: StoredSearch) {
 // default slot in .app-content-wrapper when it also has a `list` slot, and this
 // app has none — so the rule that used to name the wrapper matched nothing.
 //
-// The top padding is not decoration: the navigation toggle floats over the top
-// inline-start corner of the content, and without the clearance it sat on the
-// first row of controls. It ends one clickable area below its own offset, so
-// the clearance has to clear that, not merely approach it.
+// The top padding is not decoration: on mobile the navigation toggle floats over
+// the top inline-start corner of the content, and without the clearance it sits
+// on the first row of controls. It ends one clickable area below its own offset,
+// so the clearance has to clear that, not merely approach it.
 :deep(.app-content) {
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
   min-height: 0;
   padding-top: calc(var(--default-clickable-area, 44px) + var(--app-navigation-padding, 8px) * 2);
-}
-
-// Collapsed to a rail: the sidebar keeps its width for one icon per page
-// instead of sliding out of view. See useNavigationRail for why the component
-// needs the help.
-.finder-app--rail {
-  :deep(.app-navigation--closed) {
-    // !important beats the library's own scoped rule, which has the same
-    // specificity and no guaranteed order relative to ours.
-    margin-inline-start: 0 !important;
-    width: calc(var(--default-clickable-area) + var(--app-navigation-padding) * 2);
-    // No overflow clipping here, however tempting: the toggle that opens the
-    // navigation back up is positioned outside this box, and hiding the
-    // overflow takes the only way out of the rail with it.
-
-    // Only the icon survives; everything that needs the missing width goes.
-    .app-navigation-entry__name,
-    .app-navigation-entry__utils,
-    .app-navigation-entry__counter-wrapper,
-    .app-navigation-caption,
-    .app-navigation-entry__children {
-      display: none;
-    }
-
-    // The list reserves a scrollbar gutter unconditionally. At full width that
-    // costs nothing; at rail width it takes a third of the entry, and the icon
-    // — a fixed square that does not shrink — is pushed inline-start until it
-    // sits on the 3px stripe that marks the active page. Give the entry its
-    // width back rather than nudging the icon to compensate.
-    .app-navigation__body {
-      overflow-y: auto;
-      scrollbar-width: none;
-    }
-
-    // The end padding keeps a label off the edge. With no label it only eats
-    // into the icon's own box, which is already exactly one clickable area —
-    // the same box, at the same inline offset, as when the labels are there.
-    // Nothing centres the icon: that is what moved it in the first place.
-    .app-navigation-entry-link,
-    .app-navigation-entry-button {
-      padding-inline-end: 0;
-    }
-  }
 }
 
 // The footer slot sits outside NcAppNavigationList, so it brings its own list
