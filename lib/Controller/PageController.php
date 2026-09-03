@@ -6,13 +6,13 @@ namespace OCA\DcnFinder\Controller;
 
 use OCA\DcnFinder\AppInfo\AppConstants;
 use OCA\DcnFinder\Service\InitialStateProvider;
+use OCP\App\IAppManager;
 use OCP\AppFramework\Controller;
 use OCP\AppFramework\Http\Attribute\FrontpageRoute;
 use OCP\AppFramework\Http\Attribute\NoAdminRequired;
 use OCP\AppFramework\Http\Attribute\NoCSRFRequired;
 use OCP\AppFramework\Http\Attribute\OpenAPI;
 use OCP\AppFramework\Http\TemplateResponse;
-use OCP\App\IAppManager;
 use OCP\IRequest;
 use OCP\Util;
 
