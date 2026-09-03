@@ -2,7 +2,9 @@
   <NcAppSidebar v-if="file"
                 :name="file.name"
                 :subname="folderOf(file) || '/'"
-                @close="$emit('close')">
+                :active="activeTab"
+                @close="$emit('close')"
+                @update:active="activeTab = $event">
     <template #secondary-actions>
       <NcActionCheckbox :model-value="preferences.sidebarPinned"
                         @update:model-value="preferences.setSidebarPinned($event)">
@@ -13,20 +15,6 @@
       <template #icon>
         <NcIconSvgWrapper :path="mdiInformationOutline" :size="20" />
       </template>
-
-      <!--
-        With the Files Preview app installed, its renderer handles email,
-        markdown, PDF, media and text properly. Without it, Nextcloud's own
-        /core/preview thumbnail: only some types have one, so the image is shown
-        optimistically and removed if it fails rather than probed first.
-      -->
-      <RichPreview v-if="richPreview && !file.isFolder" :file="file" />
-
-      <img v-else-if="previewUrl && !previewFailed"
-           class="details__preview"
-           :src="previewUrl"
-           :alt="t('Preview of {name}', { name: file.name })"
-           @error="previewFailed = true">
 
       <dl class="details">
         <dt>{{ t('Type') }}</dt>
@@ -75,6 +63,39 @@
         </NcButton>
       </div>
     </NcAppSidebarTab>
+
+    <!--
+      A tab of its own so a preview is fetched only when someone asks for it.
+      Rendering it beside the details meant every selection pulled a document
+      down, which is wasteful while scanning a result list.
+    -->
+    <NcAppSidebarTab v-if="!file.isFolder" id="preview" :name="t('Preview')" :order="2">
+      <template #icon>
+        <NcIconSvgWrapper :path="mdiEyeOutline" :size="20" />
+      </template>
+
+      <!--
+        With the Files Preview app installed, its renderer handles email,
+        markdown, PDF, media and text properly. Without it, Nextcloud's own
+        /core/preview thumbnail: only some types have one, so the image is shown
+        optimistically and removed if it fails rather than probed first.
+      -->
+      <RichPreview v-if="previewOpened && richPreview" :file="file" />
+
+      <img v-else-if="previewOpened && previewUrl && !previewFailed"
+           class="details__preview"
+           :src="previewUrl"
+           :alt="t('Preview of {name}', { name: file.name })"
+           @error="previewFailed = true">
+
+      <NcEmptyContent v-else-if="previewOpened"
+                      :name="t('No preview available')"
+                      :description="t('This file type cannot be shown here.')">
+        <template #icon>
+          <NcIconSvgWrapper :path="mdiEyeOutline" />
+        </template>
+      </NcEmptyContent>
+    </NcAppSidebarTab>
   </NcAppSidebar>
 </template>
 
@@ -85,9 +106,10 @@ import {
   NcAppSidebar,
   NcAppSidebarTab,
   NcButton,
+  NcEmptyContent,
   NcIconSvgWrapper,
 } from '@nextcloud/vue'
-import { mdiInformationOutline } from '@mdi/js'
+import { mdiEyeOutline, mdiInformationOutline } from '@mdi/js'
 import { generateUrl } from '@nextcloud/router'
 import { downloadFile } from '../services/download'
 import { useI18n } from '../composables/useI18n'
@@ -127,6 +149,15 @@ const metadata = computed(() => {
 })
 
 const richPreview = HAS_RICH_PREVIEW
+
+/**
+ * Which tab is open. Details is the default: it is what you want while scanning
+ * a list, and it costs nothing to show.
+ */
+const activeTab = ref('details')
+
+/** Nothing in the preview tab is built until the tab has actually been opened. */
+const previewOpened = computed(() => activeTab.value === 'preview')
 
 const previewFailed = ref(false)
 
