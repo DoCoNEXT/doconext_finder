@@ -216,10 +216,8 @@ function runStored(entry: StoredSearch) {
     // No overflow clipping here, however tempting: the toggle that opens the
     // navigation back up is positioned outside this box, and hiding the
     // overflow takes the only way out of the rail with it.
-  }
 
-  // Only the icon survives; everything that needs the missing width goes.
-  :deep(.app-navigation--closed) {
+    // Only the icon survives; everything that needs the missing width goes.
     .app-navigation-entry__name,
     .app-navigation-entry__utils,
     .app-navigation-entry__counter-wrapper,
@@ -228,10 +226,23 @@ function runStored(entry: StoredSearch) {
       display: none;
     }
 
+    // The list reserves a scrollbar gutter unconditionally. At full width that
+    // costs nothing; at rail width it takes a third of the entry, and the icon
+    // — a fixed square that does not shrink — is pushed inline-start until it
+    // sits on the 3px stripe that marks the active page. Give the entry its
+    // width back rather than nudging the icon to compensate.
+    .app-navigation__body {
+      overflow-y: auto;
+      scrollbar-width: none;
+    }
+
+    // The end padding keeps a label off the edge. With no label it only eats
+    // into the icon's own box, which is already exactly one clickable area —
+    // the same box, at the same inline offset, as when the labels are there.
+    // Nothing centres the icon: that is what moved it in the first place.
     .app-navigation-entry-link,
     .app-navigation-entry-button {
-      padding-inline: 0;
-      justify-content: center;
+      padding-inline-end: 0;
     }
   }
 }
