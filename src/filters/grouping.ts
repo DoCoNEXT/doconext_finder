@@ -1,26 +1,29 @@
 /**
- * Client-side grouping of the loaded result rows.
+ * Client-side grouping of the loaded result rows, over any number of levels.
  *
  * Deliberately client-side: grouping is a way of reading a result set, not of
  * selecting one, and the search backend has no grouping of its own. The cost is
- * that it only covers what is loaded — which is why "Load all" exists.
+ * that it only covers what is loaded — which is why "Load all" exists, and why
+ * the view options say so while more pages are outstanding.
+ *
+ * The output is a flat row list rather than a tree. A table cannot nest, so a
+ * tree would have to be flattened at render time anyway; doing it here keeps the
+ * component to a single v-for and makes depth free.
  */
 import { isMetadataField, metadataKeyOf } from './metadata'
 import type { Translate } from './presets'
 import type { FileResult } from '../types/Search'
 
-export interface FileGroup {
-  key: string
-  label: string
-  files: FileResult[]
-}
+export type GridRow =
+  | { kind: 'group', id: string, label: string, level: number, count: number }
+  | { kind: 'file', id: string, file: FileResult }
 
 export function groupLabel(t: Translate, grouping: string): string {
   switch (grouping) {
     case 'folder': return t('Folder')
     case 'type': return t('Type')
-    case 'modified': return t('Modified')
-    default: return t('None')
+    case 'modified': return t('Modified date')
+    default: return grouping
   }
 }
 
@@ -70,30 +73,61 @@ export function folderOf(file: FileResult): string {
 }
 
 /**
- * Groups in the order the rows arrive, so grouping never silently reorders a
- * sorted result set — the groups follow the sort, and rows keep their order
- * inside each group.
+ * Flattens the rows into group headers and files, nesting one level per entry in
+ * `groupings`.
+ *
+ * Groups appear in the order their first row arrives, so grouping never silently
+ * reorders a server-sorted result: the groups follow the sort, and rows keep
+ * their order within each group.
  * @param t translation function
  * @param files the loaded rows
- * @param grouping '' for none, else folder | type | modified
+ * @param groupings ordered grouping levels, outermost first
  */
-export function groupFiles(t: Translate, files: FileResult[], grouping: string): FileGroup[] {
-  if (!grouping) {
-    return [{ key: '', label: '', files }]
+export function buildRows(t: Translate, files: FileResult[], groupings: string[]): GridRow[] {
+  if (groupings.length === 0) {
+    return files.map((file) => ({ kind: 'file', id: String(file.fileid), file }))
   }
 
-  const groups = new Map<string, FileGroup>()
+  return walk(t, files, groupings, 0, '')
+}
+
+function walk(
+  t: Translate,
+  files: FileResult[],
+  groupings: string[],
+  level: number,
+  parentKey: string,
+): GridRow[] {
+  const grouping = groupings[level]
+  if (grouping === undefined) {
+    return files.map((file) => ({
+      kind: 'file',
+      // Prefixed with the group path: the same file can appear under different
+      // branches, and Vue needs the keys to stay distinct.
+      id: `${parentKey}/${file.fileid}`,
+      file,
+    }))
+  }
+
+  const buckets = new Map<string, FileResult[]>()
   for (const file of files) {
     const label = keyFor(t, file, grouping)
-    let group = groups.get(label)
-    if (!group) {
-      group = { key: label, label, files: [] }
-      groups.set(label, group)
+    const bucket = buckets.get(label)
+    if (bucket) {
+      bucket.push(file)
+    } else {
+      buckets.set(label, [file])
     }
-    group.files.push(file)
   }
 
-  return [...groups.values()]
+  const rows: GridRow[] = []
+  for (const [label, bucket] of buckets) {
+    const key = `${parentKey}/${grouping}=${label}`
+    rows.push({ kind: 'group', id: key, label, level, count: bucket.length })
+    rows.push(...walk(t, bucket, groupings, level + 1, key))
+  }
+
+  return rows
 }
 
 function keyFor(t: Translate, file: FileResult, grouping: string): string {

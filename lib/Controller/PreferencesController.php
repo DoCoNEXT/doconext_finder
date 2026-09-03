@@ -46,10 +46,11 @@ class PreferencesController extends ApiController
      * instead of holding a copy that quietly disagrees.
      *
      * @param list<array<string,mixed>> $columns
+     * @param list<string> $grouping ordered grouping levels, outermost first
      */
     #[NoAdminRequired]
     #[FrontpageRoute(verb: 'PUT', url: '/api/preferences')]
-    public function update(array $columns = [], string $grouping = ''): DataResponse
+    public function update(array $columns = [], array $grouping = []): DataResponse
     {
         $uid = $this->userSession->getUser()?->getUID();
 

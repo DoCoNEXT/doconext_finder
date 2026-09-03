@@ -20,66 +20,66 @@
         </tr>
       </thead>
 
-      <tbody v-for="group in groups" :key="group.key">
-        <tr v-if="group.label" class="results__group">
-          <th :colspan="columns.length + 2">
-            {{ group.label }} <span class="muted">({{ group.files.length }})</span>
-          </th>
-        </tr>
-        <!--
-          Single click selects and shows the details panel; opening the file is
-          the double-click, matching how a file list behaves everywhere else. A
-          link on the name would make every attempt to inspect a file navigate
-          away from the results instead.
-        -->
-        <tr v-for="file in group.files"
-            :key="file.fileid"
-            :class="{ 'results__row--selected': file.fileid === selectedId }"
-            @click="$emit('select', file)"
-            @dblclick="open(file)">
-          <td class="results__star">
-            <NcButton :aria-label="file.favorite ? t('Remove from favorites') : t('Add to favorites')"
-                      variant="tertiary"
-                      @click.stop="$emit('toggle-favorite', file)">
-              <template #icon>
-                <NcIconSvgWrapper :path="file.favorite ? mdiStar : mdiStarOutline"
-                                  :size="20"
-                                  :class="{ 'results__star--on': file.favorite }" />
-              </template>
-            </NcButton>
-          </td>
+      <tbody>
+        <template v-for="row in rows" :key="row.id">
+          <tr v-if="row.kind === 'group'" class="results__group">
+            <th :colspan="columns.length + 2"
+                :class="`results__group--l${row.level}`"
+                :style="{ paddingInlineStart: `${8 + row.level * 20}px` }">
+              {{ row.label }} <span class="muted">({{ row.count }})</span>
+            </th>
+          </tr>
 
-          <td v-for="column in columns" :key="column.id" :class="cellClass(column.id)">
-            <span v-if="column.id === 'name'" class="results__name" :title="file.name">
-              <NcIconSvgWrapper :path="iconFor(file.mimetype, file.isFolder)" :size="20" />
-              <span>{{ file.name }}</span>
-            </span>
-            <span v-else :title="cellText(file, column.id)" class="muted">{{ cellText(file, column.id) }}</span>
-          </td>
+          <tr v-else
+              :class="{ 'results__row--selected': row.file.fileid === selectedId }"
+              @click="$emit('select', row.file)"
+              @dblclick="open(row.file)">
+            <td class="results__star">
+              <NcButton :aria-label="row.file.favorite ? t('Remove from favorites') : t('Add to favorites')"
+                        variant="tertiary"
+                        @click.stop="$emit('toggle-favorite', row.file)">
+                <template #icon>
+                  <NcIconSvgWrapper :path="row.file.favorite ? mdiStar : mdiStarOutline"
+                                    :size="20"
+                                    :class="{ 'results__star--on': row.file.favorite }" />
+                </template>
+              </NcButton>
+            </td>
 
-          <td class="results__actions">
-            <NcActions :aria-label="t('Actions')" @click.stop>
-              <NcActionLink :href="fileLink(file)" target="_blank">
-                <template #icon>
-                  <NcIconSvgWrapper :path="mdiOpenInNew" :size="20" />
-                </template>
-                {{ t('Open in Files') }}
-              </NcActionLink>
-              <NcActionLink :href="folderLink(file)" target="_blank">
-                <template #icon>
-                  <NcIconSvgWrapper :path="mdiFolderOpen" :size="20" />
-                </template>
-                {{ t('Open containing folder') }}
-              </NcActionLink>
-              <NcActionLink v-if="!file.isFolder" :href="downloadLink(file)">
-                <template #icon>
-                  <NcIconSvgWrapper :path="mdiDownload" :size="20" />
-                </template>
-                {{ t('Download') }}
-              </NcActionLink>
-            </NcActions>
-          </td>
-        </tr>
+            <td v-for="column in columns" :key="column.id" :class="cellClass(column.id)">
+              <span v-if="column.id === 'name'" class="results__name" :title="row.file.name">
+                <NcIconSvgWrapper :path="iconFor(row.file.mimetype, row.file.isFolder)" :size="20" />
+                <span>{{ row.file.name }}</span>
+              </span>
+              <span v-else :title="cellText(row.file, column.id)" class="muted">
+                {{ cellText(row.file, column.id) }}
+              </span>
+            </td>
+
+            <td class="results__actions">
+              <NcActions :aria-label="t('Actions')" @click.stop>
+                <NcActionLink :href="fileLink(row.file)" target="_blank">
+                  <template #icon>
+                    <NcIconSvgWrapper :path="mdiOpenInNew" :size="20" />
+                  </template>
+                  {{ t('Open in Files') }}
+                </NcActionLink>
+                <NcActionLink :href="folderLink(row.file)" target="_blank">
+                  <template #icon>
+                    <NcIconSvgWrapper :path="mdiFolderOpen" :size="20" />
+                  </template>
+                  {{ t('Open containing folder') }}
+                </NcActionLink>
+                <NcActionLink v-if="!row.file.isFolder" :href="downloadLink(row.file)">
+                  <template #icon>
+                    <NcIconSvgWrapper :path="mdiDownload" :size="20" />
+                  </template>
+                  {{ t('Download') }}
+                </NcActionLink>
+              </NcActions>
+            </td>
+          </tr>
+        </template>
       </tbody>
     </table>
   </div>
@@ -96,7 +96,7 @@ import { usePreferencesStore } from '../stores/preferencesStore'
 import { useSearchStore } from '../stores/searchStore'
 import { isMetadataField, metadataKeyOf } from '../filters/metadata'
 import { iconFor } from '../filters/fields'
-import { folderOf, groupFiles, typeName } from '../filters/grouping'
+import { buildRows, folderOf, typeName } from '../filters/grouping'
 import SortHeader from './SortHeader.vue'
 import type { ColumnPref, FileResult } from '../types/Search'
 
@@ -137,7 +137,7 @@ defineEmits<{
 
 const columns = computed(() => preferences.visibleColumns)
 
-const groups = computed(() => groupFiles(t, props.files, preferences.grouping))
+const rows = computed(() => buildRows(t, props.files, preferences.grouping))
 
 /**
  * Built-in header, unless the user renamed the column.
@@ -281,6 +281,20 @@ function formatDate(unixSeconds: number): string {
     color: var(--color-main-text);
     font-weight: 700;
     background: var(--color-background-soft, transparent);
+  }
+
+  // Deeper levels read as subordinate rather than as more headings.
+  &__group--l1 th,
+  &__group--l1 {
+    font-weight: 600;
+    font-size: 95%;
+  }
+
+  &__group--l2,
+  &__group--l3 {
+    font-weight: 600;
+    font-size: 90%;
+    color: var(--color-text-maxcontrast);
   }
 
   &__row--selected {

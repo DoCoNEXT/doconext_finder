@@ -118,6 +118,6 @@ export interface ColumnPref {
 
 export interface Preferences {
   columns: ColumnPref[]
-  /** '' = no grouping; otherwise 'folder' | 'type' | 'modified'. */
-  grouping: string
+  /** Ordered grouping levels, outermost first; empty = no grouping. */
+  grouping: string[]
 }

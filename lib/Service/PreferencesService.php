@@ -31,8 +31,14 @@ class PreferencesService
     /** Shown unless the user says otherwise; `created` and `type` start hidden. */
     private const DEFAULT_VISIBLE = ['name', 'folder', 'size', 'modified'];
 
-    /** Built-in grouping fields; '' means no grouping. A `meta:` key also works. */
-    public const GROUPINGS = ['', 'folder', 'type', 'modified'];
+    /** Built-in grouping fields. A `meta:` key also works. */
+    public const GROUPINGS = ['folder', 'type', 'modified'];
+
+    /**
+     * Grouping levels a user may stack. Beyond a handful the headers outnumber
+     * the rows and the grid stops being a list.
+     */
+    private const MAX_GROUPING_LEVELS = 4;
 
     public function __construct(
         private IUserConfig $userConfig,
@@ -68,22 +74,31 @@ class PreferencesService
     {
         return [
             'columns'  => $this->sanitiseColumns($raw['columns'] ?? null),
-            'grouping' => $this->sanitiseGrouping((string)($raw['grouping'] ?? '')),
+            'grouping' => $this->sanitiseGrouping($raw['grouping'] ?? []),
         ];
     }
 
-    private function sanitiseGrouping(string $grouping): string
+    /**
+     * Grouping is a list of levels, applied outermost first. Unknown or repeated
+     * levels are dropped rather than rejected, so a preference saved while an app
+     * was installed keeps working after it is removed — minus that level.
+     *
+     * @return list<string>
+     */
+    private function sanitiseGrouping(mixed $raw): array
     {
-        if (in_array($grouping, self::GROUPINGS, true)) {
-            return $grouping;
+        $levels = [];
+        foreach (is_array($raw) ? $raw : [] as $level) {
+            $level = (string)$level;
+            $known = in_array($level, self::GROUPINGS, true)
+                || (MetadataFields::isMetadata($level) && $this->metadataFields->exists(MetadataFields::key($level)));
+
+            if ($known && !in_array($level, $levels, true)) {
+                $levels[] = $level;
+            }
         }
 
-        // Grouping by a metadata value is fine as long as the key still exists —
-        // an app can be uninstalled between saving the preference and reading it.
-        return MetadataFields::isMetadata($grouping)
-            && $this->metadataFields->exists(MetadataFields::key($grouping))
-                ? $grouping
-                : '';
+        return array_slice($levels, 0, self::MAX_GROUPING_LEVELS);
     }
 
     /**

@@ -9,14 +9,24 @@ import { defineStore } from 'pinia'
 import { SearchApi } from '../services/SearchApi'
 import type { ColumnPref, Preferences } from '../types/Search'
 
+/** Mirrors the server's cap; offering more levels would silently drop them. */
+export const MAX_GROUPING_LEVELS = 4
+
 interface State {
   columns: ColumnPref[]
-  grouping: string
+  /**
+   * Counts saves so a slow response cannot undo a newer edit. Two quick clicks
+   * would otherwise race: the first response arrives after the second change and
+   * adopting it reverts that change on screen until the second response lands.
+   */
+  revision: number
+  /** Ordered grouping levels, outermost first. */
+  grouping: string[]
   loaded: boolean
 }
 
 export const usePreferencesStore = defineStore('preferences', {
-  state: (): State => ({ columns: [], grouping: '', loaded: false }),
+  state: (): State => ({ columns: [], grouping: [], loaded: false, revision: 0 }),
 
   getters: {
     visibleColumns: (state): ColumnPref[] => state.columns.filter((c) => c.visible),
@@ -42,11 +52,17 @@ export const usePreferencesStore = defineStore('preferences', {
     },
 
     async save() {
+      const revision = ++this.revision
       try {
-        this.adopt(await SearchApi.savePreferences({
+        const stored = await SearchApi.savePreferences({
           columns: this.columns,
           grouping: this.grouping,
-        }))
+        })
+        // Adopt only while this is still the newest save in flight; a later edit
+        // has already sent its own, whose response is the one that counts.
+        if (revision === this.revision) {
+          this.adopt(stored)
+        }
       } catch {
         // ignored on purpose — see above
       }
@@ -103,14 +119,43 @@ export const usePreferencesStore = defineStore('preferences', {
       this.save()
     },
 
-    setGrouping(grouping: string) {
-      this.grouping = grouping
+    addGrouping(level: string) {
+      if (!level || this.grouping.includes(level) || this.grouping.length >= MAX_GROUPING_LEVELS) {
+        return
+      }
+      this.grouping.push(level)
+      this.save()
+    },
+
+    removeGrouping(level: string) {
+      this.grouping = this.grouping.filter((g) => g !== level)
+      this.save()
+    },
+
+    /**
+     * Order matters: the levels nest outermost first.
+     * @param level
+     * @param direction
+     */
+    moveGrouping(level: string, direction: -1 | 1) {
+      const from = this.grouping.indexOf(level)
+      const to = from + direction
+      if (from === -1 || to < 0 || to >= this.grouping.length) {
+        return
+      }
+      const [moved] = this.grouping.splice(from, 1)
+      this.grouping.splice(to, 0, moved!)
+      this.save()
+    },
+
+    clearGrouping() {
+      this.grouping = []
       this.save()
     },
 
     async reset() {
       this.columns = []
-      this.grouping = ''
+      this.grouping = []
       // An empty column list makes the server rebuild the defaults and hand
       // them back, so the defaults live in one place.
       await this.save()
