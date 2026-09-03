@@ -75,12 +75,12 @@
                   </template>
                   {{ t('Open containing folder') }}
                 </NcActionLink>
-                <NcActionLink v-if="!row.file.isFolder" :href="downloadLink(row.file)">
+                <NcActionButton v-if="!row.file.isFolder" @click="downloadFile(row.file)">
                   <template #icon>
                     <NcIconSvgWrapper :path="mdiDownload" :size="20" />
                   </template>
                   {{ t('Download') }}
-                </NcActionLink>
+                </NcActionButton>
               </NcActions>
             </td>
           </tr>
@@ -92,7 +92,7 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { NcActionLink, NcActions, NcButton, NcIconSvgWrapper } from '@nextcloud/vue'
+import { NcActionButton, NcActionLink, NcActions, NcButton, NcIconSvgWrapper } from '@nextcloud/vue'
 import {
   mdiChevronDown,
   mdiChevronRight,
@@ -102,8 +102,8 @@ import {
   mdiStar,
   mdiStarOutline,
 } from '@mdi/js'
-import { generateRemoteUrl, generateUrl } from '@nextcloud/router'
-import { getCurrentUser } from '@nextcloud/auth'
+import { generateUrl } from '@nextcloud/router'
+import { downloadFile } from '../services/download'
 import { useI18n } from '../composables/useI18n'
 import { usePreferencesStore } from '../stores/preferencesStore'
 import { useSearchStore } from '../stores/searchStore'
@@ -277,20 +277,6 @@ function fileLink(file: FileResult): string {
 
 function folderLink(file: FileResult): string {
   return `${generateUrl('/apps/files/files')}?dir=${encodeURIComponent('/' + folderOf(file))}`
-}
-
-/**
- * Download goes straight at WebDAV rather than through the app: the file is
- * already addressable there, and proxying bytes through PHP would buy nothing
- * but memory pressure.
- * @param file
- */
-function downloadLink(file: FileResult): string {
-  const user = getCurrentUser()?.uid ?? ''
-  return `${generateRemoteUrl('dav')}/files/${encodeURIComponent(user)}/${file.path
-    .split('/')
-    .map(encodeURIComponent)
-    .join('/')}`
 }
 
 function formatSize(bytes: number): string {

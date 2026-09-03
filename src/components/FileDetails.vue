@@ -64,7 +64,7 @@
         <NcButton variant="primary" :href="fileLink(file)" target="_blank">
           {{ t('Open in Files') }}
         </NcButton>
-        <NcButton v-if="!file.isFolder" :href="downloadLink(file)">
+        <NcButton v-if="!file.isFolder" @click="downloadFile(file)">
           {{ t('Download') }}
         </NcButton>
         <NcButton @click="$emit('toggle-favorite', file)">
@@ -85,8 +85,8 @@ import {
   NcIconSvgWrapper,
 } from '@nextcloud/vue'
 import { mdiInformationOutline } from '@mdi/js'
-import { generateRemoteUrl, generateUrl } from '@nextcloud/router'
-import { getCurrentUser } from '@nextcloud/auth'
+import { generateUrl } from '@nextcloud/router'
+import { downloadFile } from '../services/download'
 import { useI18n } from '../composables/useI18n'
 import { useSearchStore } from '../stores/searchStore'
 import { usePreferencesStore } from '../stores/preferencesStore'
@@ -137,14 +137,6 @@ const previewUrl = computed(() => {
 
 function fileLink(file: FileResult): string {
   return generateUrl(`/f/${file.fileid}`)
-}
-
-function downloadLink(file: FileResult): string {
-  const user = getCurrentUser()?.uid ?? ''
-  return `${generateRemoteUrl('dav')}/files/${encodeURIComponent(user)}/${file.path
-    .split('/')
-    .map(encodeURIComponent)
-    .join('/')}`
 }
 
 function formatSize(bytes: number): string {

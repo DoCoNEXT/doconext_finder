@@ -50,15 +50,20 @@
     <!--
       NcAppSidebar must be a sibling of NcAppContent, not nested inside a page:
       placed within the content it renders below it instead of beside it.
+
+      Only the pages that list results get it — the panel describes a result, so
+      it has nothing to say next to saved searches or settings. The selection
+      survives the detour, so coming back brings the panel back with it.
     -->
-    <FileDetails :file="selection.file"
+    <FileDetails v-if="showsResults"
+                 :file="selection.file"
                  @close="selection.clear()"
                  @toggle-favorite="store.toggleFavorite" />
   </NcContent>
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import {
   NcAppContent,
   NcAppNavigation,
@@ -94,6 +99,8 @@ onMounted(() => {
   store.loadSchema()
 })
 const page = ref<'search' | 'favorites' | 'saved' | 'settings'>('search')
+
+const showsResults = computed(() => page.value === 'search' || page.value === 'favorites')
 
 /**
  * Running a stored search loads it into the live search and switches to it, so
