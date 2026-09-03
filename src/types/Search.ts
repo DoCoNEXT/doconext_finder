@@ -120,4 +120,11 @@ export interface Preferences {
   columns: ColumnPref[]
   /** Ordered grouping levels, outermost first; empty = no grouping. */
   grouping: string[]
+  pageSize: number
+  sort: string
+  descending: boolean
+  /** What a double-click on a row does: open | folder | none. */
+  doubleClick: string
+  /** Keeps the details panel open while you move through the results. */
+  sidebarPinned: boolean
 }

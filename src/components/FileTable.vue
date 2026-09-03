@@ -21,19 +21,24 @@
       </thead>
 
       <tbody>
-        <template v-for="row in rows" :key="row.id">
+        <template v-for="row in visibleRows" :key="row.id">
           <tr v-if="row.kind === 'group'" class="results__group">
             <th :colspan="columns.length + 2"
                 :class="`results__group--l${row.level}`"
                 :style="{ paddingInlineStart: `${8 + row.level * 20}px` }">
-              {{ row.label }} <span class="muted">({{ row.count }})</span>
+              <button class="results__toggle" @click="toggle(row.id)">
+                <NcIconSvgWrapper :path="collapsed.has(row.id) ? mdiChevronRight : mdiChevronDown"
+                                  :size="18" />
+                <span>{{ row.label }}</span>
+                <span class="muted">({{ row.count }})</span>
+              </button>
             </th>
           </tr>
 
           <tr v-else
               :class="{ 'results__row--selected': row.file.fileid === selectedId }"
               @click="$emit('select', row.file)"
-              @dblclick="open(row.file)">
+              @dblclick="activate(row.file)">
             <td class="results__star">
               <NcButton :aria-label="row.file.favorite ? t('Remove from favorites') : t('Add to favorites')"
                         variant="tertiary"
@@ -86,9 +91,17 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { NcActionLink, NcActions, NcButton, NcIconSvgWrapper } from '@nextcloud/vue'
-import { mdiDownload, mdiFolderOpen, mdiOpenInNew, mdiStar, mdiStarOutline } from '@mdi/js'
+import {
+  mdiChevronDown,
+  mdiChevronRight,
+  mdiDownload,
+  mdiFolderOpen,
+  mdiOpenInNew,
+  mdiStar,
+  mdiStarOutline,
+} from '@mdi/js'
 import { generateRemoteUrl, generateUrl } from '@nextcloud/router'
 import { getCurrentUser } from '@nextcloud/auth'
 import { useI18n } from '../composables/useI18n'
@@ -137,7 +150,64 @@ defineEmits<{
 
 const columns = computed(() => preferences.visibleColumns)
 
-const rows = computed(() => buildRows(t, props.files, preferences.grouping))
+const allRows = computed(() => buildRows(t, props.files, preferences.grouping))
+
+/**
+ * Collapsed groups are held by id, and the ids carry the group path — so a group
+ * stays collapsed while the rows around it change, and is forgotten once its
+ * grouping level is removed.
+ */
+const collapsed = ref(new Set<string>())
+
+function toggle(id: string) {
+  const next = new Set(collapsed.value)
+  if (!next.delete(id)) {
+    next.add(id)
+  }
+  collapsed.value = next
+}
+
+/**
+ * Hides everything under a collapsed header, nested headers included. It walks
+ * the list rather than filtering row by row because a row belongs to a collapsed
+ * group exactly when its id starts with that group's id.
+ */
+const visibleRows = computed(() => {
+  if (collapsed.value.size === 0) {
+    return allRows.value
+  }
+
+  const hidden: string[] = []
+  return allRows.value.filter((row) => {
+    while (hidden.length > 0 && !row.id.startsWith(`${hidden[hidden.length - 1]}/`)) {
+      hidden.pop()
+    }
+    if (hidden.length > 0) {
+      return false
+    }
+    if (row.kind === 'group' && collapsed.value.has(row.id)) {
+      hidden.push(row.id)
+      return true // the header stays, or there would be no way to reopen it
+    }
+    return true
+  })
+})
+
+/**
+ * What a double-click does is the user's choice.
+ * @param file
+ */
+function activate(file: FileResult) {
+  switch (preferences.doubleClick) {
+    case 'folder':
+      window.open(folderLink(file), '_blank', 'noreferrer')
+      break
+    case 'none':
+      break
+    default:
+      open(file)
+  }
+}
 
 /**
  * Built-in header, unless the user renamed the column.
@@ -288,6 +358,18 @@ function formatDate(unixSeconds: number): string {
   &__group--l1 {
     font-weight: 600;
     font-size: 95%;
+  }
+
+  &__toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: none;
+    border: none;
+    padding: 0;
+    font: inherit;
+    color: inherit;
+    cursor: pointer;
   }
 
   &__group--l2,

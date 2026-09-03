@@ -40,6 +40,15 @@ class PreferencesService
      */
     private const MAX_GROUPING_LEVELS = 4;
 
+    /** Page sizes offered. Bounded because every row costs a preview request later. */
+    public const PAGE_SIZES = [25, 50, 100, 200];
+
+    /** What a double-click on a row does. */
+    public const CLICK_ACTIONS = ['open', 'folder', 'none'];
+
+    /** Columns the grid can sort on, mirroring FileQuery::SORTS. */
+    private const SORTS = ['name', 'size', 'mtime', 'creation_time'];
+
     public function __construct(
         private IUserConfig $userConfig,
         private MetadataFields $metadataFields,
@@ -72,10 +81,40 @@ class PreferencesService
      */
     private function sanitise(array $raw): array
     {
+        $pageSize = (int)($raw['pageSize'] ?? 50);
+        $sort = (string)($raw['sort'] ?? 'mtime');
+
         return [
-            'columns'  => $this->sanitiseColumns($raw['columns'] ?? null),
-            'grouping' => $this->sanitiseGrouping($raw['grouping'] ?? []),
+            'columns'       => $this->sanitiseColumns($raw['columns'] ?? null),
+            'grouping'      => $this->sanitiseGrouping($raw['grouping'] ?? []),
+            'pageSize'      => in_array($pageSize, self::PAGE_SIZES, true) ? $pageSize : 50,
+            // A metadata key is a valid sort too, as long as it is still indexed.
+            'sort'          => $this->sanitiseSort($sort),
+            'descending'    => (bool)($raw['descending'] ?? true),
+            'doubleClick'   => in_array($raw['doubleClick'] ?? '', self::CLICK_ACTIONS, true)
+                ? (string)$raw['doubleClick']
+                : 'open',
+            'sidebarPinned' => (bool)($raw['sidebarPinned'] ?? false),
         ];
+    }
+
+    /**
+     * Grouping is a list of levels, applied outermost first. Unknown or repeated
+     * levels are dropped rather than rejected, so a preference saved while an app
+     * was installed keeps working after it is removed — minus that level.
+     *
+     * @return list<string>
+     */
+    private function sanitiseSort(string $sort): string
+    {
+        if (in_array($sort, self::SORTS, true)) {
+            return $sort;
+        }
+
+        return MetadataFields::isMetadata($sort)
+            && $this->metadataFields->isFilterable(MetadataFields::key($sort))
+                ? $sort
+                : 'mtime';
     }
 
     /**

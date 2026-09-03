@@ -7,14 +7,17 @@
  */
 import { defineStore } from 'pinia'
 import { SearchApi } from '../services/SearchApi'
+import { usePreferencesStore } from './preferencesStore'
 import { anyTime, anyType, fileTypePresets, modifiedAfter, modifiedPresets } from '../filters/presets'
 import type { Translate } from '../filters/presets'
 import type { Condition, FieldsResponse, FileResult, SearchState } from '../types/Search'
 
-const PAGE_SIZE = 50
-
-/** How many pages "Load all" will fetch before stopping. */
-const MAX_PAGES = 40
+/**
+ * How many rows "Load all" will fetch before stopping. A row cap rather than a
+ * page cap, because the page size is now the user's to choose — capping pages
+ * would quietly turn a larger page size into an eightfold bigger load.
+ */
+const MAX_LOADED_ROWS = 2000
 
 export function emptyState(): SearchState {
   return {
@@ -54,7 +57,8 @@ export const useSearchStore = defineStore('search', {
   }),
 
   getters: {
-    pageSize: () => PAGE_SIZE,
+    /** The user's setting, so it applies to paging and to Load all alike. */
+    pageSize: (): number => usePreferencesStore().pageSize,
 
     /**
      * True when there is anything to search by — a blank search is refused.
@@ -80,8 +84,10 @@ export const useSearchStore = defineStore('search', {
       }
     },
 
+    /** A fresh search starts from the user's default sort. */
     reset() {
-      this.query = emptyState()
+      const preferences = usePreferencesStore()
+      this.query = { ...emptyState(), sort: preferences.sort, descending: preferences.descending }
       this.results = []
       this.searched = false
       this.loadedAll = false
@@ -139,7 +145,7 @@ export const useSearchStore = defineStore('search', {
       this.error = ''
       this.loadedAll = false
       try {
-        const response = await SearchApi.search(this.request(t, offset, PAGE_SIZE))
+        const response = await SearchApi.search(this.request(t, offset, this.pageSize))
         this.results = response.results
         this.hasMore = response.hasMore
         this.offset = response.offset
@@ -172,13 +178,14 @@ export const useSearchStore = defineStore('search', {
       this.error = ''
       try {
         const all: FileResult[] = []
-        let page = 0
         let more = true
-        while (more && page < MAX_PAGES) {
-          const response = await SearchApi.search(this.request(t, page * PAGE_SIZE, PAGE_SIZE))
+        while (more && all.length < MAX_LOADED_ROWS) {
+          const response = await SearchApi.search(this.request(t, all.length, this.pageSize))
           all.push(...response.results)
           more = response.hasMore
-          page++
+          if (response.results.length === 0) {
+            break // defensive: never spin on a page that returns nothing
+          }
         }
         this.results = all
         this.hasMore = false

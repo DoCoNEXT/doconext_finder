@@ -23,6 +23,13 @@
             <NcIconSvgWrapper :path="mdiContentSaveOutline" :size="20" />
           </template>
         </NcAppNavigationItem>
+        <NcAppNavigationItem :name="t('Settings')"
+                             :active="page === 'settings'"
+                             @click="page = 'settings'">
+          <template #icon>
+            <NcIconSvgWrapper :path="mdiCogOutline" :size="20" />
+          </template>
+        </NcAppNavigationItem>
       </template>
     </NcAppNavigation>
 
@@ -35,7 +42,8 @@
       <KeepAlive>
         <SearchView v-if="page === 'search'" @saved="page = 'saved'" />
         <FavoritesView v-else-if="page === 'favorites'" />
-        <SavedSearchesView v-else @run="runStored" />
+        <SavedSearchesView v-else-if="page === 'saved'" @run="runStored" />
+        <SettingsView v-else />
       </KeepAlive>
     </NcAppContent>
 
@@ -58,7 +66,7 @@ import {
   NcContent,
   NcIconSvgWrapper,
 } from '@nextcloud/vue'
-import { mdiContentSaveOutline, mdiMagnify, mdiStar } from '@mdi/js'
+import { mdiCogOutline, mdiContentSaveOutline, mdiMagnify, mdiStar } from '@mdi/js'
 import { useI18n } from './composables/useI18n'
 import { useSearchStore } from './stores/searchStore'
 import { usePreferencesStore } from './stores/preferencesStore'
@@ -68,6 +76,7 @@ import FileDetails from './components/FileDetails.vue'
 import SearchView from './views/SearchView.vue'
 import FavoritesView from './views/FavoritesView.vue'
 import SavedSearchesView from './views/SavedSearchesView.vue'
+import SettingsView from './views/SettingsView.vue'
 import type { StoredSearch } from './types/Search'
 
 const { t } = useI18n()
@@ -84,7 +93,7 @@ onMounted(() => {
   // Loaded here rather than per page: Favorites needs the metadata labels too.
   store.loadSchema()
 })
-const page = ref<'search' | 'favorites' | 'saved'>('search')
+const page = ref<'search' | 'favorites' | 'saved' | 'settings'>('search')
 
 /**
  * Running a stored search loads it into the live search and switches to it, so
@@ -101,7 +110,14 @@ function runStored(entry: StoredSearch) {
 </script>
 
 <style scoped lang="scss">
+// The pages lay themselves out as full-height columns so their controls can stay
+// put while the results scroll; that only works if the wrapper hands down its
+// height rather than growing with the content.
 :deep(.app-content-wrapper) {
-  padding-top: 16px;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  padding-top: 12px;
 }
 </style>

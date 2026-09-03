@@ -20,13 +20,15 @@
 
     <template v-else-if="files.length">
       <ViewOptions />
-      <FileTable :files="files"
-                 :sort="sort"
-                 :descending="descending"
-                 :selected-id="selection.file?.fileid"
-                 @sort="sortBy"
-                 @toggle-favorite="unfavorite"
-                 @select="selection.select($event)" />
+      <div class="favorites__results">
+        <FileTable :files="files"
+                   :sort="sort"
+                   :descending="descending"
+                   :selected-id="selection.file?.fileid"
+                   @sort="sortBy"
+                   @toggle-favorite="unfavorite"
+                   @select="selection.select($event, preferences.sidebarPinned)" />
+      </div>
     </template>
 
   </div>
@@ -45,12 +47,14 @@ import { mdiStarOutline } from '@mdi/js'
 import { useI18n } from '../composables/useI18n'
 import { SearchApi } from '../services/SearchApi'
 import { useSelectionStore } from '../stores/selectionStore'
+import { usePreferencesStore } from '../stores/preferencesStore'
 import FileTable from '../components/FileTable.vue'
 import ViewOptions from '../components/ViewOptions.vue'
 import type { FileResult } from '../types/Search'
 
 const { t } = useI18n()
 const selection = useSelectionStore()
+const preferences = usePreferencesStore()
 
 const files = ref<FileResult[]>([])
 const sort = ref('mtime')
@@ -110,9 +114,11 @@ async function unfavorite(file: FileResult) {
 
 <style scoped lang="scss">
 .favorites {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 0 24px 24px;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  padding: 0 16px 12px;
 
   &__heading {
     display: flex;
@@ -127,6 +133,13 @@ async function unfavorite(file: FileResult) {
 
   &__loading {
     margin: 32px auto;
+  }
+
+  // Only the grid scrolls; the heading and view options stay put.
+  &__results {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
   }
 }
 </style>

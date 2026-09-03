@@ -50,12 +50,27 @@ class PreferencesController extends ApiController
      */
     #[NoAdminRequired]
     #[FrontpageRoute(verb: 'PUT', url: '/api/preferences')]
-    public function update(array $columns = [], array $grouping = []): DataResponse
-    {
+    public function update(
+        array $columns = [],
+        array $grouping = [],
+        int $pageSize = 50,
+        string $sort = 'mtime',
+        bool $descending = true,
+        string $doubleClick = 'open',
+        bool $sidebarPinned = false,
+    ): DataResponse {
         $uid = $this->userSession->getUser()?->getUID();
 
         return $uid === null
             ? new DataResponse(['error' => 'not authenticated'], Http::STATUS_UNAUTHORIZED)
-            : new DataResponse($this->service->set($uid, ['columns' => $columns, 'grouping' => $grouping]));
+            : new DataResponse($this->service->set($uid, [
+                'columns'       => $columns,
+                'grouping'      => $grouping,
+                'pageSize'      => $pageSize,
+                'sort'          => $sort,
+                'descending'    => $descending,
+                'doubleClick'   => $doubleClick,
+                'sidebarPinned' => $sidebarPinned,
+            ]));
     }
 }

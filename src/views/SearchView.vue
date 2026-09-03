@@ -64,26 +64,29 @@
 
     <NcNoteCard v-if="message" :type="messageType">{{ message }}</NcNoteCard>
 
-    <NcLoadingIcon v-if="store.loading" class="finder__loading" :size="32" />
+    <ViewOptions v-if="store.results.length" :partial="store.hasMore && !store.loadedAll" />
 
-    <NcEmptyContent v-else-if="store.searched && store.results.length === 0"
-                    :name="t('No files found')"
-                    :description="t('Try a different term, or loosen the filters.')">
-      <template #icon>
-        <NcIconSvgWrapper :path="mdiMagnify" />
+    <div class="finder__results">
+      <NcLoadingIcon v-if="store.loading" class="finder__loading" :size="32" />
+
+      <NcEmptyContent v-else-if="store.searched && store.results.length === 0"
+                      :name="t('No files found')"
+                      :description="t('Try a different term, or loosen the filters.')">
+        <template #icon>
+          <NcIconSvgWrapper :path="mdiMagnify" />
+        </template>
+      </NcEmptyContent>
+
+      <template v-else-if="store.results.length">
+        <FileTable :files="store.results"
+                   :sort="store.query.sort"
+                   :descending="store.query.descending"
+                   :selected-id="selection.file?.fileid"
+                   @sort="store.sortBy(t, $event)"
+                   @toggle-favorite="store.toggleFavorite"
+                   @select="selection.select($event, preferences.sidebarPinned)" />
       </template>
-    </NcEmptyContent>
-
-    <template v-else-if="store.results.length">
-      <ViewOptions :partial="store.hasMore && !store.loadedAll" />
-      <FileTable :files="store.results"
-                 :sort="store.query.sort"
-                 :descending="store.query.descending"
-                 :selected-id="selection.file?.fileid"
-                 @sort="store.sortBy(t, $event)"
-                 @toggle-favorite="store.toggleFavorite"
-                 @select="selection.select($event)" />
-    </template>
+    </div>
 
     <div v-if="store.results.length" class="finder__paging">
       <template v-if="!store.loadedAll">
@@ -118,6 +121,7 @@ import { mdiMagnify } from '@mdi/js'
 import { useI18n } from '../composables/useI18n'
 import { useSearchStore } from '../stores/searchStore'
 import { useSelectionStore } from '../stores/selectionStore'
+import { usePreferencesStore } from '../stores/preferencesStore'
 import { SearchApi } from '../services/SearchApi'
 import { anyTime, anyType, fileTypePresets, modifiedPresets } from '../filters/presets'
 import ConditionRow from '../components/ConditionRow.vue'
@@ -128,6 +132,7 @@ import type { FileTypePreset, ModifiedPreset } from '../filters/presets'
 const { t } = useI18n()
 const store = useSearchStore()
 const selection = useSelectionStore()
+const preferences = usePreferencesStore()
 
 const emit = defineEmits<{ (e: 'saved'): void }>()
 
@@ -138,7 +143,7 @@ onMounted(() => store.loadSchema())
 
 // A new result set makes the old selection meaningless — and the panel would
 // otherwise keep describing a file that is no longer on screen.
-watch(() => store.results, () => selection.clear())
+watch(() => store.results, (files) => selection.onResults(files, preferences.sidebarPinned))
 
 /**
  * The store keeps preset *ids* (that is what history stores); the dropdowns bind
@@ -221,10 +226,16 @@ async function save() {
 </script>
 
 <style scoped lang="scss">
+// The page is a column that fills the content area: the criteria and the paging
+// bar keep their place while only the results scroll, so the controls you are
+// working with never scroll off. Full width on purpose — a result grid with
+// several metadata columns needs every pixel.
 .finder {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 0 24px 24px;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  padding: 0 16px 12px;
 
   &__bar {
     display: flex;
@@ -263,6 +274,13 @@ async function save() {
 
   &__loading {
     margin: 32px auto;
+  }
+
+  // Everything above this stays; this is the only part that scrolls.
+  &__results {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
   }
 
   &__paging {

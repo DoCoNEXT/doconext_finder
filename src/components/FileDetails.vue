@@ -3,6 +3,12 @@
                 :name="file.name"
                 :subname="folderOf(file) || '/'"
                 @close="$emit('close')">
+    <template #secondary-actions>
+      <NcActionCheckbox :model-value="preferences.sidebarPinned"
+                        @update:model-value="preferences.setSidebarPinned($event)">
+        {{ t('Keep this panel open') }}
+      </NcActionCheckbox>
+    </template>
     <NcAppSidebarTab id="details" :name="t('Details')" :order="1">
       <template #icon>
         <NcIconSvgWrapper :path="mdiInformationOutline" :size="20" />
@@ -72,6 +78,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import {
+  NcActionCheckbox,
   NcAppSidebar,
   NcAppSidebarTab,
   NcButton,
@@ -82,11 +89,13 @@ import { generateRemoteUrl, generateUrl } from '@nextcloud/router'
 import { getCurrentUser } from '@nextcloud/auth'
 import { useI18n } from '../composables/useI18n'
 import { useSearchStore } from '../stores/searchStore'
+import { usePreferencesStore } from '../stores/preferencesStore'
 import { folderOf, typeName } from '../filters/grouping'
 import type { FileResult } from '../types/Search'
 
 const { t } = useI18n()
 const search = useSearchStore()
+const preferences = usePreferencesStore()
 
 const props = defineProps<{ file: FileResult | null }>()
 

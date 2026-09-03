@@ -12,13 +12,27 @@ export const useSelectionStore = defineStore('selection', {
   state: () => ({ file: null as FileResult | null }),
 
   actions: {
-    select(file: FileResult) {
-      // Clicking the selected row again closes the panel.
-      this.file = this.file?.fileid === file.fileid ? null : file
+    /**
+     * @param file the row that was clicked
+     * @param pinned when pinned, the panel stays open and simply follows the
+     *   selection; unpinned, clicking the open row again closes it
+     */
+    select(file: FileResult, pinned = false) {
+      this.file = !pinned && this.file?.fileid === file.fileid ? null : file
     },
 
     clear() {
       this.file = null
+    },
+
+    /**
+     * A new result set invalidates the selection. Pinned, the panel stays and
+     * takes the first row, so it never sits empty next to a full grid.
+     * @param files the new result rows
+     * @param pinned whether the panel is pinned open
+     */
+    onResults(files: FileResult[], pinned: boolean) {
+      this.file = pinned ? files[0] ?? null : null
     },
   },
 })

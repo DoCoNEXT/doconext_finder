@@ -22,11 +22,26 @@ interface State {
   revision: number
   /** Ordered grouping levels, outermost first. */
   grouping: string[]
+  pageSize: number
+  sort: string
+  descending: boolean
+  doubleClick: string
+  sidebarPinned: boolean
   loaded: boolean
 }
 
 export const usePreferencesStore = defineStore('preferences', {
-  state: (): State => ({ columns: [], grouping: [], loaded: false, revision: 0 }),
+  state: (): State => ({
+    columns: [],
+    grouping: [],
+    pageSize: 50,
+    sort: 'mtime',
+    descending: true,
+    doubleClick: 'open',
+    sidebarPinned: false,
+    loaded: false,
+    revision: 0,
+  }),
 
   getters: {
     visibleColumns: (state): ColumnPref[] => state.columns.filter((c) => c.visible),
@@ -48,6 +63,11 @@ export const usePreferencesStore = defineStore('preferences', {
     adopt(preferences: Preferences) {
       this.columns = preferences.columns
       this.grouping = preferences.grouping
+      this.pageSize = preferences.pageSize
+      this.sort = preferences.sort
+      this.descending = preferences.descending
+      this.doubleClick = preferences.doubleClick
+      this.sidebarPinned = preferences.sidebarPinned
       this.loaded = true
     },
 
@@ -57,6 +77,11 @@ export const usePreferencesStore = defineStore('preferences', {
         const stored = await SearchApi.savePreferences({
           columns: this.columns,
           grouping: this.grouping,
+          pageSize: this.pageSize,
+          sort: this.sort,
+          descending: this.descending,
+          doubleClick: this.doubleClick,
+          sidebarPinned: this.sidebarPinned,
         })
         // Adopt only while this is still the newest save in flight; a later edit
         // has already sent its own, whose response is the one that counts.
@@ -153,9 +178,40 @@ export const usePreferencesStore = defineStore('preferences', {
       this.save()
     },
 
+    setPageSize(pageSize: number) {
+      this.pageSize = pageSize
+      this.save()
+    },
+
+    /**
+     * The sort a new search starts from; the grid still sorts per search.
+     * @param sort
+     * @param descending
+     */
+    setDefaultSort(sort: string, descending: boolean) {
+      this.sort = sort
+      this.descending = descending
+      this.save()
+    },
+
+    setDoubleClick(action: string) {
+      this.doubleClick = action
+      this.save()
+    },
+
+    setSidebarPinned(pinned: boolean) {
+      this.sidebarPinned = pinned
+      this.save()
+    },
+
     async reset() {
       this.columns = []
       this.grouping = []
+      this.pageSize = 50
+      this.sort = 'mtime'
+      this.descending = true
+      this.doubleClick = 'open'
+      this.sidebarPinned = false
       // An empty column list makes the server rebuild the defaults and hand
       // them back, so the defaults live in one place.
       await this.save()
