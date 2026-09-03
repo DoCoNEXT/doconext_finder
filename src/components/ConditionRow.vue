@@ -78,6 +78,7 @@ import {
   toMegabytes,
   toUnix,
 } from '../filters/fields'
+import { isMetadataField, metadataKeyOf } from '../filters/metadata'
 import type { Condition, FieldsResponse, Operator } from '../types/Search'
 
 const { t } = useI18n()
@@ -94,15 +95,38 @@ const emit = defineEmits<{
 
 interface Option { id: string, label: string }
 
-const fieldOptions = computed<Option[]>(() =>
-  Object.keys(props.schema.fields).map((id) => ({ id, label: fieldLabel(t, id) })))
+const metadataLabelOf = (id: string) =>
+  props.schema.metadata.find((f) => f.field === id)?.label ?? metadataKeyOf(id)
+
+const labelFor = (id: string) => (isMetadataField(id) ? metadataLabelOf(id) : fieldLabel(t, id))
+
+const fieldOptions = computed<Option[]>(() => [
+  ...Object.keys(props.schema.fields).map((id) => ({ id, label: fieldLabel(t, id) })),
+  // Only indexed metadata can be compared against; the rest is display-only.
+  ...props.schema.metadata
+    .filter((field) => field.filterable)
+    .map((field) => ({ id: field.field, label: field.label })),
+])
 
 /** Only the operators this field accepts — the server rejects the rest. */
 const operatorOptions = computed<Option[]>(() =>
-  (props.schema.operators[props.condition.field] ?? [])
+  operatorsFor(props.condition.field)
     .map((id) => ({ id, label: operatorLabel(t, props.condition.field, id) })))
 
-const input = computed(() => fieldInput(props.condition.field))
+/**
+ * Metadata accepts its own small set; a file column has its own whitelist.
+ * @param field
+ */
+function operatorsFor(field: string): Operator[] {
+  return isMetadataField(field)
+    ? props.schema.metadataOperators
+    : props.schema.operators[field] ?? []
+}
+
+// Metadata is stored as one indexed string column whatever its declared type,
+// so it always edits as text.
+const input = computed(() =>
+  (isMetadataField(props.condition.field) ? 'text' : fieldInput(props.condition.field)))
 const hint = computed(() => fieldHint(t, props.condition.field))
 
 /**
@@ -117,14 +141,14 @@ function patch(changes: Partial<Condition>) {
 }
 
 const fieldOption = computed({
-  get: () => ({ id: props.condition.field, label: fieldLabel(t, props.condition.field) }),
+  get: () => ({ id: props.condition.field, label: labelFor(props.condition.field) }),
   set: (next: Option | null) => {
     if (!next) {
       return
     }
     // The new field may not accept the current operator, and its value is in a
     // different unit — reset both rather than carry a nonsense pairing across.
-    const operators = props.schema.operators[next.id] ?? []
+    const operators = operatorsFor(next.id)
     const operator = (operators.includes(props.condition.operator)
       ? props.condition.operator
       : operators[0]) as Operator

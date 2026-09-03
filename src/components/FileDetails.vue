@@ -39,6 +39,21 @@
         <dd class="details__mime">{{ file.mimetype }}</dd>
       </dl>
 
+      <!--
+        Everything the server holds for this file, whichever app put it there —
+        Core's fields when Core is installed. Labels come from the same registry
+        the columns use, so a field reads the same wherever it appears.
+      -->
+      <template v-if="metadata.length">
+        <h4 class="details__heading">{{ t('Metadata') }}</h4>
+        <dl class="details">
+          <template v-for="entry in metadata" :key="entry.key">
+            <dt>{{ entry.label }}</dt>
+            <dd>{{ entry.value }}</dd>
+          </template>
+        </dl>
+      </template>
+
       <div class="details__actions">
         <NcButton variant="primary" :href="fileLink(file)" target="_blank">
           {{ t('Open in Files') }}
@@ -66,10 +81,12 @@ import { mdiInformationOutline } from '@mdi/js'
 import { generateRemoteUrl, generateUrl } from '@nextcloud/router'
 import { getCurrentUser } from '@nextcloud/auth'
 import { useI18n } from '../composables/useI18n'
+import { useSearchStore } from '../stores/searchStore'
 import { folderOf, typeName } from '../filters/grouping'
 import type { FileResult } from '../types/Search'
 
 const { t } = useI18n()
+const search = useSearchStore()
 
 const props = defineProps<{ file: FileResult | null }>()
 
@@ -77,6 +94,23 @@ defineEmits<{
   (e: 'close'): void
   (e: 'toggle-favorite', file: FileResult): void
 }>()
+
+/**
+ * Only the keys this file actually carries, labelled and sorted, so the panel
+ * shows what is there rather than a hundred mostly-empty rows.
+ */
+const metadata = computed(() => {
+  const values = props.file?.metadata ?? {}
+  const known = search.schema?.metadata ?? []
+
+  return Object.entries(values)
+    .map(([key, value]) => ({
+      key,
+      value,
+      label: known.find((f) => f.key === key)?.label ?? key,
+    }))
+    .sort((a, b) => a.label.localeCompare(b.label))
+})
 
 const previewFailed = ref(false)
 
@@ -146,6 +180,11 @@ function formatDate(unixSeconds: number): string {
     object-fit: contain;
     border-radius: var(--border-radius-large);
     background: var(--color-background-dark);
+  }
+
+  &__heading {
+    margin: 20px 0 4px;
+    font-weight: 700;
   }
 
   &__mime {

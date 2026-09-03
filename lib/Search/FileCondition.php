@@ -52,6 +52,12 @@ final class FileCondition
      */
     public const JOIN_BACKED = ['favorite', 'tagname'];
 
+    /**
+     * Metadata is stored as one indexed string column whatever the declared type,
+     * so only text comparisons behave predictably across keys.
+     */
+    public const METADATA_OPERATORS = ['eq', 'contains'];
+
     /** Public operator name → ISearchComparison constant. */
     public const OPERATORS = [
         'eq'       => ISearchComparison::COMPARE_EQUAL,
@@ -80,6 +86,28 @@ final class FileCondition
     public static function fromArray(array $raw): self
     {
         $field = (string)($raw['field'] ?? '');
+
+        // Metadata fields are validated by the caller against the server's registry,
+        // since which keys exist depends on what apps are installed.
+        if (MetadataFields::isMetadata($field)) {
+            $operator = (string)($raw['operator'] ?? '');
+            if (!in_array($operator, self::METADATA_OPERATORS, true)) {
+                throw new \InvalidArgumentException(
+                    '"' . $field . '" does not support "' . $operator . '"; allowed: '
+                    . implode(', ', self::METADATA_OPERATORS)
+                );
+            }
+            $value = trim((string)($raw['value'] ?? ''));
+            if ($value === '') {
+                throw new \InvalidArgumentException('condition on "' . $field . '" needs a value');
+            }
+            if ($operator === 'contains') {
+                $value = '%' . addcslashes($value, '%_\\') . '%';
+            }
+
+            return new self($field, $operator, $value, (bool)($raw['negate'] ?? false));
+        }
+
         if (!isset(self::FIELDS[$field])) {
             throw new \InvalidArgumentException(
                 'unknown field "' . $field . '"; allowed: ' . implode(', ', array_keys(self::FIELDS))

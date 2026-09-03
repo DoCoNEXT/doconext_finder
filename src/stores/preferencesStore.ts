@@ -52,6 +52,27 @@ export const usePreferencesStore = defineStore('preferences', {
       }
     },
 
+    /**
+     * Appends a metadata column, visible, at the end of the grid.
+     * @param id
+     */
+    addColumn(id: string) {
+      if (this.columns.some((c) => c.id === id)) {
+        return
+      }
+      this.columns.push({ id, visible: true, label: '' })
+      this.save()
+    },
+
+    /**
+     * Metadata columns can be removed outright; built-ins only hidden.
+     * @param id
+     */
+    remove(id: string) {
+      this.columns = this.columns.filter((c) => c.id !== id)
+      this.save()
+    },
+
     toggle(id: string) {
       const column = this.columns.find((c) => c.id === id)
       // Name identifies the row; hiding it would leave an unreadable grid, and

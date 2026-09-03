@@ -76,7 +76,9 @@ final class FileQuery
         $limit = max(1, min(self::MAX_LIMIT, $limit));
 
         $sort = (string)($body['sort'] ?? 'mtime');
-        if (!in_array($sort, self::SORTS, true)) {
+        // Metadata keys are sortable too, and are checked against the registry by
+        // the service rather than against a fixed list here.
+        if (!in_array($sort, self::SORTS, true) && !MetadataFields::isMetadata($sort)) {
             $sort = 'mtime';
         }
 

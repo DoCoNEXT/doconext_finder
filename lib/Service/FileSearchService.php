@@ -10,6 +10,7 @@ use OC\Files\Search\SearchOrder;
 use OC\Files\Search\SearchQuery;
 use OCA\DcnFinder\Search\FileCondition;
 use OCA\DcnFinder\Search\FileQuery;
+use OCA\DcnFinder\Search\MetadataFields;
 use OCP\Files\FileInfo;
 use OCP\Files\IRootFolder;
 use OCP\Files\Node;
@@ -18,6 +19,8 @@ use OCP\Files\Search\ISearchBinaryOperator;
 use OCP\Files\Search\ISearchComparison;
 use OCP\Files\Search\ISearchOperator;
 use OCP\Files\Search\ISearchOrder;
+use OCP\FilesMetadata\IFilesMetadataManager;
+use OCP\FilesMetadata\IMetadataQuery;
 use OCP\ITagManager;
 use OCP\IUserManager;
 
@@ -41,6 +44,8 @@ class FileSearchService
         private IRootFolder $rootFolder,
         private IUserManager $userManager,
         private ITagManager $tagManager,
+        private IFilesMetadataManager $metadataManager,
+        private MetadataFields $metadataFields,
     ) {
     }
 
@@ -80,10 +85,7 @@ class FileSearchService
             $this->buildOperator($query),
             $query->limit + 1,
             $query->offset,
-            [new SearchOrder(
-                $query->descending ? ISearchOrder::DIRECTION_DESCENDING : ISearchOrder::DIRECTION_ASCENDING,
-                $query->sort,
-            )],
+            [$this->order($query)],
             $user,
         );
 
@@ -98,9 +100,18 @@ class FileSearchService
         // every favorited id for the user, and the page is at most a few hundred.
         $favorites = array_flip($this->tagManager->load('files', [], false, $uid)->getFavorites());
 
+        // Likewise one metadata fetch for the whole page.
+        $fileIds = array_map(static fn (Node $n) => $n->getId(), $nodes);
+        $metadata = $fileIds === [] ? [] : $this->metadataManager->getMetadataForFiles($fileIds);
+
         return [
             'results' => array_map(
-                fn (Node $n) => $this->toArray($n, $userFolder->getPath(), isset($favorites[$n->getId()])),
+                fn (Node $n) => $this->toArray(
+                    $n,
+                    $userFolder->getPath(),
+                    isset($favorites[$n->getId()]),
+                    $this->metadataFields->values($n->getId(), $metadata),
+                ),
                 $nodes
             ),
             'hasMore' => $hasMore,
@@ -165,8 +176,53 @@ class FileSearchService
             : new SearchBinaryOperator(ISearchBinaryOperator::OPERATOR_AND, $parts);
     }
 
+    /**
+     * Sorting on a metadata key needs the same EXTRA marker as filtering; an
+     * unknown or unindexed key falls back to modification time rather than
+     * failing the search over a column the user cannot see anyway.
+     */
+    private function order(FileQuery $query): SearchOrder
+    {
+        $direction = $query->descending ? ISearchOrder::DIRECTION_DESCENDING : ISearchOrder::DIRECTION_ASCENDING;
+
+        if (MetadataFields::isMetadata($query->sort)) {
+            $key = MetadataFields::key($query->sort);
+
+            return $this->metadataFields->isFilterable($key)
+                ? new SearchOrder($direction, $key, IMetadataQuery::EXTRA)
+                : new SearchOrder($direction, 'mtime');
+        }
+
+        return new SearchOrder($direction, $query->sort);
+    }
+
     private function toComparison(FileCondition $condition): ISearchOperator
     {
+        if (MetadataFields::isMetadata($condition->field)) {
+            $key = MetadataFields::key($condition->field);
+            if (!$this->metadataFields->exists($key)) {
+                throw new \InvalidArgumentException('unknown metadata field "' . $key . '"');
+            }
+            if (!$this->metadataFields->isFilterable($key)) {
+                // Its value is stored but never indexed, so there is nothing to
+                // compare against. Say that rather than returning an empty result.
+                throw new \InvalidArgumentException(
+                    '"' . $key . '" is not indexed on this server and cannot be filtered on'
+                );
+            }
+
+            $comparison = new SearchComparison(
+                $condition->comparison(),
+                $key,
+                $condition->value,
+                IMetadataQuery::EXTRA,
+            );
+
+            return $condition->negate
+                ? new SearchBinaryOperator(ISearchBinaryOperator::OPERATOR_NOT, [$comparison])
+                : $comparison;
+        }
+
         $comparison = new SearchComparison(
             $condition->comparison(),
             $condition->field,
@@ -180,8 +236,11 @@ class FileSearchService
             : $comparison;
     }
 
-    /** @return array<string,mixed> */
-    private function toArray(Node $node, string $userFolderPath, bool $favorite): array
+    /**
+     * @param array<string,string> $metadata
+     * @return array<string,mixed>
+     */
+    private function toArray(Node $node, string $userFolderPath, bool $favorite, array $metadata): array
     {
         $path = $node->getPath();
         $relative = str_starts_with($path, $userFolderPath)
@@ -199,6 +258,7 @@ class FileSearchService
             'creationTime' => $node->getCreationTime(),
             'permissions'  => $node->getPermissions(),
             'favorite'     => $favorite,
+            'metadata'     => $metadata,
         ];
     }
 }

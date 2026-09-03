@@ -6,6 +6,22 @@
         <option v-for="option in groupings" :key="option.value" :value="option.value">
           {{ option.label }}
         </option>
+        <!-- Grouping by a metadata value is the point of having the metadata. -->
+        <optgroup v-if="metadataFields.length" :label="t('Metadata')">
+          <option v-for="field in metadataFields" :key="field.field" :value="field.field">
+            {{ field.label }}
+          </option>
+        </optgroup>
+      </select>
+    </label>
+
+    <label v-if="addableFields.length" class="view-options__group">
+      <span class="muted">{{ t('Add column:') }}</span>
+      <select :value="''" @change="onAddColumn">
+        <option value="">{{ t('Choose a metadata field…') }}</option>
+        <option v-for="field in addableFields" :key="field.field" :value="field.field">
+          {{ field.label }}
+        </option>
       </select>
     </label>
 
@@ -65,10 +81,22 @@ import {
 import { mdiArrowUp, mdiPencilOutline, mdiRestore, mdiViewColumnOutline } from '@mdi/js'
 import { useI18n } from '../composables/useI18n'
 import { usePreferencesStore } from '../stores/preferencesStore'
+import { useSearchStore } from '../stores/searchStore'
+import { isMetadataField, metadataKeyOf } from '../filters/metadata'
 import type { ColumnPref } from '../types/Search'
 
 const { t } = useI18n()
 const preferences = usePreferencesStore()
+const search = useSearchStore()
+
+/** Everything this server advertises — Core's fields when Core is installed. */
+const metadataFields = computed(() => search.schema?.metadata ?? [])
+
+/** Only fields the grid does not already carry, so the list shrinks as you add. */
+const addableFields = computed(() => {
+  const present = new Set(preferences.columns.map((c) => c.id))
+  return metadataFields.value.filter((f) => !present.has(f.field))
+})
 
 const props = defineProps<{
   /** True when only part of the result set is loaded — grouping then misleads. */
@@ -95,6 +123,9 @@ function headerOf(column: ColumnPref): string {
   if (column.label) {
     return column.label
   }
+  if (isMetadataField(column.id)) {
+    return metadataFields.value.find((f) => f.field === column.id)?.label ?? metadataKeyOf(column.id)
+  }
   switch (column.id) {
     case 'name': return t('Name')
     case 'folder': return t('Folder')
@@ -108,6 +139,15 @@ function headerOf(column: ColumnPref): string {
 
 function onGrouping(event: Event) {
   preferences.setGrouping((event.target as HTMLSelectElement).value)
+}
+
+function onAddColumn(event: Event) {
+  const select = event.target as HTMLSelectElement
+  if (select.value) {
+    preferences.addColumn(select.value)
+  }
+  // Back to the placeholder, so the control reads as an action not a state.
+  select.value = ''
 }
 
 function renameColumn() {

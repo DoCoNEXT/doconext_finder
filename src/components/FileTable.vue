@@ -26,10 +26,17 @@
             {{ group.label }} <span class="muted">({{ group.files.length }})</span>
           </th>
         </tr>
+        <!--
+          Single click selects and shows the details panel; opening the file is
+          the double-click, matching how a file list behaves everywhere else. A
+          link on the name would make every attempt to inspect a file navigate
+          away from the results instead.
+        -->
         <tr v-for="file in group.files"
             :key="file.fileid"
             :class="{ 'results__row--selected': file.fileid === selectedId }"
-            @click="$emit('select', file)">
+            @click="$emit('select', file)"
+            @dblclick="open(file)">
           <td class="results__star">
             <NcButton :aria-label="file.favorite ? t('Remove from favorites') : t('Add to favorites')"
                       variant="tertiary"
@@ -43,16 +50,10 @@
           </td>
 
           <td v-for="column in columns" :key="column.id" :class="cellClass(column.id)">
-            <a v-if="column.id === 'name'"
-               class="results__name"
-               :href="fileLink(file)"
-               :title="file.name"
-               target="_blank"
-               rel="noreferrer noopener"
-               @click.stop>
+            <span v-if="column.id === 'name'" class="results__name" :title="file.name">
               <NcIconSvgWrapper :path="iconFor(file.mimetype, file.isFolder)" :size="20" />
               <span>{{ file.name }}</span>
-            </a>
+            </span>
             <span v-else :title="cellText(file, column.id)" class="muted">{{ cellText(file, column.id) }}</span>
           </td>
 
@@ -92,6 +93,8 @@ import { generateRemoteUrl, generateUrl } from '@nextcloud/router'
 import { getCurrentUser } from '@nextcloud/auth'
 import { useI18n } from '../composables/useI18n'
 import { usePreferencesStore } from '../stores/preferencesStore'
+import { useSearchStore } from '../stores/searchStore'
+import { isMetadataField, metadataKeyOf } from '../filters/metadata'
 import { iconFor } from '../filters/fields'
 import { folderOf, groupFiles, typeName } from '../filters/grouping'
 import SortHeader from './SortHeader.vue'
@@ -99,6 +102,25 @@ import type { ColumnPref, FileResult } from '../types/Search'
 
 const { t } = useI18n()
 const preferences = usePreferencesStore()
+const search = useSearchStore()
+
+const metadataField = (id: string) => search.schema?.metadata.find((f) => f.field === id)
+
+/**
+ * Falls back to the bare key, so an uninstalled app leaves a heading not a blank.
+ * @param id
+ */
+function metadataLabel(id: string): string {
+  return metadataField(id)?.label ?? metadataKeyOf(id)
+}
+
+/**
+ * Double-click opens the file where Nextcloud itself would.
+ * @param file
+ */
+function open(file: FileResult) {
+  window.open(fileLink(file), '_blank', 'noreferrer')
+}
 
 const props = defineProps<{
   files: FileResult[]
@@ -125,6 +147,9 @@ function headerOf(column: ColumnPref): string {
   if (column.label) {
     return column.label
   }
+  if (isMetadataField(column.id)) {
+    return metadataLabel(column.id)
+  }
   switch (column.id) {
     case 'name': return t('Name')
     case 'folder': return t('Folder')
@@ -141,6 +166,10 @@ function headerOf(column: ColumnPref): string {
  * @param id
  */
 function sortableAs(id: string): string | null {
+  if (isMetadataField(id)) {
+    // Only indexed keys have anything to sort on.
+    return metadataField(id)?.filterable ? id : null
+  }
   switch (id) {
     case 'name': return 'name'
     case 'size': return 'size'
@@ -155,6 +184,9 @@ function cellClass(id: string): string {
 }
 
 function cellText(file: FileResult, id: string): string {
+  if (isMetadataField(id)) {
+    return file.metadata?.[metadataKeyOf(id)] ?? ''
+  }
   switch (id) {
     case 'folder': return folderOf(file)
     case 'size': return file.isFolder ? '—' : formatSize(file.size)

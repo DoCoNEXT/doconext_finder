@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OCA\DcnFinder\Service;
 
 use OCA\DcnFinder\AppInfo\AppConstants;
+use OCA\DcnFinder\Search\MetadataFields;
 use OCP\Config\IUserConfig;
 
 /**
@@ -30,11 +31,13 @@ class PreferencesService
     /** Shown unless the user says otherwise; `created` and `type` start hidden. */
     private const DEFAULT_VISIBLE = ['name', 'folder', 'size', 'modified'];
 
-    /** Fields the result list can be grouped by; '' means no grouping. */
+    /** Built-in grouping fields; '' means no grouping. A `meta:` key also works. */
     public const GROUPINGS = ['', 'folder', 'type', 'modified'];
 
-    public function __construct(private IUserConfig $userConfig)
-    {
+    public function __construct(
+        private IUserConfig $userConfig,
+        private MetadataFields $metadataFields,
+    ) {
     }
 
     /** @return array<string,mixed> */
@@ -65,15 +68,33 @@ class PreferencesService
     {
         return [
             'columns'  => $this->sanitiseColumns($raw['columns'] ?? null),
-            'grouping' => in_array($raw['grouping'] ?? '', self::GROUPINGS, true) ? (string)$raw['grouping'] : '',
+            'grouping' => $this->sanitiseGrouping((string)($raw['grouping'] ?? '')),
         ];
     }
 
+    private function sanitiseGrouping(string $grouping): string
+    {
+        if (in_array($grouping, self::GROUPINGS, true)) {
+            return $grouping;
+        }
+
+        // Grouping by a metadata value is fine as long as the key still exists —
+        // an app can be uninstalled between saving the preference and reading it.
+        return MetadataFields::isMetadata($grouping)
+            && $this->metadataFields->exists(MetadataFields::key($grouping))
+                ? $grouping
+                : '';
+    }
+
     /**
-     * Returns every known column exactly once, in the user's order, with unknown
-     * ids dropped and missing ones appended in their default order — so a column
-     * added in a later version shows up for existing users instead of silently
-     * never appearing.
+     * Returns the built-in columns exactly once in the user's order, plus any
+     * metadata columns they added. Unknown ids are dropped and missing built-ins
+     * appended in their default order, so a column added in a later version shows
+     * up for existing users instead of silently never appearing.
+     *
+     * Metadata columns are only ever present because the user asked for them:
+     * this server advertises around a hundred keys, and defaulting them on would
+     * bury the grid.
      *
      * @return list<array{id: string, visible: bool, label: string}>
      */
@@ -85,7 +106,9 @@ class PreferencesService
                 continue;
             }
             $id = (string)($entry['id'] ?? '');
-            if (!in_array($id, self::COLUMNS, true) || isset($byId[$id])) {
+            $known = in_array($id, self::COLUMNS, true)
+                || (MetadataFields::isMetadata($id) && $this->metadataFields->exists(MetadataFields::key($id)));
+            if (!$known || isset($byId[$id])) {
                 continue;
             }
             $byId[$id] = [

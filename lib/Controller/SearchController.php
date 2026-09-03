@@ -6,6 +6,7 @@ namespace OCA\DcnFinder\Controller;
 
 use OCA\DcnFinder\Search\FileCondition;
 use OCA\DcnFinder\Search\FileQuery;
+use OCA\DcnFinder\Search\MetadataFields;
 use OCA\DcnFinder\Service\FileSearchService;
 use OCP\AppFramework\ApiController;
 use OCP\AppFramework\Http;
@@ -34,6 +35,7 @@ class SearchController extends ApiController
         string $appName,
         IRequest $request,
         private FileSearchService $service,
+        private MetadataFields $metadataFields,
         private IUserSession $userSession,
         private LoggerInterface $logger,
     ) {
@@ -53,6 +55,10 @@ class SearchController extends ApiController
             'operators' => FileCondition::FIELD_OPERATORS,
             'sorts'     => FileQuery::SORTS,
             'maxLimit'  => FileQuery::MAX_LIMIT,
+            // Whatever this server's apps registered — when DoCoNEXT Core is
+            // installed its fields appear here without Finder knowing about it.
+            'metadata'          => $this->metadataFields->all(),
+            'metadataOperators' => FileCondition::METADATA_OPERATORS,
         ]);
     }
 

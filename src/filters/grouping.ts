@@ -5,6 +5,7 @@
  * selecting one, and the search backend has no grouping of its own. The cost is
  * that it only covers what is loaded — which is why "Load all" exists.
  */
+import { isMetadataField, metadataKeyOf } from './metadata'
 import type { Translate } from './presets'
 import type { FileResult } from '../types/Search'
 
@@ -96,6 +97,11 @@ export function groupFiles(t: Translate, files: FileResult[], grouping: string):
 }
 
 function keyFor(t: Translate, file: FileResult, grouping: string): string {
+  // A file without the field still needs a group, or it would vanish from a
+  // grouped view while counting toward the result total.
+  if (isMetadataField(grouping)) {
+    return file.metadata?.[metadataKeyOf(grouping)] || t('(not set)')
+  }
   switch (grouping) {
     case 'folder': return folderOf(file) || '/'
     case 'type': return typeName(t, file)

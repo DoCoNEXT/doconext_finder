@@ -79,7 +79,11 @@ const selection = useSelectionStore()
 const appId = APP_ID
 
 // Loaded once for the whole app: every page shows the same grid.
-onMounted(() => preferences.load())
+onMounted(() => {
+  preferences.load()
+  // Loaded here rather than per page: Favorites needs the metadata labels too.
+  store.loadSchema()
+})
 const page = ref<'search' | 'favorites' | 'saved'>('search')
 
 /**

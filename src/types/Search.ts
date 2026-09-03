@@ -25,6 +25,8 @@ export interface FileResult {
 	permissions: number
 	/** Mutated optimistically by the star toggle. */
 	favorite: boolean
+	/** Registry key → displayable value, for keys this file actually carries. */
+	metadata: Record<string, string>
 }
 
 export interface SearchResponse {
@@ -36,6 +38,17 @@ export interface SearchResponse {
 }
 
 /** The server describes its own filterable surface, so menus aren't hardcoded. */
+export interface MetadataField {
+	/** Bare registry key, e.g. dcn_core_rechtsgebied. */
+	key: string
+	/** How the API addresses it, e.g. meta:dcn_core_rechtsgebied. */
+	field: string
+	label: string
+	type: string
+	/** Only indexed keys can be filtered or sorted on. */
+	filterable: boolean
+}
+
 export interface FieldsResponse {
 	/** field name → value type ('string' | 'integer' | 'boolean') */
 	fields: Record<string, string>
@@ -43,6 +56,9 @@ export interface FieldsResponse {
 	operators: Record<string, Operator[]>
 	sorts: string[]
 	maxLimit: number
+	/** Whatever this server's apps registered — Core's fields appear here. */
+	metadata: MetadataField[]
+	metadataOperators: Operator[]
 }
 
 export interface SearchRequest {
