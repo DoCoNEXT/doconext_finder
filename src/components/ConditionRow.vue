@@ -197,13 +197,20 @@ const dateValue = computed({
 <style scoped lang="scss">
 .condition {
   display: flex;
-  align-items: center;
+  // The two dropdowns carry a label above them and the value box does not, so
+  // centring the row would hang the boxes at different heights. They line up on
+  // their bottom edge instead — the line the eye follows across the row.
+  align-items: end;
   gap: 8px;
   margin-bottom: 8px;
 
-  &__field,
-  &__operator {
-    min-width: 170px;
+  // NcSelect reserves a gap under itself for a row of its own; here the row is
+  // the alignment line, so the gap would lift the dropdowns off it. Their width
+  // is the library's own, which is what puts them under the Type and Modified
+  // dropdowns of the row above.
+  .condition__field,
+  .condition__operator {
+    margin-bottom: 0;
   }
 
   &__value {
