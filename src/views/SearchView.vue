@@ -1,17 +1,23 @@
 <template>
   <div class="finder">
+    <!-- The box first, on a line of its own with the two buttons that act on
+         it; the filters that narrow it sit underneath. Type and Modified used
+         to share the line and pushed the box down to a third of the width. -->
     <div class="finder__bar">
-      <NcTextField v-model="store.query.term"
-                   class="finder__term"
-                   :label="t('Search files')"
-                   :label-outside="true"
-                   :placeholder="t('Search by name…')"
-                   @keydown.enter="search">
-        <template #icon>
-          <NcIconSvgWrapper :path="mdiMagnify" :size="20" />
-        </template>
-      </NcTextField>
+      <SearchBox v-model="store.query.term"
+                 class="finder__term"
+                 @search="search"
+                 @pick="runSuggestion" />
 
+      <NcButton variant="primary" :disabled="store.loading" @click="search">
+        {{ t('Search') }}
+      </NcButton>
+      <NcButton :disabled="!store.hasCriteria" @click="save">
+        {{ t('Save') }}
+      </NcButton>
+    </div>
+
+    <div class="finder__presets">
       <NcSelect v-model="typeOption"
                 class="finder__preset"
                 label="label"
@@ -25,13 +31,6 @@
                 :options="timeOptions"
                 :clearable="false"
                 :input-label="t('Modified')" />
-
-      <NcButton variant="primary" :disabled="store.loading" @click="search">
-        {{ t('Search') }}
-      </NcButton>
-      <NcButton :disabled="!store.hasCriteria" @click="save">
-        {{ t('Save') }}
-      </NcButton>
     </div>
 
     <details class="finder__filters" :open="store.query.conditions.length > 0">
@@ -87,6 +86,7 @@
                    :selected-id="selection.file?.fileid"
                    @sort="store.sortBy(t, $event)"
                    @toggle-favorite="store.toggleFavorite"
+                   @changed="refresh"
                    @select="selection.select($event, preferences.sidebarPinned)" />
       </template>
     </div>
@@ -118,24 +118,26 @@ import {
   NcLoadingIcon,
   NcNoteCard,
   NcSelect,
-  NcTextField,
 } from '@nextcloud/vue'
 import { mdiMagnify } from '@mdi/js'
 import { useI18n } from '../composables/useI18n'
 import { useSearchStore } from '../stores/searchStore'
 import { useSelectionStore } from '../stores/selectionStore'
 import { usePreferencesStore } from '../stores/preferencesStore'
-import { SearchApi } from '../services/SearchApi'
+import { useHistoryStore } from '../stores/historyStore'
 import { anyTime, anyType, fileTypePresets, modifiedPresets } from '../filters/presets'
 import ConditionRow from '../components/ConditionRow.vue'
 import FileTable from '../components/FileTable.vue'
+import SearchBox from '../components/SearchBox.vue'
 import ViewOptions from '../components/ViewOptions.vue'
 import type { FileTypePreset, ModifiedPreset } from '../filters/presets'
+import type { StoredSearch } from '../types/Search'
 
 const { t } = useI18n()
 const store = useSearchStore()
 const selection = useSelectionStore()
 const preferences = usePreferencesStore()
+const history = useHistoryStore()
 
 const emit = defineEmits<{ (e: 'saved'): void }>()
 
@@ -200,6 +202,27 @@ function search() {
   store.run(t, 0)
 }
 
+/**
+ * Re-reads the page that is on screen after a command changed a file. Not
+ * `search()`: that would jump back to the first page and record the search
+ * again, and neither is what "I just uploaded a new version" means.
+ */
+function refresh() {
+  store.run(t, store.offset, false)
+}
+
+/**
+ * Picking a suggestion is an explicit choice of a whole search, so it loads and
+ * runs it — unlike a click in the Searches list, which only selects.
+ * @param entry the saved or recent search that was picked
+ */
+function runSuggestion(entry: StoredSearch) {
+  history.markRun(entry)
+  store.apply(entry.query)
+  // Re-running a stored search is not itself a new search worth recording.
+  store.run(t, 0, entry.kind !== 'saved')
+}
+
 function page(direction: number) {
   store.run(t, store.offset + direction * store.pageSize, false)
 }
@@ -220,7 +243,7 @@ async function save() {
     return
   }
   try {
-    await SearchApi.save(name, '', { ...store.query })
+    await history.save(name, '', { ...store.query })
     emit('saved')
   } catch (e) {
     store.error = (e as Error).message
@@ -240,20 +263,30 @@ async function save() {
   min-height: 0;
   padding: 0 16px 12px;
 
+  // The box and the buttons that act on it, on one line and vertically centred
+  // on it — the buttons belong to the box, not to the row below.
   &__bar {
     display: flex;
-    align-items: end;
+    align-items: center;
     gap: 8px;
-    margin-bottom: 16px;
-    flex-wrap: wrap;
+    margin-bottom: 10px;
   }
 
   &__term {
-    flex: 2 1 240px;
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  &__presets {
+    display: flex;
+    align-items: end;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 16px;
   }
 
   &__preset {
-    flex: 1 1 170px;
+    flex: 0 1 220px;
     min-width: 170px;
   }
 

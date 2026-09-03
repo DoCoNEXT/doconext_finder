@@ -1,11 +1,16 @@
 <template>
   <div class="history">
-    <h3>{{ t('Saved searches') }}</h3>
+    <h3>{{ t('Searches') }}</h3>
+    <p class="muted">
+      {{ t('Click to select, double-click or use Run search to execute one.') }}
+    </p>
 
     <NcNoteCard v-if="error" type="error">{{ error }}</NcNoteCard>
-    <NcLoadingIcon v-if="loading" :size="28" class="history__loading" />
+    <NcLoadingIcon v-if="history.loading" :size="28" class="history__loading" />
 
-    <NcEmptyContent v-else-if="saved.length === 0"
+    <h4>{{ t('Saved') }}</h4>
+
+    <NcEmptyContent v-if="!history.loading && history.saved.length === 0"
                     :name="t('No saved searches yet')"
                     :description="t('Run a search, then use Save to keep it here.')">
       <template #icon>
@@ -14,13 +19,23 @@
     </NcEmptyContent>
 
     <ul v-else class="history__list">
-      <li v-for="entry in saved" :key="entry.id" class="history__item">
-        <button class="history__run" @click="run(entry)">
+      <li v-for="entry in history.saved"
+          :key="entry.id"
+          :class="['history__item', { 'history__item--selected': isSelected(entry) }]">
+        <button class="history__run"
+                @click="select(entry)"
+                @dblclick="run(entry)">
           <strong>{{ entry.name }}</strong>
           <span class="muted">{{ describe(entry) }}</span>
           <span v-if="entry.description" class="muted">{{ entry.description }}</span>
         </button>
         <NcActions :aria-label="t('Actions')">
+          <NcActionButton @click="run(entry)">
+            <template #icon>
+              <NcIconSvgWrapper :path="mdiPlayOutline" :size="20" />
+            </template>
+            {{ t('Run search') }}
+          </NcActionButton>
           <NcActionButton @click="startRename(entry)">
             <template #icon>
               <NcIconSvgWrapper :path="mdiPencilOutline" :size="20" />
@@ -38,13 +53,13 @@
     </ul>
 
     <div class="history__heading">
-      <h3>{{ t('Recent searches') }}</h3>
-      <NcButton v-if="recents.length" variant="tertiary" @click="clearRecents">
+      <h4>{{ t('Recent') }}</h4>
+      <NcButton v-if="history.recents.length" variant="tertiary" @click="clearRecents">
         {{ t('Clear') }}
       </NcButton>
     </div>
 
-    <NcEmptyContent v-if="!loading && recents.length === 0"
+    <NcEmptyContent v-if="!history.loading && history.recents.length === 0"
                     :name="t('No recent searches')"
                     :description="t('Searches you run are listed here.')">
       <template #icon>
@@ -53,12 +68,22 @@
     </NcEmptyContent>
 
     <ul v-else class="history__list">
-      <li v-for="entry in recents" :key="entry.id" class="history__item">
-        <button class="history__run" @click="run(entry)">
+      <li v-for="entry in history.recents"
+          :key="entry.id"
+          :class="['history__item', { 'history__item--selected': isSelected(entry) }]">
+        <button class="history__run"
+                @click="select(entry)"
+                @dblclick="run(entry)">
           <strong>{{ entry.query.term || t('(no search term)') }}</strong>
           <span class="muted">{{ describe(entry) }}</span>
         </button>
         <NcActions :aria-label="t('Actions')">
+          <NcActionButton @click="run(entry)">
+            <template #icon>
+              <NcIconSvgWrapper :path="mdiPlayOutline" :size="20" />
+            </template>
+            {{ t('Run search') }}
+          </NcActionButton>
           <NcActionButton @click="keep(entry)">
             <template #icon>
               <NcIconSvgWrapper :path="mdiContentSaveOutline" :size="20" />
@@ -88,47 +113,48 @@ import {
   NcLoadingIcon,
   NcNoteCard,
 } from '@nextcloud/vue'
-import { mdiContentSaveOutline, mdiDelete, mdiHistory, mdiPencilOutline } from '@mdi/js'
+import {
+  mdiContentSaveOutline,
+  mdiDelete,
+  mdiHistory,
+  mdiPencilOutline,
+  mdiPlayOutline,
+} from '@mdi/js'
 import { useI18n } from '../composables/useI18n'
-import { SearchApi } from '../services/SearchApi'
+import { useHistoryStore } from '../stores/historyStore'
 import { describeQuery } from '../filters/describe'
 import type { StoredSearch } from '../types/Search'
 
 const { t } = useI18n()
+const history = useHistoryStore()
 
 const emit = defineEmits<{ (e: 'run', entry: StoredSearch): void }>()
 
-const saved = ref<StoredSearch[]>([])
-const recents = ref<StoredSearch[]>([])
-const loading = ref(false)
+/**
+ * The row you clicked, not the search you ran. A single click used to execute
+ * the search and jump to another page, which made the list impossible to read
+ * through: every attempt to look at an entry left the page.
+ */
+const selected = ref<StoredSearch | null>(null)
 const error = ref('')
 
-onMounted(load)
-
-async function load() {
-  loading.value = true
-  error.value = ''
-  try {
-    const history = await SearchApi.history()
-    saved.value = history.saved
-    recents.value = history.recents
-  } catch (e) {
-    error.value = (e as Error).message
-  } finally {
-    loading.value = false
-  }
-}
-
-defineExpose({ load })
+onMounted(() => history.load())
 
 function describe(entry: StoredSearch): string {
   return describeQuery(t, entry.query)
 }
 
+function isSelected(entry: StoredSearch): boolean {
+  return selected.value?.kind === entry.kind && selected.value?.id === entry.id
+}
+
+function select(entry: StoredSearch) {
+  selected.value = isSelected(entry) ? null : entry
+}
+
 function run(entry: StoredSearch) {
-  if (entry.kind === 'saved') {
-    SearchApi.markRun(entry.id)
-  }
+  selected.value = entry
+  history.markRun(entry)
   emit('run', entry)
 }
 
@@ -141,12 +167,7 @@ async function keep(entry: StoredSearch) {
   if (name === null) {
     return
   }
-  try {
-    await SearchApi.save(name, '', entry.query)
-    await load()
-  } catch (e) {
-    error.value = (e as Error).message
-  }
+  await guard(() => history.save(name, '', entry.query))
 }
 
 async function startRename(entry: StoredSearch) {
@@ -154,27 +175,29 @@ async function startRename(entry: StoredSearch) {
   if (name === null) {
     return
   }
-  try {
-    await SearchApi.rename(entry.id, name, entry.description ?? '')
-    await load()
-  } catch (e) {
-    error.value = (e as Error).message
-  }
+  await guard(() => history.rename(entry, name, entry.description ?? ''))
 }
 
 async function remove(entry: StoredSearch) {
-  try {
-    await SearchApi.remove(entry.id)
-    await load()
-  } catch (e) {
-    error.value = (e as Error).message
+  if (isSelected(entry)) {
+    selected.value = null
   }
+  await guard(() => history.remove(entry))
 }
 
 async function clearRecents() {
+  await guard(() => history.clearRecents())
+}
+
+/**
+ * One place to turn a failed store action into a message; every one of them
+ * fails the same way and for the same reasons.
+ * @param action
+ */
+async function guard(action: () => Promise<unknown>) {
+  error.value = ''
   try {
-    await SearchApi.clearRecents()
-    await load()
+    await action()
   } catch (e) {
     error.value = (e as Error).message
   }
@@ -188,7 +211,12 @@ async function clearRecents() {
   padding: 0 24px 24px;
 
   h3 {
-    margin: 16px 0 8px;
+    margin: 8px 0 4px;
+    font-weight: 700;
+  }
+
+  h4 {
+    margin: 24px 0 8px;
     font-weight: 700;
   }
 
@@ -196,7 +224,10 @@ async function clearRecents() {
     display: flex;
     align-items: center;
     gap: 8px;
-    margin-top: 24px;
+
+    h4 {
+      margin-bottom: 8px;
+    }
   }
 
   &__loading {
@@ -214,6 +245,11 @@ async function clearRecents() {
     align-items: center;
     gap: 8px;
     border-bottom: 1px solid var(--color-border);
+    border-radius: var(--border-radius);
+
+    &--selected {
+      background: var(--color-primary-element-light);
+    }
   }
 
   &__run {
