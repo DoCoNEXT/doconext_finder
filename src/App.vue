@@ -1,6 +1,25 @@
 <template>
   <NcContent :app-name="appId" :class="railClass">
     <NcAppNavigation :aria-label="productName">
+      <!--
+        The rail toggle stands exactly where Nextcloud's own toggle stands, and
+        replaces it above the mobile breakpoint. This slot is the top of the
+        navigation and .app-navigation is the positioned ancestor, so the
+        stylesheet can pin it there without knowing how wide the sidebar is.
+      -->
+      <template #search>
+        <NcButton v-if="canRail"
+                  class="nav-rail-toggle"
+                  variant="tertiary"
+                  :aria-label="railToggleLabel"
+                  :title="railToggleLabel"
+                  @click="toggleRail">
+          <template #icon>
+            <NcIconSvgWrapper :path="railed ? mdiMenu : mdiMenuOpen" :size="20" />
+          </template>
+        </NcButton>
+      </template>
+
       <template #list>
         <NcAppNavigationItem :name="t('Search')"
                              :active="page === 'search'"
@@ -28,19 +47,10 @@
       <!--
         Settings belongs at the foot of the navigation, where Nextcloud's own
         apps put it: it is not one of the places you work, it is where you go to
-        change how they behave. The rail toggle keeps it company — it is the
-        same kind of thing, and the stylesheet hides the library's own toggle
-        wherever this one is offered.
+        change how they behave.
       -->
       <template #footer>
         <ul class="finder-nav__footer">
-          <NcAppNavigationItem v-if="canRail"
-                               :name="railed ? t('Expand menu') : t('Collapse menu')"
-                               @click="toggleRail">
-            <template #icon>
-              <NcIconSvgWrapper :path="railed ? mdiMenu : mdiMenuOpen" :size="20" />
-            </template>
-          </NcAppNavigationItem>
           <NcAppNavigationItem :name="t('Settings')"
                                :active="page === 'settings'"
                                @click="go('settings')">
@@ -89,6 +99,7 @@ import {
   NcAppContent,
   NcAppNavigation,
   NcAppNavigationItem,
+  NcButton,
   NcContent,
   NcIconSvgWrapper,
 } from '@nextcloud/vue'
@@ -125,6 +136,8 @@ const selection = useSelectionStore()
 const history = useHistoryStore()
 
 const { railed, canRail, railClass, toggleRail } = useNavigationRail(`${APP_ID}-navigation-rail`)
+
+const railToggleLabel = computed(() => (railed.value ? t('Expand menu') : t('Collapse menu')))
 
 const appId = APP_ID
 const productName = PRODUCT_NAME

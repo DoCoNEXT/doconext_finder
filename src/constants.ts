@@ -14,6 +14,8 @@ interface AppConfig {
 	displayName: string
 	/** True when the Files Preview app is installed and its bundle was loaded. */
 	richPreview: boolean
+	/** Extensions "Open in local app" hands to DoCoNEXT Bridge; admin-configurable. */
+	bridgeExtensions: string[]
 }
 
 let config: AppConfig
@@ -34,6 +36,15 @@ export const APP_ID = config.appId
  * back to Nextcloud's own thumbnail.
  */
 export const HAS_RICH_PREVIEW = config.richPreview === true
+
+/**
+ * Extensions that go to DoCoNEXT Bridge rather than to the Nextcloud desktop
+ * client, lower-cased and without dots.
+ *
+ * Configured server-side because DoCoNEXT Core offers the same action: a rule
+ * duplicated across two frontends is a rule that will disagree with itself.
+ */
+export const BRIDGE_EXTENSIONS: string[] = config.bridgeExtensions ?? []
 export const API_BASE = `/apps/${APP_ID}/api`
 
 const DEFAULT_PRODUCT_NAME = config.appName

@@ -20,4 +20,17 @@ final class AppConstants
 
     /** Fallback shown when no custom display name is configured. */
     public const DEFAULT_DISPLAY_NAME = 'DoCoNEXT Finder';
+
+    /**
+     * app-config key: which file extensions "Open in local app" hands to DoCoNEXT
+     * Bridge instead of to the Nextcloud desktop client.
+     */
+    public const BRIDGE_EXTENSIONS_KEY = 'bridge_extensions';
+
+    /**
+     * Email formats, because they are the case the desktop client cannot serve: a
+     * .msg opens in no mail client outside Windows without being converted first.
+     * An admin can extend this as other such formats turn up.
+     */
+    public const DEFAULT_BRIDGE_EXTENSIONS = 'eml,msg';
 }

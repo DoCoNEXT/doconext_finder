@@ -26,6 +26,7 @@ class InitialStateProvider
         private IInitialState $initialState,
         private IAppConfig $appConfig,
         private IAppManager $appManager,
+        private BridgeSettings $bridgeSettings,
     ) {
     }
 
@@ -40,6 +41,9 @@ class InitialStateProvider
             // Whether the page loaded the Files Preview bundle, so the frontend
             // knows to wait for its custom element instead of guessing.
             'richPreview' => $this->appManager->isEnabledForUser(self::PREVIEW_APP_ID),
+            // Which files go to DoCoNEXT Bridge instead of the desktop client. The
+            // rule is the server's so every frontend answers the same way.
+            'bridgeExtensions' => $this->bridgeSettings->extensions(),
         ]);
     }
 }

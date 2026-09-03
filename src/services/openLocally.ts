@@ -1,6 +1,7 @@
 /**
  * Opening a file on the person's own machine. Two routes, because the two cases
- * genuinely differ.
+ * genuinely differ, and which file takes which route is an administrator's
+ * choice rather than a constant in this file.
  *
  * **Ordinary files** go to the Nextcloud desktop client, with the same handshake
  * the Files app uses: ask the server for a one-shot token, then navigate to
@@ -20,19 +21,26 @@ import axios from '@nextcloud/axios'
 import { generateOcsUrl } from '@nextcloud/router'
 import { getCurrentUser } from '@nextcloud/auth'
 import { encodePath } from './dav'
+import { BRIDGE_EXTENSIONS } from '../constants'
 import type { FileResult } from '../types/Search'
 
 interface TokenResponse { ocs: { data: { token: string } } }
 
-/** Extensions the desktop client cannot usefully open, so the bridge handles them. */
-const MAIL_EXTENSIONS = ['.eml', '.msg']
+/**
+ * Whether this file is one the desktop client cannot usefully open.
+ *
+ * The list comes from the server, not from here: DoCoNEXT Core offers the same
+ * action, and an administrator may add formats as they turn up.
+ * @param file the row being opened
+ */
+function goesToBridge(file: FileResult): boolean {
+  const name = file.name.toLowerCase()
 
-function isMail(file: FileResult): boolean {
-  return MAIL_EXTENSIONS.some((extension) => file.name.toLowerCase().endsWith(extension))
+  return BRIDGE_EXTENSIONS.some((extension) => name.endsWith(`.${extension}`))
 }
 
 export async function openLocally(file: FileResult): Promise<void> {
-  if (isMail(file)) {
+  if (goesToBridge(file)) {
     // Only a file id travels — never a path. Any page can invoke a custom scheme,
     // so the bridge resolves and fetches the file itself with its own credentials
     // rather than trusting anything in the URL.

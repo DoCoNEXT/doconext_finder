@@ -29,7 +29,7 @@ things up all day.
 Everything works on a plain Nextcloud. When the DoCoNEXT Core app is also
 installed, Finder additionally filters and groups on Core's metadata fields.
 	]]></description>
-	<version>0.8.0</version>
+	<version>0.9.0</version>
 	<licence>AGPL-3.0-or-later</licence>
 	<author mail="support@doconext.com" homepage="https://doconext.com">DoCoNEXT</author>
 	<namespace>DcnFinder</namespace>

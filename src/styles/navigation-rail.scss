@@ -26,6 +26,21 @@ $rail-breakpoint: 1024px;
   }
 }
 
+// ...and stands exactly where that one stood. These offsets are the library's
+// own, so the control does not move when it changes hands: at the navigation's
+// inline-end edge, spilling over the content, one clickable area wide. Anchored
+// to .app-navigation, which is the positioned ancestor, so it follows the rail
+// in and out without anything having to know the width.
+.nav-rail-toggle {
+  position: absolute;
+  z-index: 2;
+  top: var(--app-navigation-padding);
+  inset-inline-end: calc(0px - var(--app-navigation-padding));
+  margin-inline-end: calc(-1 * var(--default-clickable-area));
+  // The content shows through underneath it.
+  background-color: var(--color-main-background);
+}
+
 .app--rail {
   :deep(.app-navigation) {
     width: calc(var(--default-clickable-area) + var(--app-navigation-padding) * 2);
