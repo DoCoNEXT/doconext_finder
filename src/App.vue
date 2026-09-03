@@ -61,7 +61,7 @@
         <ul class="finder-nav__footer">
           <NcAppNavigationItem :name="t('Settings')" @click="openSettings">
             <template #icon>
-              <NcIconSvgWrapper :path="mdiCogOutline" :size="20" />
+              <NcIconSvgWrapper :svg="cog" :size="20" />
             </template>
           </NcAppNavigationItem>
         </ul>
@@ -75,7 +75,7 @@
         which is the whole reason to leave the page.
       -->
       <KeepAlive>
-        <SearchView v-if="page === 'search'" @saved="go('searches')" />
+        <SearchView v-if="page === 'search'" />
         <FavoritesView v-else-if="page === 'favorites'" ref="favorites" />
         <SearchesView v-else-if="page === 'searches'" @run="runStored" />
       </KeepAlive>
@@ -109,7 +109,6 @@ import {
   NcIconSvgWrapper,
 } from '@nextcloud/vue'
 import {
-  mdiCogOutline,
   mdiMagnify,
   mdiStar,
   mdiTextSearch,
@@ -117,7 +116,7 @@ import {
 import { generateUrl } from '@nextcloud/router'
 import { useI18n } from './composables/useI18n'
 import { useNavigationRail } from './composables/useNavigationRail'
-import { panelLeftClose, panelLeftOpen } from './icons/panelLeft'
+import { cog, panelLeftClose, panelLeftOpen } from './icons/lucide'
 import { useSearchStore } from './stores/searchStore'
 import { usePreferencesStore } from './stores/preferencesStore'
 import { useSelectionStore } from './stores/selectionStore'
