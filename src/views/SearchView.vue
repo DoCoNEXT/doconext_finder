@@ -125,6 +125,7 @@ import { useSearchStore } from '../stores/searchStore'
 import { useSelectionStore } from '../stores/selectionStore'
 import { usePreferencesStore } from '../stores/preferencesStore'
 import { useHistoryStore } from '../stores/historyStore'
+import { useSaveSearch } from '../composables/useSaveSearch'
 import { anyTime, anyType, fileTypePresets, modifiedPresets } from '../filters/presets'
 import ConditionRow from '../components/ConditionRow.vue'
 import FileTable from '../components/FileTable.vue'
@@ -138,8 +139,7 @@ const store = useSearchStore()
 const selection = useSelectionStore()
 const preferences = usePreferencesStore()
 const history = useHistoryStore()
-
-const emit = defineEmits<{ (e: 'saved'): void }>()
+const { saveSearch } = useSaveSearch()
 
 const typeOptions = fileTypePresets(t)
 const timeOptions = modifiedPresets(t)
@@ -237,14 +237,14 @@ function addCondition() {
   store.query.conditions.push({ field, operator, value: '' })
 }
 
+/**
+ * Saving used to jump to the Searches page, which threw away the results you
+ * were looking at and the criteria you were still refining. Saving is a note
+ * to self, not a destination: the toast says it worked and the page stays put.
+ */
 async function save() {
-  const name = window.prompt(t('Name this search'), store.query.term || t('Saved search'))
-  if (name === null) {
-    return
-  }
   try {
-    await history.save(name, '', { ...store.query })
-    emit('saved')
+    await saveSearch(store.query, store.query.term || t('Saved search'))
   } catch (e) {
     store.error = (e as Error).message
   }

@@ -33,6 +33,16 @@ export const useHistoryStore = defineStore('history', {
      * @param state
      */
     suggestions: (state): StoredSearch[] => [...state.saved, ...state.recents],
+
+    /**
+     * A saved search by name, matched the way a person reads a name: trimmed
+     * and regardless of case, so "Reports" and "reports " are the same one.
+     * @param state
+     */
+    savedNamed: (state) => (name: string): StoredSearch | undefined => {
+      const wanted = name.trim().toLocaleLowerCase()
+      return state.saved.find((entry) => (entry.name ?? '').trim().toLocaleLowerCase() === wanted)
+    },
   },
 
   actions: {
@@ -59,6 +69,17 @@ export const useHistoryStore = defineStore('history', {
 
     async save(name: string, description: string, query: StoredSearch['query']) {
       await SearchApi.save(name, description, query)
+      await this.load(true)
+    },
+
+    /**
+     * Saves over an existing saved search rather than adding a second one
+     * under the same name.
+     * @param entry the saved search to overwrite
+     * @param query what it should search for from now on
+     */
+    async overwrite(entry: StoredSearch, query: StoredSearch['query']) {
+      await SearchApi.replaceQuery(entry.id, query)
       await this.load(true)
     },
 

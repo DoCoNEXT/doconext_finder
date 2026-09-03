@@ -109,6 +109,29 @@ class SearchHistoryService
         return $this->mapper->update($entry)->toArray();
     }
 
+    /**
+     * Replaces the query a saved search holds, keeping its name and its place
+     * in the list. Renaming deliberately cannot do this — see above — but
+     * saving over a name that is already taken can, because the user was asked
+     * about that one search by name and said to replace it.
+     *
+     * @param array<string,mixed> $query
+     * @return array<string,mixed>
+     * @throws DoesNotExistException
+     */
+    public function replaceQuery(string $userId, int $id, array $query): array
+    {
+        $entry = $this->mapper->findOwned($id, $userId);
+        if ($entry->getKind() !== SavedSearch::KIND_SAVED) {
+            throw new DoesNotExistException('Only saved searches can be replaced');
+        }
+        $entry->setQuery(json_encode($query, JSON_THROW_ON_ERROR));
+        $entry->setFingerprint(self::fingerprint($query));
+        $entry->setLastRun(time());
+
+        return $this->mapper->update($entry)->toArray();
+    }
+
     /** @throws DoesNotExistException */
     public function touch(string $userId, int $id): void
     {

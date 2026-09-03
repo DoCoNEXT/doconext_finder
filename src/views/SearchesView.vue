@@ -154,11 +154,13 @@ import {
 } from '@mdi/js'
 import { useI18n } from '../composables/useI18n'
 import { useHistoryStore } from '../stores/historyStore'
+import { useSaveSearch } from '../composables/useSaveSearch'
 import { describeQuery } from '../filters/describe'
 import type { StoredSearch } from '../types/Search'
 
 const { t } = useI18n()
 const history = useHistoryStore()
+const { saveSearch } = useSaveSearch()
 
 const emit = defineEmits<{ (e: 'run', entry: StoredSearch): void }>()
 
@@ -195,11 +197,7 @@ function run(entry: StoredSearch) {
  * @param entry
  */
 async function keep(entry: StoredSearch) {
-  const name = window.prompt(t('Name this search'), entry.query.term || t('Saved search'))
-  if (name === null) {
-    return
-  }
-  await guard(() => history.save(name, '', entry.query))
+  await guard(() => saveSearch(entry.query, entry.query.term || t('Saved search')))
 }
 
 async function startRename(entry: StoredSearch) {

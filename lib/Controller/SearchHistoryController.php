@@ -95,6 +95,27 @@ class SearchHistoryController extends ApiController
         ));
     }
 
+    /**
+     * Declared before the bare `/{id}` PUT: the more specific path first, per
+     * the app's routing convention.
+     */
+    #[NoAdminRequired]
+    #[FrontpageRoute(verb: 'PUT', url: '/api/searches/{id}/query')]
+    public function replaceQuery(int $id, array $query = []): DataResponse
+    {
+        if ($query === []) {
+            return new DataResponse(['error' => 'query is required'], Http::STATUS_BAD_REQUEST);
+        }
+
+        return $this->withUser(function (string $uid) use ($id, $query) {
+            try {
+                return new DataResponse($this->service->replaceQuery($uid, $id, $query));
+            } catch (DoesNotExistException) {
+                return new DataResponse(['error' => 'not found'], Http::STATUS_NOT_FOUND);
+            }
+        });
+    }
+
     #[NoAdminRequired]
     #[FrontpageRoute(verb: 'PUT', url: '/api/searches/{id}')]
     public function rename(int $id, string $name = '', string $description = ''): DataResponse

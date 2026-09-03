@@ -114,6 +114,20 @@ export const SearchApi = {
   },
 
   /**
+   * Replaces what a saved search searches for, keeping its name and its id.
+   * @param id
+   * @param query
+   */
+  async replaceQuery(id: number, query: SearchState): Promise<StoredSearch> {
+    try {
+      const { data } = await axios.put<StoredSearch>(url(`/searches/${id}/query`), { query })
+      return data
+    } catch (error) {
+      throw describe(error)
+    }
+  },
+
+  /**
    * @param id
    */
   async remove(id: number): Promise<void> {
