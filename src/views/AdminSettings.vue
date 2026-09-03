@@ -51,7 +51,7 @@
                         :aria-label="t('Move up')"
                         @click="move(index, -1)">
                 <template #icon>
-                  <NcIconSvgWrapper :path="mdiArrowUp" :size="18" />
+                  <ArrowUp :size="18" />
                 </template>
               </NcButton>
               <NcButton variant="tertiary"
@@ -59,12 +59,12 @@
                         :aria-label="t('Move down')"
                         @click="move(index, 1)">
                 <template #icon>
-                  <NcIconSvgWrapper :path="mdiArrowDown" :size="18" />
+                  <ArrowDown :size="18" />
                 </template>
               </NcButton>
               <NcButton variant="tertiary" :aria-label="t('Remove')" @click="removeAt(index)">
                 <template #icon>
-                  <NcIconSvgWrapper :path="mdiClose" :size="18" />
+                  <X :size="18" />
                 </template>
               </NcButton>
             </div>
@@ -115,8 +115,8 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { NcButton, NcIconSvgWrapper, NcNoteCard, NcSettingsSection, NcTextField } from '@nextcloud/vue'
-import { mdiArrowDown, mdiArrowUp, mdiClose } from '@mdi/js'
+import { NcButton, NcNoteCard, NcSettingsSection, NcTextField } from '@nextcloud/vue'
+import { ArrowDown, ArrowUp, X } from '@lucide/vue'
 import axios from '@nextcloud/axios'
 import { generateUrl } from '@nextcloud/router'
 import { useI18n } from '../composables/useI18n'

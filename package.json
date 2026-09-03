@@ -16,7 +16,7 @@
     "extends @nextcloud/browserslist-config"
   ],
   "dependencies": {
-    "@mdi/js": "^7.4.47",
+    "@lucide/vue": "^1.40.0",
     "@nextcloud/auth": "^2.6.0",
     "@nextcloud/axios": "^2.5.2",
     "@nextcloud/dialogs": "^7.4.0",

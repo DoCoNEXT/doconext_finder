@@ -9,13 +9,13 @@
     <template v-for="command in commands" :key="command.id">
       <NcActionLink v-if="command.href" :href="command.href" :target="command.target">
         <template #icon>
-          <NcIconSvgWrapper :path="command.icon" :size="20" />
+          <component :is="command.icon" :size="20" />
         </template>
         {{ command.label }}
       </NcActionLink>
       <NcActionButton v-else @click="command.run?.()">
         <template #icon>
-          <NcIconSvgWrapper :path="command.icon" :size="20" />
+          <component :is="command.icon" :size="20" />
         </template>
         {{ command.label }}
       </NcActionButton>
@@ -25,7 +25,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import { NcActionButton, NcActionLink, NcActions, NcIconSvgWrapper } from '@nextcloud/vue'
+import { NcActionButton, NcActionLink, NcActions } from '@nextcloud/vue'
 import { useI18n } from '../composables/useI18n'
 import { useFileCommands } from '../composables/useFileCommands'
 import type { FileResult } from '../types/Search'

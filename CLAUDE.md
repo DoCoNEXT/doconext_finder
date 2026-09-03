@@ -44,6 +44,7 @@ img/           app.svg (white-filled) + app-dark.svg (black-filled)
 - Theme-safe colors: use `var(--color-primary-element)` / `-element-light` (never raw `var(--color-primary)`) for foreground/borders; `-text`-suffixed vars for text.
 - Read bootstrap data synchronously via `loadState` (`src/constants.ts`) — the PHP handler must call `InitialStateProvider::provide()`.
 - `NcCheckboxRadioSwitch` for toggles; `:deep()` to override styles inside Nc components.
+- UI icons come from **`@lucide/vue`** (`<Star :size="20" />`) — the set the other DoCoNEXT apps draw with — never `@mdi/js`, and never `NcIconSvgWrapper` around a path. A slotted Lucide `<svg>` is neither `.material-design-icon` nor `.icon-vue`, so it misses the icon box `NcActionButton`/`NcActionLink` size by class; `src/styles/action-icons.scss` gives it back (global, because NcActions teleports to `<body>`).
 
 ## Icons (NC33 + NC34)
 Ship **only** `img/app.svg` (white-filled, `fill="#ffffff"`) + `img/app-dark.svg` (black-filled). Draw both as **filled silhouettes with negative-space detail** — never stroke outlines (they collapse when NC force-fills `currentColor`). Do NOT add an app-id-named `img/<id>.svg` (breaks NC33).

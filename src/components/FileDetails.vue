@@ -19,7 +19,7 @@
                     :href="command.href"
                     :target="command.target">
         <template #icon>
-          <NcIconSvgWrapper :path="command.icon" :size="20" />
+          <component :is="command.icon" :size="20" />
         </template>
         {{ command.label }}
       </NcActionLink>
@@ -27,7 +27,7 @@
                       :key="command.id"
                       @click="command.run?.()">
         <template #icon>
-          <NcIconSvgWrapper :path="command.icon" :size="20" />
+          <component :is="command.icon" :size="20" />
         </template>
         {{ command.label }}
       </NcActionButton>
@@ -40,7 +40,7 @@
 
     <NcAppSidebarTab id="details" :name="t('Details')" :order="1">
       <template #icon>
-        <NcIconSvgWrapper :path="mdiInformationOutline" :size="20" />
+        <Info :size="20" />
       </template>
 
       <dl class="details">
@@ -98,7 +98,7 @@
     -->
     <NcAppSidebarTab v-if="!file.isFolder" id="preview" :name="t('Preview')" :order="2">
       <template #icon>
-        <NcIconSvgWrapper :path="mdiEyeOutline" :size="20" />
+        <Eye :size="20" />
       </template>
 
       <!--
@@ -119,7 +119,7 @@
                       :name="t('No preview available')"
                       :description="t('This file type cannot be shown here.')">
         <template #icon>
-          <NcIconSvgWrapper :path="mdiEyeOutline" />
+          <Eye />
         </template>
       </NcEmptyContent>
     </NcAppSidebarTab>
@@ -136,9 +136,8 @@ import {
   NcAppSidebar,
   NcAppSidebarTab,
   NcEmptyContent,
-  NcIconSvgWrapper,
 } from '@nextcloud/vue'
-import { mdiEyeOutline, mdiInformationOutline } from '@mdi/js'
+import { Eye, Info } from '@lucide/vue'
 import { generateUrl } from '@nextcloud/router'
 import { useI18n } from '../composables/useI18n'
 import { useSearchStore } from '../stores/searchStore'
@@ -262,24 +261,65 @@ const previewUrl = computed(() => {
   }
 }
 
-// Two tabs stacked icon-over-label take a whole band of the panel. Laid out as
-// a row they read as a switch instead of as two buttons, and give the details
-// back the space.
+// Two tabs stacked icon-over-label take a whole band of the panel, so they are
+// laid out as a row — but the library's tab is a button that fills half the
+// nav, marks the selected one with a grey fill, and underlines it with a 4px
+// bar sized at 80% of that half, which lands nowhere near the label it points
+// at. Drawn here as tabs instead: each as wide as its own label, on a shared
+// rule, with a hairline under the one you are on.
+// Every rule carries .button-vue on purpose. The library's own are
+// `.tab:not(.legacy).selected`, which ties with a nav-plus-tab selector on
+// specificity — and a tie is settled by which stylesheet loaded last, which is
+// the library's, since the sidebar arrives in a chunk of its own.
 :deep(.app-sidebar-tabs__nav) {
-  padding-inline: 8px;
+  gap: 2px;
+  padding: 0 8px;
+  border-bottom: 1px solid var(--color-border);
 
-  ul {
-    gap: 4px;
-  }
-
-  button {
+  .app-sidebar-tabs__tab.button-vue {
+    flex: 0 1 auto;
     flex-direction: row;
     gap: 6px;
-    min-height: 34px;
-    padding-block: 2px 4px;
+    min-width: 0;
+    height: 38px;
+    min-height: 38px;
+    padding: 0 10px;
+    border-radius: var(--border-radius) var(--border-radius) 0 0;
+    background-color: transparent;
+    color: var(--color-text-maxcontrast);
     font-size: 95%;
+    font-weight: 500;
+
+    &:hover {
+      background-color: var(--color-background-hover);
+      color: var(--color-main-text);
+    }
+
+    // A hairline sitting on the nav's border instead of a bar floating above
+    // it. The library's zero width and its slide-out are left alone: that is
+    // the animation, and it still reads right at this height.
+    &::after {
+      bottom: -1px;
+      height: 2px;
+      border-radius: 2px 2px 0 0;
+    }
+  }
+
+  .app-sidebar-tabs__tab.button-vue[aria-selected='true'] {
+    background-color: transparent;
+    color: var(--color-primary-element);
+
+    &:hover {
+      background-color: var(--color-background-hover);
+    }
+
+    // The full width of the tab, because the tab is what it points at.
+    &::after {
+      width: 100%;
+    }
   }
 }
+
 </style>
 
 <!--

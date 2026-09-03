@@ -86,7 +86,7 @@
                       :name="t('No files found')"
                       :description="t('Try a different term, or loosen the filters.')">
         <template #icon>
-          <NcIconSvgWrapper :path="mdiMagnify" />
+          <Search />
         </template>
       </NcEmptyContent>
 
@@ -126,12 +126,11 @@ import {
   NcButton,
   NcCheckboxRadioSwitch,
   NcEmptyContent,
-  NcIconSvgWrapper,
   NcLoadingIcon,
   NcNoteCard,
   NcSelect,
 } from '@nextcloud/vue'
-import { mdiMagnify } from '@mdi/js'
+import { Search } from '@lucide/vue'
 import { useI18n } from '../composables/useI18n'
 import { useSearchStore } from '../stores/searchStore'
 import { useSelectionStore } from '../stores/selectionStore'

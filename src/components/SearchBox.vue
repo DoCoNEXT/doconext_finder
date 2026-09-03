@@ -12,7 +12,7 @@
                  @focus="open = true"
                  @keydown="onKeydown">
       <template #icon>
-        <NcIconSvgWrapper :path="mdiMagnify" :size="20" />
+        <Search :size="20" />
       </template>
     </NcTextField>
 
@@ -29,8 +29,7 @@
           :class="['search-box__item', { 'search-box__item--active': index === highlighted }]"
           @mousedown.prevent="choose(entry)"
           @mousemove="highlighted = index">
-        <NcIconSvgWrapper :path="entry.kind === 'saved' ? mdiContentSaveOutline : mdiHistory"
-                          :size="18" />
+        <component :is="entry.kind === 'saved' ? Save : RotateCcwClock" :size="18" />
         <span class="search-box__label">
           <strong>{{ titleOf(entry) }}</strong>
           <span class="search-box__hint">{{ describeQuery(t, entry.query) || t('No filters') }}</span>
@@ -42,8 +41,8 @@
 
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
-import { NcIconSvgWrapper, NcTextField } from '@nextcloud/vue'
-import { mdiContentSaveOutline, mdiHistory, mdiMagnify } from '@mdi/js'
+import { NcTextField } from '@nextcloud/vue'
+import { RotateCcwClock, Save, Search } from '@lucide/vue'
 import { useI18n } from '../composables/useI18n'
 import { useHistoryStore } from '../stores/historyStore'
 import { describeQuery } from '../filters/describe'

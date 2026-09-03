@@ -1,0 +1,28 @@
+// Lucide icons in Nextcloud's action menus.
+
+// NcActionButton and NcActionLink size their icon slot by class rather than by
+// slot: a vue-material-design-icon arrives as `.material-design-icon` and
+// NcIconSvgWrapper as `.icon-vue`, and the library hands each a box one
+// clickable area wide. A Lucide <svg> is neither, so it lands in the row bare —
+// top-aligned by the row's own `align-items: flex-start`, and flush against the
+// label, without the leading gap every other Nextcloud menu has. Re-create the
+// box the library's own icons get.
+
+// Unscoped on purpose, and loaded from the entry point rather than a component:
+// NcActions teleports its popover to <body>, where no component's scope id
+// reaches.
+.action-button,
+.action-link {
+  // The library's own rule carries a data-v attribute, which ties this one on
+  // specificity — without !important the winner would be whichever stylesheet
+  // the bundler happens to emit last.
+  align-items: center !important;
+
+  > svg.lucide {
+    box-sizing: border-box;
+    flex: 0 0 auto;
+    width: var(--default-clickable-area);
+    height: var(--default-clickable-area);
+    padding: calc((var(--default-clickable-area) - 20px) / 2);
+  }
+}

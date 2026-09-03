@@ -17,7 +17,7 @@
                   :title="railToggleLabel"
                   @click="toggleRail">
           <template #icon>
-            <NcIconSvgWrapper :svg="railed ? panelLeftOpen : panelLeftClose" :size="20" />
+            <component :is="railed ? PanelLeftOpen : PanelLeftClose" :size="20" />
           </template>
         </NcButton>
       </template>
@@ -27,14 +27,14 @@
                              :active="page === 'search'"
                              @click="go('search')">
           <template #icon>
-            <NcIconSvgWrapper :svg="search" :size="20" />
+            <Search :size="20" />
           </template>
         </NcAppNavigationItem>
         <NcAppNavigationItem :name="t('Favorites')"
                              :active="page === 'favorites'"
                              @click="go('favorites')">
           <template #icon>
-            <NcIconSvgWrapper :svg="star" :size="20" />
+            <Star :size="20" />
           </template>
         </NcAppNavigationItem>
         <NcAppNavigationItem :name="t('Searches')"
@@ -46,7 +46,7 @@
               searches as well as saved ones, and a save icon claimed it was
               only the saved half.
             -->
-            <NcIconSvgWrapper :svg="textSearch" :size="20" />
+            <TextSearch :size="20" />
           </template>
         </NcAppNavigationItem>
       </template>
@@ -61,7 +61,7 @@
         <ul class="finder-nav__footer">
           <NcAppNavigationItem :name="t('Settings')" @click="openSettings">
             <template #icon>
-              <NcIconSvgWrapper :svg="cog" :size="20" />
+              <Cog :size="20" />
             </template>
           </NcAppNavigationItem>
         </ul>
@@ -106,12 +106,11 @@ import {
   NcAppNavigationItem,
   NcButton,
   NcContent,
-  NcIconSvgWrapper,
 } from '@nextcloud/vue'
 import { generateUrl } from '@nextcloud/router'
 import { useI18n } from './composables/useI18n'
 import { useNavigationRail } from './composables/useNavigationRail'
-import { cog, panelLeftClose, panelLeftOpen, search, star, textSearch } from './icons/lucide'
+import { Cog, PanelLeftClose, PanelLeftOpen, Search, Star, TextSearch } from '@lucide/vue'
 import { useSearchStore } from './stores/searchStore'
 import { usePreferencesStore } from './stores/preferencesStore'
 import { useSelectionStore } from './stores/selectionStore'

@@ -23,7 +23,7 @@
           with, so a row there and the list it came from read as one thing.
         -->
         <div class="history__heading">
-          <NcIconSvgWrapper :path="mdiContentSaveOutline" :size="20" />
+          <Save :size="20" />
           <h4>{{ t('Saved') }}</h4>
           <span v-if="history.saved.length" class="muted">{{ history.saved.length }}</span>
         </div>
@@ -33,7 +33,7 @@
                           :name="t('No saved searches yet')"
                           :description="t('Run a search, then use Save to keep it here.')">
             <template #icon>
-              <NcIconSvgWrapper :path="mdiContentSaveOutline" />
+              <Save />
             </template>
           </NcEmptyContent>
 
@@ -51,19 +51,19 @@
               <NcActions :aria-label="t('Actions')">
                 <NcActionButton @click="run(entry)">
                   <template #icon>
-                    <NcIconSvgWrapper :path="mdiPlayOutline" :size="20" />
+                    <Play :size="20" />
                   </template>
                   {{ t('Run search') }}
                 </NcActionButton>
                 <NcActionButton @click="startRename(entry)">
                   <template #icon>
-                    <NcIconSvgWrapper :path="mdiPencilOutline" :size="20" />
+                    <Pencil :size="20" />
                   </template>
                   {{ t('Rename') }}
                 </NcActionButton>
                 <NcActionButton @click="remove(entry)">
                   <template #icon>
-                    <NcIconSvgWrapper :path="mdiDelete" :size="20" />
+                    <Trash2 :size="20" />
                   </template>
                   {{ t('Delete') }}
                 </NcActionButton>
@@ -75,7 +75,7 @@
 
       <section class="history__column">
         <div class="history__heading">
-          <NcIconSvgWrapper :path="mdiHistory" :size="20" />
+          <RotateCcwClock :size="20" />
           <h4>{{ t('Recent') }}</h4>
           <span v-if="history.recents.length" class="muted">{{ history.recents.length }}</span>
           <NcButton v-if="history.recents.length"
@@ -91,7 +91,7 @@
                           :name="t('No recent searches')"
                           :description="t('Searches you run are listed here.')">
             <template #icon>
-              <NcIconSvgWrapper :path="mdiHistory" />
+              <RotateCcwClock />
             </template>
           </NcEmptyContent>
 
@@ -108,19 +108,19 @@
               <NcActions :aria-label="t('Actions')">
                 <NcActionButton @click="run(entry)">
                   <template #icon>
-                    <NcIconSvgWrapper :path="mdiPlayOutline" :size="20" />
+                    <Play :size="20" />
                   </template>
                   {{ t('Run search') }}
                 </NcActionButton>
                 <NcActionButton @click="keep(entry)">
                   <template #icon>
-                    <NcIconSvgWrapper :path="mdiContentSaveOutline" :size="20" />
+                    <Save :size="20" />
                   </template>
                   {{ t('Save this search') }}
                 </NcActionButton>
                 <NcActionButton @click="remove(entry)">
                   <template #icon>
-                    <NcIconSvgWrapper :path="mdiDelete" :size="20" />
+                    <Trash2 :size="20" />
                   </template>
                   {{ t('Delete') }}
                 </NcActionButton>
@@ -141,17 +141,16 @@ import {
   NcActions,
   NcButton,
   NcEmptyContent,
-  NcIconSvgWrapper,
   NcLoadingIcon,
   NcNoteCard,
 } from '@nextcloud/vue'
 import {
-  mdiContentSaveOutline,
-  mdiDelete,
-  mdiHistory,
-  mdiPencilOutline,
-  mdiPlayOutline,
-} from '@mdi/js'
+  Pencil,
+  Play,
+  RotateCcwClock,
+  Save,
+  Trash2,
+} from '@lucide/vue'
 import { useI18n } from '../composables/useI18n'
 import { useHistoryStore } from '../stores/historyStore'
 import { useSaveSearch } from '../composables/useSaveSearch'

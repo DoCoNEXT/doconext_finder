@@ -21,7 +21,7 @@
                       :name="t('No preview available')"
                       :description="t('This file type cannot be shown here.')">
         <template #icon>
-          <NcIconSvgWrapper :path="mdiEyeOutline" />
+          <Eye />
         </template>
       </NcEmptyContent>
 
@@ -39,8 +39,8 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { NcButton, NcEmptyContent, NcIconSvgWrapper, NcModal } from '@nextcloud/vue'
-import { mdiEyeOutline } from '@mdi/js'
+import { NcButton, NcEmptyContent, NcModal } from '@nextcloud/vue'
+import { Eye } from '@lucide/vue'
 import { generateUrl } from '@nextcloud/router'
 import { useI18n } from '../composables/useI18n'
 import { usePreviewStore } from '../stores/previewStore'

@@ -7,18 +7,19 @@
  * but this map does not know still shows — under its raw name — rather than
  * disappearing, so a server-side addition degrades to ugly instead of invisible.
  */
+import type { Component } from 'vue'
 import {
-  mdiArchiveOutline,
-  mdiFileDocumentOutline,
-  mdiFileExcelOutline,
-  mdiFileImageOutline,
-  mdiFileMusicOutline,
-  mdiFilePdfBox,
-  mdiFilePowerpointOutline,
-  mdiFileVideoOutline,
-  mdiFileWordOutline,
-  mdiFolder,
-} from '@mdi/js'
+  File,
+  FileArchive,
+  FileChartColumn,
+  FileImage,
+  FileMusic,
+  FilePenLine,
+  FileSpreadsheet,
+  FileText,
+  FileVideoCamera,
+  Folder,
+} from '@lucide/vue'
 
 /** How the value box behaves for a field. */
 export type InputKind = 'text' | 'date' | 'size' | 'none'
@@ -153,37 +154,39 @@ export function toDateInput(unix: number | string): string {
 }
 
 /**
- * Mimetype → an icon path, mirroring how the Files app groups types.
+ * Mimetype → the icon that stands for it, mirroring how the Files app groups
+ * types. Lucide draws no PDF of its own: the densely lined file is the closest
+ * to a page you read, which leaves the written-on file for word processors.
  * @param mimetype
  * @param isFolder
  */
-export function iconFor(mimetype: string, isFolder: boolean): string {
+export function iconFor(mimetype: string, isFolder: boolean): Component {
   if (isFolder) {
-    return mdiFolder
+    return Folder
   }
   if (mimetype.startsWith('image/')) {
-    return mdiFileImageOutline
+    return FileImage
   }
   if (mimetype.startsWith('video/')) {
-    return mdiFileVideoOutline
+    return FileVideoCamera
   }
   if (mimetype.startsWith('audio/')) {
-    return mdiFileMusicOutline
+    return FileMusic
   }
   if (mimetype === 'application/pdf') {
-    return mdiFilePdfBox
+    return FileText
   }
   if (/word|opendocument\.text/.test(mimetype)) {
-    return mdiFileWordOutline
+    return FilePenLine
   }
   if (/excel|spreadsheet|csv/.test(mimetype)) {
-    return mdiFileExcelOutline
+    return FileSpreadsheet
   }
   if (/powerpoint|presentation/.test(mimetype)) {
-    return mdiFilePowerpointOutline
+    return FileChartColumn
   }
   if (/zip|tar|gzip|compressed|rar/.test(mimetype)) {
-    return mdiArchiveOutline
+    return FileArchive
   }
-  return mdiFileDocumentOutline
+  return File
 }

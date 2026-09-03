@@ -50,7 +50,7 @@
               variant="tertiary"
               @click="$emit('remove')">
       <template #icon>
-        <NcIconSvgWrapper :path="mdiClose" :size="20" />
+        <X :size="20" />
       </template>
     </NcButton>
   </div>
@@ -62,11 +62,10 @@ import {
   NcButton,
   NcCheckboxRadioSwitch,
   NcDateTimePicker,
-  NcIconSvgWrapper,
   NcSelect,
   NcTextField,
 } from '@nextcloud/vue'
-import { mdiClose } from '@mdi/js'
+import { X } from '@lucide/vue'
 import { useI18n } from '../composables/useI18n'
 import {
   fieldHint,

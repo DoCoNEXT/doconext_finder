@@ -10,18 +10,19 @@
  * cannot honour.
  */
 import { computed } from 'vue'
+import type { Component } from 'vue'
 import {
-  mdiDownload,
-  mdiFolderOpen,
-  mdiFolderUploadOutline,
-  mdiLaptop,
-  mdiLinkVariant,
-  mdiOpenInNew,
-  mdiStar,
-  mdiStarOutline,
-  mdiTextBoxSearchOutline,
-  mdiUploadOutline,
-} from '@mdi/js'
+  Download,
+  ExternalLink,
+  FileSearch,
+  FolderOpen,
+  FolderUp,
+  Laptop,
+  Link,
+  Star,
+  StarOff,
+  Upload,
+} from '@lucide/vue'
 import { generateUrl } from '@nextcloud/router'
 import { showError, showSuccess } from '@nextcloud/dialogs'
 import { useI18n } from './useI18n'
@@ -35,8 +36,8 @@ import type { FileResult } from '../types/Search'
 export interface FileCommand {
   id: string
   label: string
-  /** An mdi path. */
-  icon: string
+  /** The icon that stands for the command. */
+  icon: Component
   /** Set for commands that are a link; the rest carry `run`. */
   href?: string
   target?: string
@@ -146,7 +147,7 @@ export function useFileCommands(onChanged?: (_file: FileResult) => void) {
       {
         id: 'open',
         label: t('Open in Files'),
-        icon: mdiOpenInNew,
+        icon: ExternalLink,
         href: fileLink(file),
         target: '_blank',
       },
@@ -156,7 +157,7 @@ export function useFileCommands(onChanged?: (_file: FileResult) => void) {
       commands.push({
         id: 'local',
         label: t('Open in local app'),
-        icon: mdiLaptop,
+        icon: Laptop,
         run: () => openInDesktop(file),
       })
     }
@@ -164,7 +165,7 @@ export function useFileCommands(onChanged?: (_file: FileResult) => void) {
     commands.push({
       id: 'folder',
       label: t('Open containing folder'),
-      icon: mdiFolderOpen,
+      icon: FolderOpen,
       href: folderLink(file),
       target: '_blank',
     })
@@ -174,19 +175,19 @@ export function useFileCommands(onChanged?: (_file: FileResult) => void) {
         {
           id: 'preview',
           label: t('Open full preview'),
-          icon: mdiTextBoxSearchOutline,
+          icon: FileSearch,
           run: () => preview.open(file),
         },
         {
           id: 'download',
           label: t('Download'),
-          icon: mdiDownload,
+          icon: Download,
           run: () => downloadFile(file),
         },
         {
           id: 'version',
           label: t('Upload new version'),
-          icon: mdiUploadOutline,
+          icon: Upload,
           run: () => replaceVersion(file),
         },
       )
@@ -195,7 +196,7 @@ export function useFileCommands(onChanged?: (_file: FileResult) => void) {
     commands.push({
       id: 'upload',
       label: t('Upload to this folder'),
-      icon: mdiFolderUploadOutline,
+      icon: FolderUp,
       run: () => uploadHere(file),
     })
 
@@ -203,7 +204,7 @@ export function useFileCommands(onChanged?: (_file: FileResult) => void) {
       commands.push({
         id: 'favorite',
         label: file.favorite ? t('Remove from favorites') : t('Add to favorites'),
-        icon: file.favorite ? mdiStarOutline : mdiStar,
+        icon: file.favorite ? StarOff : Star,
         run: () => toggleFavorite(file),
       })
     }
@@ -211,7 +212,7 @@ export function useFileCommands(onChanged?: (_file: FileResult) => void) {
     commands.push({
       id: 'link',
       label: t('Copy link'),
-      icon: mdiLinkVariant,
+      icon: Link,
       run: () => copyLink(file),
     })
 

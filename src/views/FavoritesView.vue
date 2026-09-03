@@ -9,7 +9,7 @@
                 @click="load">
         <template #icon>
           <NcLoadingIcon v-if="loading" :size="20" />
-          <NcIconSvgWrapper v-else :path="mdiRefresh" :size="20" />
+          <RefreshCw v-else :size="20" />
         </template>
       </NcButton>
     </div>
@@ -21,7 +21,7 @@
                     :name="t('No favorites yet')"
                     :description="t('Star a file in the search results to keep it here.')">
       <template #icon>
-        <NcIconSvgWrapper :path="mdiStarOutline" />
+        <Star />
       </template>
     </NcEmptyContent>
 
@@ -47,11 +47,10 @@ import { onActivated, onMounted, ref } from 'vue'
 import {
   NcButton,
   NcEmptyContent,
-  NcIconSvgWrapper,
   NcLoadingIcon,
   NcNoteCard,
 } from '@nextcloud/vue'
-import { mdiRefresh, mdiStarOutline } from '@mdi/js'
+import { RefreshCw, Star } from '@lucide/vue'
 import { useI18n } from '../composables/useI18n'
 import { SearchApi } from '../services/SearchApi'
 import { useSelectionStore } from '../stores/selectionStore'

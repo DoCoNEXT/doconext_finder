@@ -27,8 +27,7 @@
                 :class="`results__group--l${row.level}`"
                 :style="{ paddingInlineStart: `${8 + row.level * 20}px` }">
               <button class="results__toggle" @click="toggle(row.id)">
-                <NcIconSvgWrapper :path="collapsed.has(row.id) ? mdiChevronRight : mdiChevronDown"
-                                  :size="18" />
+                <component :is="collapsed.has(row.id) ? ChevronRight : ChevronDown" :size="18" />
                 <span>{{ row.label }}</span>
                 <span class="muted">({{ row.count }})</span>
               </button>
@@ -44,16 +43,14 @@
                         variant="tertiary"
                         @click.stop="$emit('toggle-favorite', row.file)">
                 <template #icon>
-                  <NcIconSvgWrapper :path="row.file.favorite ? mdiStar : mdiStarOutline"
-                                    :size="20"
-                                    :class="{ 'results__star--on': row.file.favorite }" />
+                  <Star :size="20" :fill="row.file.favorite ? 'currentColor' : 'none'" />
                 </template>
               </NcButton>
             </td>
 
             <td v-for="column in columns" :key="column.id" :class="cellClass(column.id)">
               <span v-if="column.id === 'name'" class="results__name" :title="row.file.name">
-                <NcIconSvgWrapper :path="iconFor(row.file.mimetype, row.file.isFolder)" :size="20" />
+                <component :is="iconFor(row.file.mimetype, row.file.isFolder)" :size="20" />
                 <span>{{ row.file.name }}</span>
               </span>
               <span v-else :title="cellText(row.file, column.id)" class="muted">
@@ -75,13 +72,8 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { NcButton, NcIconSvgWrapper } from '@nextcloud/vue'
-import {
-  mdiChevronDown,
-  mdiChevronRight,
-  mdiStar,
-  mdiStarOutline,
-} from '@mdi/js'
+import { NcButton } from '@nextcloud/vue'
+import { ChevronDown, ChevronRight, Star } from '@lucide/vue'
 import { useI18n } from '../composables/useI18n'
 import { usePreferencesStore } from '../stores/preferencesStore'
 import { useSearchStore } from '../stores/searchStore'

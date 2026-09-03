@@ -42,7 +42,7 @@
 
     <NcButton @click="columnsOpen = true">
       <template #icon>
-        <NcIconSvgWrapper :path="mdiViewColumnOutline" :size="20" />
+        <Columns3 :size="20" />
       </template>
       {{ t('Columns') }}
     </NcButton>
@@ -74,7 +74,7 @@
                     :aria-label="t('Move up')"
                     @click="preferences.move(column.id, -1)">
             <template #icon>
-              <NcIconSvgWrapper :path="mdiArrowUp" :size="20" />
+              <ArrowUp :size="20" />
             </template>
           </NcButton>
           <NcButton variant="tertiary"
@@ -82,7 +82,7 @@
                     :aria-label="t('Move down')"
                     @click="preferences.move(column.id, 1)">
             <template #icon>
-              <NcIconSvgWrapper :path="mdiArrowDown" :size="20" />
+              <ArrowDown :size="20" />
             </template>
           </NcButton>
           <!-- Built-ins are only ever hidden; a metadata column the user added
@@ -92,7 +92,7 @@
                     :aria-label="t('Remove column')"
                     @click="preferences.remove(column.id)">
             <template #icon>
-              <NcIconSvgWrapper :path="mdiClose" :size="20" />
+              <X :size="20" />
             </template>
           </NcButton>
           <span v-else class="columns__spacer" />
@@ -127,10 +127,9 @@ import {
   NcButton,
   NcCheckboxRadioSwitch,
   NcDialog,
-  NcIconSvgWrapper,
   NcInputField,
 } from '@nextcloud/vue'
-import { mdiArrowDown, mdiArrowUp, mdiClose, mdiViewColumnOutline } from '@mdi/js'
+import { ArrowDown, ArrowUp, Columns3, X } from '@lucide/vue'
 import { useI18n } from '../composables/useI18n'
 import { MAX_GROUPING_LEVELS, usePreferencesStore } from '../stores/preferencesStore'
 import { useSearchStore } from '../stores/searchStore'
