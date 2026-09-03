@@ -41,7 +41,12 @@
                              :active="page === 'searches'"
                              @click="go('searches')">
           <template #icon>
-            <NcIconSvgWrapper :path="mdiContentSaveOutline" :size="20" />
+            <!--
+              A list with a magnifier, not a floppy disk: the page holds recent
+              searches as well as saved ones, and a save icon claimed it was
+              only the saved half.
+            -->
+            <NcIconSvgWrapper :path="mdiTextSearch" :size="20" />
           </template>
         </NcAppNavigationItem>
       </template>
@@ -105,9 +110,9 @@ import {
 } from '@nextcloud/vue'
 import {
   mdiCogOutline,
-  mdiContentSaveOutline,
   mdiMagnify,
   mdiStar,
+  mdiTextSearch,
 } from '@mdi/js'
 import { generateUrl } from '@nextcloud/router'
 import { useI18n } from './composables/useI18n'
@@ -237,12 +242,15 @@ function openSettings() {
 // row of controls; it ends one clickable area below its own offset, so the
 // clearance has to clear that rather than merely approach it. Above the
 // breakpoint our own toggle lives inside the navigation instead of over the
-// content, and the page gets those sixty pixels back.
+// content, and the page gets those sixty pixels back — all but the breathing
+// room every page wants between the header and its first control, which is set
+// here rather than page by page so the three of them start on the same line.
 :deep(.app-content) {
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
   min-height: 0;
+  padding-top: 12px;
 }
 
 @media only screen and (width < 1024px) {
