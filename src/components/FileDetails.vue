@@ -279,6 +279,10 @@ const previewUrl = computed(() => {
   .app-sidebar-tabs__tab.button-vue {
     flex: 0 1 auto;
     flex-direction: row;
+    // The label is a plain block that stretches to the tab's full height and
+    // then draws its text at the top of it, while the icon sits in a flex box
+    // of its own and centres itself — which is why the two did not line up.
+    align-items: center;
     gap: 6px;
     min-width: 0;
     height: 38px;
