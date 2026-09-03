@@ -226,7 +226,11 @@ const previewUrl = computed(() => {
   gap: 4px 12px;
   margin: 12px 0;
 
+  // Nextcloud's own stylesheet right-aligns every <dt>, which left the labels
+  // ragged down their left edge while their values ran down a straight one.
+  // Both columns start at the same edge instead.
   dt {
+    text-align: start;
     color: var(--color-text-maxcontrast);
   }
 
