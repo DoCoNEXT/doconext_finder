@@ -225,10 +225,11 @@ function runStored(entry: StoredSearch) {
 // default slot in .app-content-wrapper when it also has a `list` slot, and this
 // app has none — so the rule that used to name the wrapper matched nothing.
 //
-// The top padding is not decoration: on mobile the navigation toggle floats over
-// the top inline-start corner of the content, and without the clearance it sits
-// on the first row of controls. It ends one clickable area below its own offset,
-// so the clearance has to clear that, not merely approach it.
+// The top padding is not decoration: the navigation toggle floats over the top
+// inline-start corner of the content — the library's below the mobile
+// breakpoint, ours above it — and without the clearance it sits on the first row
+// of controls. It ends one clickable area below its own offset, so the clearance
+// has to clear that, not merely approach it.
 :deep(.app-content) {
   display: flex;
   flex-direction: column;
