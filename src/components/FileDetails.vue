@@ -235,10 +235,13 @@ const previewUrl = computed(() => {
     overflow-wrap: anywhere;
   }
 
+  // The thumbnail gets the whole tab rather than a fixed 320px box: the panel
+  // already has a height, and a preview that stops halfway down it reads as a
+  // failed one.
   &__preview {
     display: block;
     width: 100%;
-    max-height: 320px;
+    height: 100%;
     object-fit: contain;
     border-radius: var(--border-radius-large);
     background: var(--color-background-dark);
@@ -272,5 +275,21 @@ const previewUrl = computed(() => {
     padding-block: 2px 4px;
     font-size: 95%;
   }
+}
+</style>
+
+<!--
+  The panel width, set outside the scoped block on purpose: the library's own
+  rule carries its scope attribute, so an equally specific rule of ours would
+  win or lose on stylesheet order. The id settles it.
+-->
+<style lang="scss">
+// The library caps the panel at 500px. That is a fair width for a column of
+// key/value rows and a poor one for a document — a preview rendered in it gets
+// a few words per line and reads as a sliver. This app leads with the preview,
+// so it takes a wider share of the window while still leaving the result list
+// wide enough to scan.
+#app-sidebar-vue {
+  --app-sidebar-width: clamp(300px, 32vw, 700px);
 }
 </style>

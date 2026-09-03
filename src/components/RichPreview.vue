@@ -66,11 +66,20 @@ onBeforeUnmount(() => host.value?.replaceChildren())
 
 <style scoped lang="scss">
 .rich-preview {
-  // The renderer sizes itself; this keeps a tall document from pushing the rest
-  // of the panel out of reach.
-  max-height: 60vh;
+  // The tab has a height of its own, so the preview takes all of it and scrolls
+  // inside itself. A max-height in viewport units cut the document off well
+  // above the foot of the panel and put a second scrollbar around the first.
+  height: 100%;
   overflow: auto;
-  border-radius: var(--border-radius-large);
-  background: var(--color-background-dark);
+
+  // No card, no tint: the renderer draws a document, and a document belongs on
+  // the panel's own background the way it does in the Files sidebar. The grey
+  // box made every preview look like a widget dropped into the panel.
+  // The element is created in script, so it never carries this component's
+  // scope attribute — hence :deep. A custom element is inline by default, which
+  // leaves a text-baseline gap under it and stops it filling the width.
+  :deep(> *) {
+    display: block;
+  }
 }
 </style>
