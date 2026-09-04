@@ -40,3 +40,12 @@ jobs:
         run: npm run build
       - name: Unit tests
         run: npm test
+
+  # Checks that every file is covered by a licence — REUSE.toml plus LICENSES/.
+  # Worth automating: the annotations name directories, so a new top-level one
+  # falls outside them silently until something looks.
+  reuse:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: fsfe/reuse-action@v5

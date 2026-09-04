@@ -51,6 +51,9 @@ Ship **only** `img/app.svg` (white-filled, `fill="#ffffff"`) + `img/app-dark.svg
 
 Put the `fill` on the **root `<svg>` element and nowhere else** — exactly how core does it (`apps/files/img/app.svg`). The apps page (`apps/appstore`) inlines the file through `NcIconSvgWrapper`, whose `svg { fill: currentColor }` beats the presentation attribute on the root but loses against a `fill` on each `<path>`/`<rect>`; a per-child `fill="#ffffff"` therefore renders white-on-white, i.e. no icon at all in the list. (The app sidebar's `useAppIcon.ts` rewrites `fill="#fff"` to `currentColor` itself, so the bug shows up **only** in the apps list — check there, not in the sidebar.) Negative-space detail must be holes via `fill-rule="evenodd"` in one compound path, not white-filled shapes on top.
 
+## Licensing
+REUSE layout, like every Nextcloud app: full licence texts in `LICENSES/`, `REUSE.toml` says which covers what (directory-level annotations, not per-file SPDX headers), and CI runs `fsfe/reuse-action`. Adding a dependency adds its licence text to `LICENSES/` — the build already names it, because `extractLicenseInformation` writes a `js/<bundle>.mjs.license` sidecar listing every package compiled in. Do **not** hand-maintain a third-party licence file; nothing in the NC ecosystem ships one.
+
 ## Translations
 NC loads `l10n/<lang>.json` (PHP) + `l10n/<lang>.js` (browser). Both must exist + stay in sync per language. `make l10n-pot` extracts strings; `make l10n` regenerates from `.po`. Missing keys fall back to English.
 

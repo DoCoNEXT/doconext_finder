@@ -1,0 +1,72 @@
+# Licensing metadata, in the REUSE layout every Nextcloud app uses: the full
+# text of each licence lives in LICENSES/, and this file says which one covers
+# which files. Nobody ships a single "third party licenses" document — the
+# built bundles carry their own, because @nextcloud/vite-config writes a
+# <bundle>.license sidecar next to each one naming every package inside it
+# (that is where @lucide/vue and its ISC/MIT notices land).
+#
+# Annotating whole directories here, rather than putting an SPDX header in each
+# of the ~80 source files, is the smaller half of REUSE. It produces the same
+# answer for every file; adding the headers is the stricter version, and can be
+# done later without changing anything below.
+version = 1
+SPDX-PackageName = "doconext_finder"
+SPDX-PackageSupplier = "doconext_finder developers"
+SPDX-PackageDownloadLocation = "https://github.com/bart-doconext/doconext_finder"
+
+# Everything this app writes itself.
+[[annotations]]
+path = [
+  "appinfo/**",
+  "lib/**",
+  "src/**",
+  "templates/**",
+  "tests/**",
+  "scripts/**",
+  "docs/**",
+  "img/**",
+  "l10n/**",
+  "Makefile",
+  "deploy.sh",
+  "README.md",
+  "CLAUDE.md",
+  "vite.config.ts",
+  "vitest.config.ts",
+  "eslint.config.mjs",
+  "stylelint.config.cjs",
+  "psalm.xml",
+  "rector.php",
+  ".php-cs-fixer.dist.php",
+]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2026 doconext_finder developers"
+SPDX-License-Identifier = "AGPL-3.0-or-later"
+
+# Files with nothing creative in them: dependency manifests, lock files and CI
+# plumbing. Nextcloud's own apps put these under CC0 rather than claim them.
+[[annotations]]
+path = [
+  "REUSE.toml",
+  "package.json",
+  "package-lock.json",
+  "composer.json",
+  "composer.lock",
+  "tsconfig.json",
+  ".gitignore",
+  ".github/**",
+  "vendor-bin/**",
+]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "none"
+SPDX-License-Identifier = "CC0-1.0"
+
+# The build output. js/ and css/ are generated, and are not in git — but they
+# are in the app package, so they need to be accounted for. Every js/ bundle
+# also carries a .license sidecar of its own, which is the authoritative list
+# of the third-party packages compiled into it; this entry covers the CSS, the
+# source maps, and anything the sidecars do not reach.
+[[annotations]]
+path = ["js/**", "css/**"]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2026 doconext_finder developers and the authors of its dependencies"
+SPDX-License-Identifier = "AGPL-3.0-or-later AND ISC AND MIT AND GPL-3.0-or-later AND BSD-3-Clause AND (MPL-2.0 OR Apache-2.0)"
