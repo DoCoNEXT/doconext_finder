@@ -22,7 +22,7 @@ import {
 } from '@lucide/vue'
 
 /** How the value box behaves for a field. */
-export type InputKind = 'text' | 'date' | 'size' | 'none'
+export type InputKind = 'text' | 'date' | 'size' | 'user' | 'none'
 
 export type Translate = (_text: string, _vars?: Record<string, unknown>) => string
 
@@ -36,7 +36,9 @@ const FIELD_INPUTS: Record<string, InputKind> = {
   creation_time: 'date',
   favorite: 'none',
   tagname: 'text',
-  owner: 'text',
+  // Compared against the account id, which nobody remembers — so it is picked
+  // by name and the id travels in the condition.
+  owner: 'user',
 }
 
 export function fieldInput(field: string): InputKind {
@@ -75,9 +77,6 @@ export function fieldHint(t: Translate, field: string): string {
   switch (field) {
     case 'path': return t('e.g. Legal/Dossiers')
     case 'mimetype': return t('e.g. application/pdf')
-    // Matched against the account id, not the display name — the search backend
-    // compares uid_owner.
-    case 'owner': return t('a user id, e.g. alice')
     default: return ''
   }
 }

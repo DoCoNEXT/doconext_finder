@@ -8,6 +8,7 @@ use OCA\DcnFinder\Search\FileCondition;
 use OCA\DcnFinder\Search\FileQuery;
 use OCA\DcnFinder\Search\MetadataFields;
 use OCA\DcnFinder\Service\CoreScope;
+use OCA\DcnFinder\Service\FileAuthorService;
 use OCA\DcnFinder\Service\FileSearchService;
 use OCP\AppFramework\ApiController;
 use OCP\AppFramework\Http;
@@ -38,6 +39,7 @@ class SearchController extends ApiController
         private FileSearchService $service,
         private MetadataFields $metadataFields,
         private CoreScope $coreScope,
+        private FileAuthorService $authors,
         private IUserSession $userSession,
         private LoggerInterface $logger,
     ) {
@@ -61,6 +63,36 @@ class SearchController extends ApiController
             // installed its fields appear here without Finder knowing about it.
             'metadata'          => $this->metadataFields->all(),
             'metadataOperators' => FileCondition::METADATA_OPERATORS,
+        ]);
+    }
+
+    /**
+     * Typeahead for the "Created by" filter, and the display name behind a uid a
+     * stored search already carries.
+     *
+     * The search compares the account id, which nobody remembers; the filter is
+     * therefore picked by name and sends the id. `uid` resolves one id — the
+     * same name this app already prints in the Created by column — while `q`
+     * searches, through the machinery that honours this server's rules about who
+     * may be found.
+     */
+    #[NoAdminRequired]
+    #[FrontpageRoute(verb: 'GET', url: '/api/users')]
+    public function users(): DataResponse
+    {
+        if ($this->userSession->getUser() === null) {
+            return new DataResponse(['error' => 'not authenticated'], Http::STATUS_UNAUTHORIZED);
+        }
+
+        $uid = trim((string)$this->request->getParam('uid', ''));
+        if ($uid !== '') {
+            return new DataResponse([
+                'users' => [['uid' => $uid, 'displayName' => $this->authors->displayName($uid)]],
+            ]);
+        }
+
+        return new DataResponse([
+            'users' => $this->authors->search((string)$this->request->getParam('q', '')),
         ]);
     }
 

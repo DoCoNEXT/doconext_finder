@@ -20,6 +20,22 @@
                       type="date"
                       :placeholder="t('Pick a date')" />
 
+    <!--
+      "Created by" compares the account id, which nobody knows by heart. The box
+      searches on the name and puts the id in the condition. filterable=false
+      hands the narrowing to the server, which already did it — vue-select would
+      otherwise filter a list it only partly has.
+    -->
+    <NcSelect v-else-if="input === 'user'"
+              v-model="userValue"
+              class="condition__value condition__person"
+              label="displayName"
+              :options="userOptions"
+              :filterable="false"
+              :loading="searchingUsers"
+              :placeholder="t('Type a name')"
+              @search="onUserSearch" />
+
     <NcTextField v-else-if="input === 'size'"
                  v-model="sizeValue"
                  class="condition__value"
@@ -57,7 +73,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref, watch } from 'vue'
 import {
   NcButton,
   NcCheckboxRadioSwitch,
@@ -78,7 +94,8 @@ import {
   toUnix,
 } from '../filters/fields'
 import { isMetadataField, metadataKeyOf } from '../filters/metadata'
-import type { Condition, FieldsResponse, Operator } from '../types/Search'
+import { SearchApi } from '../services/SearchApi'
+import type { Condition, FieldsResponse, Operator, Person } from '../types/Search'
 
 const { t } = useI18n()
 
@@ -152,7 +169,13 @@ const fieldOption = computed({
     const operator = (operators.includes(props.condition.operator)
       ? props.condition.operator
       : operators[0]) as Operator
-    patch({ field: next.id, operator, value: next.id === 'favorite' ? true : '', negate: false })
+    patch({
+      field: next.id,
+      operator,
+      value: next.id === 'favorite' ? true : '',
+      negate: false,
+      label: undefined,
+    })
   },
 })
 
@@ -175,6 +198,70 @@ const sizeValue = computed({
   get: () => toMegabytes(props.condition.value as number),
   set: (next: string) => patch({ value: toBytes(next) }),
 })
+
+const userOptions = ref<Person[]>([])
+const searchingUsers = ref(false)
+
+/**
+ * uid → display name, for a value that arrived from a stored search rather than
+ * from the picker: the condition carries the id, and showing that raw would
+ * make a restored filter unreadable.
+ */
+const names = ref<Record<string, string>>({})
+
+watch(
+  () => [props.condition.field, props.condition.value] as const,
+  async ([field, value]) => {
+    const uid = String(value ?? '')
+    // A stored search carries the name with it; only a bare id needs asking.
+    if (field !== 'owner' || uid === '' || props.condition.label || names.value[uid] !== undefined) {
+      return
+    }
+    names.value = { ...names.value, [uid]: await SearchApi.userName(uid) }
+  },
+  { immediate: true },
+)
+
+const userValue = computed({
+  get: (): Person | null => {
+    const uid = String(props.condition.value ?? '')
+    if (uid === '') {
+      return null
+    }
+
+    return userOptions.value.find((person) => person.uid === uid)
+      ?? { uid, displayName: props.condition.label ?? names.value[uid] ?? uid }
+  },
+  set: (next: Person | null) => patch({ value: next?.uid ?? '', label: next?.displayName }),
+})
+
+let userDebounce: ReturnType<typeof setTimeout> | undefined
+
+/**
+ * @param term what has been typed into the person field
+ * @param loading vue-select's own spinner toggle
+ */
+function onUserSearch(term: string, loading: (state: boolean) => void) {
+  clearTimeout(userDebounce)
+  if (term.trim() === '') {
+    userOptions.value = []
+    return
+  }
+
+  // A keystroke is not a question; the same beat the entity picker waits.
+  userDebounce = setTimeout(async () => {
+    searchingUsers.value = true
+    loading(true)
+    try {
+      userOptions.value = await SearchApi.users(term)
+    } catch {
+      userOptions.value = []
+    } finally {
+      searchingUsers.value = false
+      loading(false)
+    }
+  }, 250)
+}
 
 const dateValue = computed({
   get: () => {
@@ -206,9 +293,11 @@ const dateValue = computed({
   // NcSelect reserves a gap under itself for a row of its own; here the row is
   // the alignment line, so the gap would lift the dropdowns off it. Their width
   // is the library's own, which is what puts them under the Type and Modified
-  // dropdowns of the row above.
+  // dropdowns of the row above. The person picker is an NcSelect too, and
+  // reserved the same gap — which left it hanging above the box beside it.
   .condition__field,
-  .condition__operator {
+  .condition__operator,
+  .condition__person {
     margin-bottom: 0;
   }
 

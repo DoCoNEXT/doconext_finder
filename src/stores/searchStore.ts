@@ -121,8 +121,9 @@ export const useSearchStore = defineStore('search', {
       return {
         term: this.query.term.trim(),
         // A half-filled row would fail the whole request; drop it rather than
-        // making the user delete it before searching.
-        conditions: this.query.conditions.filter(usable),
+        // making the user delete it before searching. The display label goes no
+        // further than this app, for the reason the scope's does not either.
+        conditions: this.query.conditions.filter(usable).map(sendable),
         mimetypes: type.mimetypes,
         modifiedAfter: modifiedAfter(time) ?? undefined,
         // Only the level and the id travel; the label is ours to display, and
@@ -240,6 +241,18 @@ export const useSearchStore = defineStore('search', {
     },
   },
 })
+
+/**
+ * The condition as the server should see it: the display label is this app's
+ * business, for the reason the scope's label is too.
+ * @param condition the row to send
+ */
+function sendable(condition: Condition): Omit<Condition, 'label'> {
+  const sent = { ...condition }
+  delete sent.label
+
+  return sent
+}
 
 function usable(condition: Condition): boolean {
   return condition.value !== '' && condition.value !== null && condition.value !== undefined

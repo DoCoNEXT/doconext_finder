@@ -49,11 +49,14 @@ function describeCondition(t: Translate, condition: Condition): string {
     return t('Favorite')
   }
 
-  const value = condition.field === 'size'
-    ? `${toMegabytes(condition.value as number)} MB`
-    : ['mtime', 'creation_time'].includes(condition.field)
-      ? toDateInput(condition.value as number)
-      : String(condition.value)
+  // The label, where there is one, is the name behind an id — "Jan Sanders",
+  // not "jsanders".
+  const value = condition.label
+    ?? (condition.field === 'size'
+      ? `${toMegabytes(condition.value as number)} MB`
+      : ['mtime', 'creation_time'].includes(condition.field)
+        ? toDateInput(condition.value as number)
+        : String(condition.value))
 
   return `${condition.negate ? t('not ') : ''}${field} ${operator} ${value}`
 }

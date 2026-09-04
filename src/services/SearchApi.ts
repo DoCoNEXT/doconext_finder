@@ -10,6 +10,7 @@ import { generateUrl } from '@nextcloud/router'
 import { API_BASE } from '../constants'
 import type {
   FieldsResponse,
+  Person,
   ScopeEntity,
   ScopeFileEntity,
   ScopeVocabulary,
@@ -86,6 +87,34 @@ export const SearchApi = {
       return data.entity ?? null
     } catch (error) {
       throw describe(error)
+    }
+  },
+
+  /**
+   * People matching what has been typed, for the "Created by" filter.
+   * @param term what to match on the display name
+   */
+  async users(term: string): Promise<Person[]> {
+    try {
+      const { data } = await axios.get<{ users: Person[] }>(url('/users'), { params: { q: term } })
+      return data.users ?? []
+    } catch (error) {
+      throw describe(error)
+    }
+  },
+
+  /**
+   * The name behind an account id, for a filter restored from a stored search.
+   * Falls back to the id itself, which is what the server does for an account
+   * that is gone.
+   * @param uid the account id to name
+   */
+  async userName(uid: string): Promise<string> {
+    try {
+      const { data } = await axios.get<{ users: Person[] }>(url('/users'), { params: { uid } })
+      return data.users?.[0]?.displayName || uid
+    } catch {
+      return uid
     }
   },
 

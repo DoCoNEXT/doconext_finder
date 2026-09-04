@@ -9,6 +9,12 @@ export interface Condition {
 	value: string | number | boolean
 	/** Not offered for join-backed fields; the server rejects those. */
 	negate?: boolean
+	/**
+	 * How the value reads when the value itself is an id — the name behind the
+	 * account "Created by" compares. A display snapshot, like the scope's label:
+	 * it is kept with a stored search and never sent to the server.
+	 */
+	label?: string
 }
 
 export interface FileResult {
@@ -91,6 +97,12 @@ export interface ScopeFileEntity {
 	typeId: number
 	typeName: string
 	url: string
+}
+
+/** An account, as the "Created by" filter names it: picked by name, sent as id. */
+export interface Person {
+	uid: string
+	displayName: string
 }
 
 /** Empty lists mean DoCoNEXT Core is absent; the folder scope does not need it. */
