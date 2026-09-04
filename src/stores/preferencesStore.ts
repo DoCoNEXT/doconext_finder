@@ -28,6 +28,7 @@ interface State {
   sort: string
   descending: boolean
   doubleClick: string
+  /** Whether the details panel is on screen; see `Preferences.sidebarPinned`. */
   sidebarPinned: boolean
   loaded: boolean
 }
@@ -233,6 +234,11 @@ export const usePreferencesStore = defineStore('preferences', {
       this.save()
     },
 
+    /**
+     * Shows or hides the details panel. Remembered, so the app comes back the
+     * way you left it.
+     * @param pinned whether the panel is on screen
+     */
     setSidebarPinned(pinned: boolean) {
       this.sidebarPinned = pinned
       this.save()

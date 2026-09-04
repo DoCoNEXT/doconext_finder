@@ -105,7 +105,7 @@
                    @sort="store.sortBy(t, $event)"
                    @toggle-favorite="store.toggleFavorite"
                    @changed="refresh"
-                   @select="selection.select($event, preferences.sidebarPinned)" />
+                   @select="selection.select($event)" />
       </template>
     </div>
 
@@ -140,7 +140,6 @@ import { Search } from '@lucide/vue'
 import { useI18n } from '../composables/useI18n'
 import { useSearchStore } from '../stores/searchStore'
 import { useSelectionStore } from '../stores/selectionStore'
-import { usePreferencesStore } from '../stores/preferencesStore'
 import { useHistoryStore } from '../stores/historyStore'
 import { useSaveSearch } from '../composables/useSaveSearch'
 import { anyTime, anyType, fileTypePresets, modifiedPresets } from '../filters/presets'
@@ -156,7 +155,6 @@ import type { StoredSearch } from '../types/Search'
 const { t } = useI18n()
 const store = useSearchStore()
 const selection = useSelectionStore()
-const preferences = usePreferencesStore()
 const history = useHistoryStore()
 const { saveSearch } = useSaveSearch()
 
@@ -167,7 +165,7 @@ onMounted(() => store.loadSchema())
 
 // A new result set makes the old selection meaningless — and the panel would
 // otherwise keep describing a file that is no longer on screen.
-watch(() => store.results, (files) => selection.onResults(files, preferences.sidebarPinned))
+watch(() => store.results, () => selection.onResults())
 
 /**
  * The store keeps preset *ids* (that is what history stores); the dropdowns bind

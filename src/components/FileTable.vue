@@ -60,6 +60,7 @@
 
             <td class="results__actions">
               <FileCommands :file="row.file"
+                            @details="showDetails"
                             @toggle-favorite="$emit('toggle-favorite', $event)"
                             @changed="$emit('changed', $event)" />
             </td>
@@ -99,12 +100,23 @@ const props = defineProps<{
   scope: GroupScope
 }>()
 
-defineEmits<{
+const emit = defineEmits<{
   (e: 'sort', field: string): void
   (e: 'toggle-favorite', file: FileResult): void
   (e: 'select', file: FileResult): void
   (e: 'changed', file: FileResult): void
 }>()
+
+/**
+ * "Show details" is the one place a click may open the panel — it is what was
+ * asked for. Everywhere else the panel's own switch decides, so that selecting a
+ * row never rearranges the page around it.
+ * @param file the row whose menu was used
+ */
+function showDetails(file: FileResult) {
+  emit('select', file)
+  preferences.setSidebarPinned(true)
+}
 
 const metadata = computed(() => search.schema?.metadata ?? [])
 

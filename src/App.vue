@@ -87,10 +87,15 @@
 
       Only the pages that list results get it — the panel describes a result, so
       it has nothing to say next to the searches list or the settings.
+
+      Whether it is there at all is a view option, toggled above the results and
+      remembered: closing it here turns that option off, so the button does the
+      one thing its cross promises. The selection survives, and the row stays
+      highlighted.
     -->
-    <FileDetails v-if="showsResults"
+    <FileDetails v-if="showsResults && preferences.sidebarPinned"
                  :file="selection.file"
-                 @close="selection.clear()"
+                 @close="preferences.setSidebarPinned(false)"
                  @changed="refreshList"
                  @toggle-favorite="toggleFavorite" />
 

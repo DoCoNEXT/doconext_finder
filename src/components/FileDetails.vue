@@ -31,11 +31,6 @@
         </template>
         {{ command.label }}
       </NcActionButton>
-      <NcActionSeparator />
-      <NcActionCheckbox :model-value="preferences.sidebarPinned"
-                        @update:model-value="preferences.setSidebarPinned($event)">
-        {{ t('Keep this panel open') }}
-      </NcActionCheckbox>
     </template>
 
     <NcAppSidebarTab id="details" :name="t('Details')" :order="1">
@@ -124,15 +119,27 @@
       </NcEmptyContent>
     </NcAppSidebarTab>
   </NcAppSidebar>
+
+  <!--
+    Open with nothing selected — after a fresh search, or before the first click.
+    The panel holds its place rather than appearing and disappearing under the
+    results, which is what made its width jump around while you worked.
+  -->
+  <NcAppSidebar v-else :name="t('Details')" @close="$emit('close')">
+    <NcEmptyContent :name="t('Nothing selected')"
+                    :description="t('Click a result to see everything the server knows about it.')">
+      <template #icon>
+        <Info />
+      </template>
+    </NcEmptyContent>
+  </NcAppSidebar>
 </template>
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import {
   NcActionButton,
-  NcActionCheckbox,
   NcActionLink,
-  NcActionSeparator,
   NcAppSidebar,
   NcAppSidebarTab,
   NcEmptyContent,
@@ -141,7 +148,6 @@ import { Eye, Info } from '@lucide/vue'
 import { generateUrl } from '@nextcloud/router'
 import { useI18n } from '../composables/useI18n'
 import { useSearchStore } from '../stores/searchStore'
-import { usePreferencesStore } from '../stores/preferencesStore'
 import { useFileCommands } from '../composables/useFileCommands'
 import { folderOf, typeName } from '../filters/grouping'
 import { formatDate, formatSize } from '../filters/columns'
@@ -151,7 +157,6 @@ import type { FileResult } from '../types/Search'
 
 const { t } = useI18n()
 const search = useSearchStore()
-const preferences = usePreferencesStore()
 
 const props = defineProps<{ file: FileResult | null }>()
 

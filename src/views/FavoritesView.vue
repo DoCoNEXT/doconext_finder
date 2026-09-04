@@ -36,7 +36,7 @@
                    @sort="sortBy"
                    @toggle-favorite="unfavorite"
                    @changed="load"
-                   @select="selection.select($event, preferences.sidebarPinned)" />
+                   @select="selection.select($event)" />
       </div>
     </template>
   </div>
@@ -54,14 +54,12 @@ import { RefreshCw, Star } from '@lucide/vue'
 import { useI18n } from '../composables/useI18n'
 import { SearchApi } from '../services/SearchApi'
 import { useSelectionStore } from '../stores/selectionStore'
-import { usePreferencesStore } from '../stores/preferencesStore'
 import FileTable from '../components/FileTable.vue'
 import ViewOptions from '../components/ViewOptions.vue'
 import type { FileResult } from '../types/Search'
 
 const { t } = useI18n()
 const selection = useSelectionStore()
-const preferences = usePreferencesStore()
 
 const files = ref<FileResult[]>([])
 const sort = ref('mtime')

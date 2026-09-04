@@ -211,6 +211,10 @@ export interface Preferences {
   descending: boolean
   /** What a double-click on a row does: open | folder | none. */
   doubleClick: string
-  /** Keeps the details panel open while you move through the results. */
+  /**
+   * Whether the details panel is on screen. A view option, not a live state: it
+   * stays on until you close the panel, and while it is off a click selects a
+   * row without a panel appearing.
+   */
   sidebarPinned: boolean
 }

@@ -47,6 +47,18 @@
       {{ t('Columns') }}
     </NcButton>
 
+    <!--
+      The details panel is a view option like the columns, not something a click
+      on a row conjures up: it is either beside the results or it is not, and it
+      stays that way until you say otherwise.
+    -->
+    <NcCheckboxRadioSwitch :model-value="preferences.sidebarPinned"
+                           type="switch"
+                           class="view-options__panel"
+                           @update:model-value="preferences.setSidebarPinned($event)">
+      {{ t('Details panel') }}
+    </NcCheckboxRadioSwitch>
+
     <span v-if="hint" class="view-options__hint muted">{{ hint }}</span>
 
     <NcDialog v-if="columnsOpen"

@@ -37,22 +37,14 @@
         </select>
       </label>
       <p class="muted settings__hint">
-        {{ t('A single click always selects the result and shows its details.') }}
-      </p>
-
-      <NcCheckboxRadioSwitch :model-value="preferences.sidebarPinned"
-                             @update:model-value="preferences.setSidebarPinned($event)">
-        {{ t('Keep the details panel open') }}
-      </NcCheckboxRadioSwitch>
-      <p class="muted settings__hint">
-        {{ t('The panel follows your selection instead of closing between searches.') }}
+        {{ t('A single click selects a result; its details appear in the panel when the panel is open.') }}
       </p>
     </section>
 
     <section class="settings__section">
-      <h4>{{ t('Columns and grouping') }}</h4>
+      <h4>{{ t('Columns, grouping and the details panel') }}</h4>
       <p class="muted settings__hint">
-        {{ t('Columns and grouping are set in the app itself, next to the results, where you can see their effect.') }}
+        {{ t('These are set in the app itself, next to the results, where you can see their effect — and where the switch is beside the thing it switches.') }}
       </p>
       <NcButton @click="confirmReset">
         {{ t('Reset everything to defaults') }}

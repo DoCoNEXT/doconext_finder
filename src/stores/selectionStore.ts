@@ -4,6 +4,11 @@
  * Lives in a store because the sidebar cannot live where the selection is made:
  * NcAppSidebar has to be a sibling of NcAppContent, so it is rendered by the app
  * shell while the selecting happens inside a page.
+ *
+ * Selection says *which* row is described, never *whether* the panel is there:
+ * that is `preferences.sidebarPinned`, a view option like the columns. Keeping
+ * the two apart is the whole point — a click highlights a row whether the panel
+ * is open or not, and the panel opens and closes only when you ask it to.
  */
 import { defineStore } from 'pinia'
 import type { FileResult } from '../types/Search'
@@ -14,11 +19,9 @@ export const useSelectionStore = defineStore('selection', {
   actions: {
     /**
      * @param file the row that was clicked
-     * @param pinned when pinned, the panel stays open and simply follows the
-     *   selection; unpinned, clicking the open row again closes it
      */
-    select(file: FileResult, pinned = false) {
-      this.file = !pinned && this.file?.fileid === file.fileid ? null : file
+    select(file: FileResult) {
+      this.file = file
     },
 
     clear() {
@@ -26,13 +29,13 @@ export const useSelectionStore = defineStore('selection', {
     },
 
     /**
-     * A new result set invalidates the selection. Pinned, the panel stays and
-     * takes the first row, so it never sits empty next to a full grid.
-     * @param files the new result rows
-     * @param pinned whether the panel is pinned open
+     * A new result set invalidates the selection: the panel would otherwise keep
+     * describing a file that is no longer on screen. The panel itself stays —
+     * it waits, empty, for the first click rather than jumping away or picking a
+     * row nobody chose.
      */
-    onResults(files: FileResult[], pinned: boolean) {
-      this.file = pinned ? files[0] ?? null : null
+    onResults() {
+      this.file = null
     },
   },
 })
