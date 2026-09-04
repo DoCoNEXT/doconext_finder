@@ -1,12 +1,16 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16">
-	<!-- Settings-sidebar icon: BLACK-filled silhouette (identical shape to app.svg). The platform inverts it via a background-invert filter, so it reads cleanly in dark mode.
+<svg xmlns="http://www.w3.org/2000/svg" height="20px" width="20px" viewBox="0 0 16 16" fill="#000000">
+	<!-- Settings-sidebar icon: BLACK-filled silhouette (identical shape to app.svg).
+	     The platform inverts it via a background-invert filter, so it reads cleanly in dark mode.
 	     A magnifier whose lens holds a list of results: the app is a search page
 	     over your files, and a plain document said nothing about searching.
-	     Filled silhouette with negative-space detail — never a stroke outline,
-	     which collapses when the platform force-fills currentColor. -->
-	<path fill="#000000" fill-rule="evenodd" d="M6.6 1a5.6 5.6 0 1 0 0 11.2A5.6 5.6 0 0 0 6.6 1Zm0 1.6a4 4 0 1 1 0 8 4 4 0 0 1 0-8Z"/>
-	<path fill="#000000" d="M9.85 11.27 11.27 9.85l4.34 4.34a1 1 0 0 1-1.42 1.42Z"/>
-	<rect fill="#000000" x="3.8" y="4.4" width="5.6" height="1.1" rx="0.55"/>
-	<rect fill="#000000" x="3.8" y="6.05" width="5.6" height="1.1" rx="0.55"/>
-	<rect fill="#000000" x="3.8" y="7.7" width="4" height="1.1" rx="0.55"/>
+	     The fill lives on THIS <svg> element and nowhere else: NcIconSvgWrapper
+	     styles `svg { fill: currentColor }`, which beats the presentation attribute
+	     here but would lose against a fill on each child — that is what left the
+	     icon white-on-white in the apps list. Core icons (apps/files/img/app.svg)
+	     are built the same way.
+	     Filled silhouette with negative-space detail — the result lines are holes
+	     punched by fill-rule="evenodd", never a stroke outline, which collapses
+	     when the platform force-fills currentColor. -->
+	<path fill-rule="evenodd" d="M1 6.8a5.8 5.8 0 1 0 11.6 0 5.8 5.8 0 1 0-11.6 0ZM4.25 3.75h5.1a.65.65 0 0 1 0 1.3h-5.1a.65.65 0 0 1 0-1.3ZM4.25 6.15h5.1a.65.65 0 0 1 0 1.3h-5.1a.65.65 0 0 1 0-1.3ZM4.25 8.55h2.9a.65.65 0 0 1 0 1.3h-2.9a.65.65 0 0 1 0-1.3Z"/>
+	<path d="M11.22 9.38 15.52 13.68a1.3 1.3 0 0 1-1.84 1.84L9.38 11.22Z"/>
 </svg>

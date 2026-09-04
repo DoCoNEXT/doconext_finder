@@ -49,6 +49,8 @@ img/           app.svg (white-filled) + app-dark.svg (black-filled)
 ## Icons (NC33 + NC34)
 Ship **only** `img/app.svg` (white-filled, `fill="#ffffff"`) + `img/app-dark.svg` (black-filled). Draw both as **filled silhouettes with negative-space detail** — never stroke outlines (they collapse when NC force-fills `currentColor`). Do NOT add an app-id-named `img/<id>.svg` (breaks NC33).
 
+Put the `fill` on the **root `<svg>` element and nowhere else** — exactly how core does it (`apps/files/img/app.svg`). The apps page (`apps/appstore`) inlines the file through `NcIconSvgWrapper`, whose `svg { fill: currentColor }` beats the presentation attribute on the root but loses against a `fill` on each `<path>`/`<rect>`; a per-child `fill="#ffffff"` therefore renders white-on-white, i.e. no icon at all in the list. (The app sidebar's `useAppIcon.ts` rewrites `fill="#fff"` to `currentColor` itself, so the bug shows up **only** in the apps list — check there, not in the sidebar.) Negative-space detail must be holes via `fill-rule="evenodd"` in one compound path, not white-filled shapes on top.
+
 ## Translations
 NC loads `l10n/<lang>.json` (PHP) + `l10n/<lang>.js` (browser). Both must exist + stay in sync per language. `make l10n-pot` extracts strings; `make l10n` regenerates from `.po`. Missing keys fall back to English.
 
