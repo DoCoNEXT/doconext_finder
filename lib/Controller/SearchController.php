@@ -7,6 +7,7 @@ namespace OCA\DcnFinder\Controller;
 use OCA\DcnFinder\Search\FileCondition;
 use OCA\DcnFinder\Search\FileQuery;
 use OCA\DcnFinder\Search\MetadataFields;
+use OCA\DcnFinder\Service\CoreScope;
 use OCA\DcnFinder\Service\FileSearchService;
 use OCP\AppFramework\ApiController;
 use OCP\AppFramework\Http;
@@ -36,6 +37,7 @@ class SearchController extends ApiController
         IRequest $request,
         private FileSearchService $service,
         private MetadataFields $metadataFields,
+        private CoreScope $coreScope,
         private IUserSession $userSession,
         private LoggerInterface $logger,
     ) {
@@ -59,6 +61,52 @@ class SearchController extends ApiController
             // installed its fields appear here without Finder knowing about it.
             'metadata'          => $this->metadataFields->all(),
             'metadataOperators' => FileCondition::METADATA_OPERATORS,
+        ]);
+    }
+
+    /**
+     * DoCoNEXT Core's vocabulary for narrowing a search: the workspaces this user
+     * may see and the entity types within them.
+     *
+     * Both lists come back at once, types carrying their realmId, so the picker
+     * cascades without a round-trip per step — they are short lists, and a menu
+     * that stalls on every choice is worse than one that loads a little more.
+     * Empty lists mean Core is absent; the folder scope does not come from here
+     * and keeps working regardless.
+     */
+    #[NoAdminRequired]
+    #[FrontpageRoute(verb: 'GET', url: '/api/scope')]
+    public function scope(): DataResponse
+    {
+        if ($this->userSession->getUser() === null) {
+            return new DataResponse(['error' => 'not authenticated'], Http::STATUS_UNAUTHORIZED);
+        }
+
+        return new DataResponse([
+            'realms'      => $this->coreScope->realms(),
+            'entityTypes' => $this->coreScope->entityTypes(),
+        ]);
+    }
+
+    /**
+     * Typeahead over entities. There are far too many for a dropdown, which is
+     * the whole reason this level is a search box and not a third select.
+     */
+    #[NoAdminRequired]
+    #[FrontpageRoute(verb: 'GET', url: '/api/scope/entities')]
+    public function scopeEntities(): DataResponse
+    {
+        if ($this->userSession->getUser() === null) {
+            return new DataResponse(['error' => 'not authenticated'], Http::STATUS_UNAUTHORIZED);
+        }
+
+        $typeId = (int)$this->request->getParam('entityTypeId', 0);
+
+        return new DataResponse([
+            'entities' => $this->coreScope->entities(
+                (string)$this->request->getParam('q', ''),
+                $typeId > 0 ? $typeId : null,
+            ),
         ]);
     }
 

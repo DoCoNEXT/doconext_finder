@@ -19,6 +19,8 @@ interface AppConfig {
 	bridgeExtensions: string[]
 	/** The search page's "Type" filter categories, admin-configured order + selection. */
 	fileTypeFilters: FileTypeFilterEntry[]
+	/** True when DoCoNEXT Core can name entity types and entities to scope by. */
+	coreScope: boolean
 }
 
 let config: AppConfig
@@ -55,6 +57,14 @@ export const BRIDGE_EXTENSIONS: string[] = config.bridgeExtensions ?? []
  * src/filters/presets.ts — this array only says which ids to show.
  */
 export const FILE_TYPE_FILTERS: FileTypeFilterEntry[] = config.fileTypeFilters ?? []
+
+/**
+ * Whether to offer the entity type and entity fields of the scope picker. False
+ * means DoCoNEXT Core is absent; the folder field is always offered and does not
+ * depend on this. Read from the initial state rather than from a request, so the
+ * fields are either there on first paint or not at all.
+ */
+export const HAS_ENTITY_SCOPE = config.coreScope === true
 
 export const API_BASE = `/apps/${APP_ID}/api`
 

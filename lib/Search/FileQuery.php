@@ -11,6 +11,9 @@ namespace OCA\DcnFinder\Search;
  * The term always ANDs with the condition group, so "match any" scopes only the
  * structured conditions — the same semantics the desktop client uses, and the
  * one users expect from a search box sitting above a filter panel.
+ *
+ * {@see $scope} is not a condition at all: it decides which folder the search
+ * starts from, so no combination of conditions can widen past it.
  */
 final class FileQuery
 {
@@ -26,6 +29,7 @@ final class FileQuery
         public readonly array $conditions,
         public readonly array $mimetypes,
         public readonly ?int $modifiedAfter,
+        public readonly ?FileScope $scope,
         public readonly bool $matchAny,
         public readonly int $limit,
         public readonly int $offset,
@@ -68,7 +72,14 @@ final class FileQuery
             $modifiedAfter = null;
         }
 
-        if ($term === '' && $conditions === [] && $mimetypes === [] && $modifiedAfter === null) {
+        // A scope narrows *where* rather than *what*, so it counts as a filter:
+        // "everything in this dossier" is a search a user may reasonably run
+        // without typing a term.
+        $scope = is_array($body['scope'] ?? null) && $body['scope'] !== []
+            ? FileScope::fromArray($body['scope'])
+            : null;
+
+        if ($term === '' && $conditions === [] && $mimetypes === [] && $modifiedAfter === null && $scope === null) {
             throw new \InvalidArgumentException('provide a search term or at least one filter');
         }
 
@@ -87,6 +98,7 @@ final class FileQuery
             conditions: $conditions,
             mimetypes: $mimetypes,
             modifiedAfter: $modifiedAfter,
+            scope: $scope,
             matchAny: (bool)($body['matchAny'] ?? false),
             limit: $limit,
             offset: max(0, (int)($body['offset'] ?? 0)),

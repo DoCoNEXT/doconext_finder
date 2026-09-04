@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace OCA\DcnFinder\AppInfo;
 
+use OCA\DcnFinder\Listener\UserDeletedListener;
 use OCP\AppFramework\App;
 use OCP\AppFramework\Bootstrap\IBootContext;
 use OCP\AppFramework\Bootstrap\IBootstrap;
@@ -11,6 +12,7 @@ use OCP\AppFramework\Bootstrap\IRegistrationContext;
 use OCP\IAppConfig;
 use OCP\INavigationManager;
 use OCP\IURLGenerator;
+use OCP\User\Events\UserDeletedEvent;
 
 /**
  * App bootstrap.
@@ -41,7 +43,9 @@ class Application extends App implements IBootstrap
 
     public function register(IRegistrationContext $context): void
     {
-        // e.g. $context->registerEventListener(SomeEvent::class, SomeListener::class);
+        // The app's own table is not cleaned up by Nextcloud when an account is
+        // deleted, so it cleans up after itself.
+        $context->registerEventListener(UserDeletedEvent::class, UserDeletedListener::class);
     }
 
     public function boot(IBootContext $context): void

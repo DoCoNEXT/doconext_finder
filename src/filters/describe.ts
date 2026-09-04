@@ -12,6 +12,13 @@ import type { Condition, SearchState } from '../types/Search'
 export function describeQuery(t: Translate, query: SearchState): string {
   const parts: string[] = []
 
+  // The scope goes first: it says where the search looked, which qualifies
+  // everything after it. Its label is the snapshot stored with the search, so a
+  // folder or entity type that has since been renamed still reads as it did.
+  if (query.scope) {
+    parts.push(t('In {name}', { name: query.scope.label }))
+  }
+
   const type = fileTypePresets(t).find((p) => p.id === query.typePreset)
   if (type && type.id !== 'any') {
     parts.push(type.label)

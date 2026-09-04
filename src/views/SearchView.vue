@@ -29,7 +29,11 @@
       </NcButton>
     </div>
 
+    <!-- Folder sits with the other two filters that need nothing but Nextcloud;
+         the DoCoNEXT fields get their own line below. -->
     <div class="finder__presets">
+      <FolderScope />
+
       <NcSelect v-model="typeOption"
                 class="finder__preset"
                 label="label"
@@ -44,6 +48,8 @@
                 :clearable="false"
                 :input-label="t('Modified')" />
     </div>
+
+    <ScopeSelector />
 
     <details class="finder__filters" :open="store.query.conditions.length > 0">
       <summary>{{ filterSummary }}</summary>
@@ -139,6 +145,8 @@ import { useHistoryStore } from '../stores/historyStore'
 import { useSaveSearch } from '../composables/useSaveSearch'
 import { anyTime, anyType, fileTypePresets, modifiedPresets } from '../filters/presets'
 import ConditionRow from '../components/ConditionRow.vue'
+import FolderScope from '../components/FolderScope.vue'
+import ScopeSelector from '../components/ScopeSelector.vue'
 import FileTable from '../components/FileTable.vue'
 import SearchBox from '../components/SearchBox.vue'
 import ViewOptions from '../components/ViewOptions.vue'
@@ -203,11 +211,14 @@ const message = computed(() => {
     case '': return ''
     case 'no-criteria': return t('Enter a search term, or pick a filter.')
     case 'capped': return t('Stopped after {count} results. Narrow the search to see the rest.', { count: store.results.length })
+    case 'scope-truncated': return t('This scope covers too many folders to search at once. Pick a dossier type or a single dossier.')
     default: return store.error
   }
 })
 
-const messageType = computed(() => (store.error === 'capped' ? 'warning' : 'error'))
+const messageType = computed(() => (
+  store.error === 'capped' || store.error === 'scope-truncated' ? 'warning' : 'error'
+))
 
 function search() {
   store.run(t, 0)
@@ -308,6 +319,12 @@ async function save() {
       cursor: pointer;
       padding: 4px 0;
       color: var(--color-text-maxcontrast);
+      /*
+       * A summary is a block, so it spans the row and swallows clicks far to the
+       * right of its own words — the panel would open from a click in empty
+       * space. Shrink it to what it actually says.
+       */
+      width: fit-content;
     }
   }
 

@@ -27,6 +27,7 @@ class InitialStateProvider
         private IAppConfig $appConfig,
         private IAppManager $appManager,
         private BridgeSettings $bridgeSettings,
+        private CoreScope $coreScope,
         private FileTypeFilterSettings $fileTypeFilterSettings,
     ) {
     }
@@ -50,6 +51,12 @@ class InitialStateProvider
             // frontend registry; this only says which ids to show and in what
             // order, plus any admin-authored custom categories.
             'fileTypeFilters' => $this->fileTypeFilterSettings->list(),
+            // Whether DoCoNEXT Core can name entity types and entities to narrow
+            // a search by. The folder level of the scope picker never depends on
+            // this. Read synchronously so the fields are either there from the
+            // first paint or not at all — a control that appears a beat later
+            // reads as a glitch.
+            'coreScope' => $this->coreScope->hasEntityVocabulary(),
         ]);
     }
 }

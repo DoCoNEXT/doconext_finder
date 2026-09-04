@@ -10,6 +10,8 @@ import { generateUrl } from '@nextcloud/router'
 import { API_BASE } from '../constants'
 import type {
   FieldsResponse,
+  ScopeEntity,
+  ScopeVocabulary,
   SearchHistory,
   SearchRequest,
   SearchResponse,
@@ -35,6 +37,35 @@ export const SearchApi = {
     try {
       const { data } = await axios.get<FieldsResponse>(url('/search/fields'))
       return data
+    } catch (error) {
+      throw describe(error)
+    }
+  },
+
+  /**
+   * The workspaces and entity types this user may scope by. Empty lists are a
+   * normal answer, not a failure: it means DoCoNEXT Core is not installed.
+   */
+  async scope(): Promise<ScopeVocabulary> {
+    try {
+      const { data } = await axios.get<ScopeVocabulary>(url('/scope'))
+      return data
+    } catch (error) {
+      throw describe(error)
+    }
+  },
+
+  /**
+   * Typeahead over entities, optionally narrowed to one type.
+   * @param term what the user has typed so far
+   * @param entityTypeId restrict to this type, when one is chosen
+   */
+  async scopeEntities(term: string, entityTypeId?: number): Promise<ScopeEntity[]> {
+    try {
+      const { data } = await axios.get<{ entities: ScopeEntity[] }>(url('/scope/entities'), {
+        params: { q: term, entityTypeId },
+      })
+      return data.entities ?? []
     } catch (error) {
       throw describe(error)
     }

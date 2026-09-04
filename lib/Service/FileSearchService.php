@@ -10,8 +10,10 @@ use OC\Files\Search\SearchOrder;
 use OC\Files\Search\SearchQuery;
 use OCA\DcnFinder\Search\FileCondition;
 use OCA\DcnFinder\Search\FileQuery;
+use OCA\DcnFinder\Search\FileScope;
 use OCA\DcnFinder\Search\MetadataFields;
 use OCP\Files\FileInfo;
+use OCP\Files\Folder;
 use OCP\Files\IRootFolder;
 use OCP\Files\Node;
 use OCP\Files\NotFoundException;
@@ -22,10 +24,12 @@ use OCP\Files\Search\ISearchOrder;
 use OCP\FilesMetadata\IFilesMetadataManager;
 use OCP\FilesMetadata\IMetadataQuery;
 use OCP\ITagManager;
+use OCP\IUser;
 use OCP\IUserManager;
 
 /**
- * Runs structured file searches against the user's home folder.
+ * Runs structured file searches against the user's home folder — or against a
+ * folder inside it, when the query carries a scope.
  *
  * This talks to \OCP\Files\Folder::search() — the same engine the WebDAV DASL
  * backend drives, but reached directly. That matters: DASL only exposes the
@@ -47,6 +51,7 @@ class FileSearchService
         private IFilesMetadataManager $metadataManager,
         private MetadataFields $metadataFields,
         private FileAuthorService $authors,
+        private CoreScope $coreScope,
     ) {
     }
 
@@ -73,7 +78,7 @@ class FileSearchService
     }
 
     /**
-     * @return array{results: list<array<string,mixed>>, hasMore: bool, offset: int, limit: int}
+     * @return array{results: list<array<string,mixed>>, hasMore: bool, offset: int, limit: int, truncated: bool}
      * @throws NotFoundException when the user has no accessible home folder
      */
     public function search(string $uid, FileQuery $query): array
@@ -81,20 +86,39 @@ class FileSearchService
         $userFolder = $this->rootFolder->getUserFolder($uid);
         $user = $this->userManager->get($uid);
 
-        // One extra row tells us whether another page exists without a count query.
-        $searchQuery = new SearchQuery(
-            $this->buildOperator($query),
-            $query->limit + 1,
-            $query->offset,
-            [$this->order($query)],
-            $user,
-        );
+        // A scope changes where the search starts rather than what it matches, so
+        // it never becomes a clause: the query is the same, the folder it runs
+        // against is not.
+        $searchRoots = [$userFolder];
+        $truncated = false;
 
-        $nodes = $userFolder->search($searchQuery);
+        if ($query->scope !== null) {
+            [$roots, $truncated] = $this->scopeRoots($uid, $userFolder, $query->scope);
 
-        $hasMore = count($nodes) > $query->limit;
-        if ($hasMore) {
-            $nodes = array_slice($nodes, 0, $query->limit);
+            // No reachable root — deleted, never provisioned, or simply not this
+            // user's to see. That is an empty result, never the whole account.
+            if ($roots === []) {
+                return $this->emptyPage($query, $truncated);
+            }
+
+            $searchRoots = $roots;
+        }
+
+        $operator = $this->buildOperator($query);
+        $order    = $this->order($query);
+
+        if (count($searchRoots) === 1) {
+            // One extra row tells us whether another page exists without a count query.
+            $nodes = $searchRoots[0]->search(
+                new SearchQuery($operator, $query->limit + 1, $query->offset, [$order], $user)
+            );
+
+            $hasMore = count($nodes) > $query->limit;
+            if ($hasMore) {
+                $nodes = array_slice($nodes, 0, $query->limit);
+            }
+        } else {
+            [$nodes, $hasMore] = $this->searchAcrossRoots($searchRoots, $operator, $order, $query, $user);
         }
 
         // One lookup for the page rather than one per row: the tag store returns
@@ -123,6 +147,126 @@ class FileSearchService
             'hasMore' => $hasMore,
             'offset'  => $query->offset,
             'limit'   => $query->limit,
+            // True when the scope had more roots than are worth querying, so the
+            // page can say the results are partial instead of quietly lying.
+            'truncated' => $truncated,
+        ];
+    }
+
+    /**
+     * The folders a scope resolves to, and whether Core had to cut the list short.
+     *
+     * Every id is resolved through the user's *own* home folder, so an id they
+     * cannot reach simply drops out — the same defensive move {@see setFavorite}
+     * makes, and the reason no second access check is needed anywhere else.
+     *
+     * @return array{0: list<Folder>, 1: bool}
+     */
+    private function scopeRoots(string $uid, Folder $userFolder, FileScope $scope): array
+    {
+        $resolved = $this->coreScope->roots($scope);
+
+        $folders = [];
+        foreach ($resolved['roots'] as $fileId) {
+            $node = $userFolder->getFirstNodeById($fileId);
+            if ($node instanceof Folder) {
+                $folders[] = $node;
+            }
+        }
+
+        return [$folders, $resolved['truncated']];
+    }
+
+    /**
+     * Runs the same query against several roots and merges the answers.
+     *
+     * The tempting alternative — one query with `path LIKE '<root>/%'` OR-ed per
+     * root — is quietly wrong, which is worth writing down because it looks
+     * right. Group folders are mounted through a jailed cache: the *raw* path in
+     * the filecache carries the jail root, while getInternalPath() reports the
+     * path relative to it. A group folder's own root therefore reports an empty
+     * internal path, and a folder inside one reports `Dossiers` where the row
+     * stored `files/Dossiers`. Both produce a clause that silently matches
+     * nothing — measured, not guessed. Searching from the node instead makes
+     * Nextcloud add the correct jail filter itself.
+     *
+     * The cost is one query per root, so every root has to offer a whole page:
+     * the page asked for may sit entirely inside any one of them.
+     *
+     * @param list<Folder> $roots
+     * @return array{0: list<Node>, 1: bool} the page, and whether more follows
+     */
+    private function searchAcrossRoots(
+        array $roots,
+        ISearchOperator $operator,
+        ISearchOrder $order,
+        FileQuery $query,
+        ?IUser $user,
+    ): array {
+        $reach = $query->offset + $query->limit + 1;
+
+        $found = [];
+        foreach ($roots as $root) {
+            foreach ($root->search(new SearchQuery($operator, $reach, 0, [$order], $user)) as $node) {
+                // Nested roots overlap: a sub-dossier inside its parent's folder
+                // is reached twice, and the same file must not be listed twice.
+                $found[$node->getId()] = $node;
+            }
+        }
+
+        $nodes = array_values($found);
+        usort($nodes, $this->comparator($query));
+
+        return [
+            array_slice($nodes, $query->offset, $query->limit),
+            count($nodes) > $query->offset + $query->limit,
+        ];
+    }
+
+    /**
+     * Orders the merged rows.
+     *
+     * Deliberately the same comparison the database made, not a nicer one: each
+     * root was cut to its first N rows *by the database's ordering*, so a merge
+     * that ordered differently would promote rows past the cut and drop rows
+     * that belonged. Sorting `name` case-insensitively here did exactly that —
+     * a file could appear on two consecutive pages, which is how this was found.
+     * Nextcloud's own cross-mount merge in Folder::search() compares the same
+     * plain way, for the same reason.
+     *
+     * The file id breaks ties so that two pages of the same result set cut at
+     * the same place; without it, equally-named files reshuffle between them.
+     *
+     * Sorting on a metadata key falls back to modification time: those values
+     * are fetched per page, after the merge, so there is nothing to sort on yet.
+     * {@see order()} makes the same substitution for unindexed keys.
+     */
+    private function comparator(FileQuery $query): callable
+    {
+        $direction = $query->descending ? -1 : 1;
+
+        $key = match ($query->sort) {
+            'name'          => static fn (Node $n) => $n->getName(),
+            'size'          => static fn (Node $n) => $n->getSize(),
+            'creation_time' => static fn (Node $n) => $n->getCreationTime(),
+            default         => static fn (Node $n) => $n->getMTime(),
+        };
+
+        return static fn (Node $a, Node $b) => ($direction * ($key($a) <=> $key($b)))
+            ?: ($a->getId() <=> $b->getId());
+    }
+
+    /**
+     * @return array{results: list<array<string,mixed>>, hasMore: bool, offset: int, limit: int, truncated: bool}
+     */
+    private function emptyPage(FileQuery $query, bool $truncated): array
+    {
+        return [
+            'results'   => [],
+            'hasMore'   => false,
+            'offset'    => $query->offset,
+            'limit'     => $query->limit,
+            'truncated' => $truncated,
         ];
     }
 

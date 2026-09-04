@@ -28,6 +28,7 @@ export function emptyState(): SearchState {
     matchAny: false,
     sort: 'mtime',
     descending: true,
+    scope: null,
   }
 }
 
@@ -69,6 +70,8 @@ export const useSearchStore = defineStore('search', {
         || state.query.conditions.length > 0
         || state.query.typePreset !== 'any'
         || state.query.modifiedPreset !== 'any'
+        // "Everything in this dossier" is a search worth running on its own.
+        || state.query.scope !== null
     },
   },
 
@@ -122,6 +125,11 @@ export const useSearchStore = defineStore('search', {
         conditions: this.query.conditions.filter(usable),
         mimetypes: type.mimetypes,
         modifiedAfter: modifiedAfter(time) ?? undefined,
+        // Only the level and the id travel; the label is ours to display, and
+        // sending it back would invite the server to trust a client's wording.
+        scope: this.query.scope
+          ? { level: this.query.scope.level, id: this.query.scope.id }
+          : undefined,
         matchAny: this.query.matchAny,
         sort: this.query.sort,
         descending: this.query.descending,
@@ -150,6 +158,9 @@ export const useSearchStore = defineStore('search', {
         this.hasMore = response.hasMore
         this.offset = response.offset
         this.searched = true
+        if (response.truncated) {
+          this.error = 'scope-truncated'
+        }
         if (record) {
           SearchApi.recordRecent({ ...this.query })
         }

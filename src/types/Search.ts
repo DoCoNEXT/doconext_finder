@@ -41,6 +41,60 @@ export interface SearchResponse {
 	hasMore: boolean
 	offset: number
 	limit: number
+	/**
+	 * True when the scope covered more folders than are worth querying and the
+	 * server searched only some of them. Results are real but incomplete.
+	 */
+	truncated?: boolean
+}
+
+/**
+ * The three levels a search can be scoped to, from widest to narrowest. They are
+ * strictly nested, so a scope names one level — the deepest one chosen.
+ *
+ * `folder` works without DoCoNEXT Core and carries a plain Nextcloud file id;
+ * the other three are Core's own hierarchy, and its own ids. A scope is one or
+ * the other, never both.
+ */
+export type ScopeLevel = 'folder' | 'realm' | 'entityType' | 'entity'
+
+/** A DoCoNEXT Core workspace, as offered by GET /api/scope. */
+export interface ScopeRealm {
+	id: number
+	name: string
+}
+
+export interface ScopeEntityType {
+	id: number
+	/** Plural, as the picker lists it: "Huurovereenkomsten". */
+	name: string
+	/** What one of them is called; labels the entity box once this type is chosen. */
+	singularName: string
+	realmId: number
+}
+
+/** One typeahead suggestion. `context` is what tells two same-named ones apart. */
+export interface ScopeEntity {
+	id: number
+	name: string
+	context: string
+}
+
+/** Empty lists mean DoCoNEXT Core is absent; the folder scope does not need it. */
+export interface ScopeVocabulary {
+	realms: ScopeRealm[]
+	entityTypes: ScopeEntityType[]
+}
+
+/**
+ * A chosen scope. `label` is a snapshot, not a lookup key: a saved search made
+ * last year must still read as "Huurovereenkomsten" even after that type was
+ * renamed or removed, and only the id is ever sent back to the server.
+ */
+export interface ScopeSelection {
+	level: ScopeLevel
+	id: number
+	label: string
 }
 
 /** The server describes its own filterable surface, so menus aren't hardcoded. */
@@ -77,6 +131,8 @@ export interface SearchRequest {
 	mimetypes?: string[]
 	/** Unix seconds; only files modified after this. */
 	modifiedAfter?: number
+	/** Where the search starts. Not a condition — see FileScope on the server. */
+	scope?: { level: ScopeLevel, id: number }
 	matchAny?: boolean
 	limit?: number
 	offset?: number
@@ -98,6 +154,8 @@ export interface SearchState {
   matchAny: boolean
   sort: string
   descending: boolean
+  /** null when the search is not scoped. Rides along in the stored query JSON. */
+  scope: ScopeSelection | null
 }
 
 export interface StoredSearch {

@@ -90,9 +90,15 @@ class SearchHistoryController extends ApiController
             return new DataResponse(['error' => 'query is required'], Http::STATUS_BAD_REQUEST);
         }
 
-        return $this->withUser(fn (string $uid) => new DataResponse(
-            $this->service->save($uid, $name, $description, $query)
-        ));
+        return $this->withUser(function (string $uid) use ($name, $description, $query) {
+            try {
+                return new DataResponse($this->service->save($uid, $name, $description, $query));
+            } catch (\RuntimeException $e) {
+                // The ceiling on saved searches. Its message is written for the
+                // person who hit it, so it passes through as-is.
+                return new DataResponse(['error' => $e->getMessage()], Http::STATUS_CONFLICT);
+            }
+        });
     }
 
     /**

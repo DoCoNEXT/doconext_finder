@@ -21,6 +21,19 @@ class SearchHistoryService
     /** How many recents to keep per user. Older ones are dropped on capture. */
     public const KEEP_RECENTS = 20;
 
+    /**
+     * How many searches a user may keep saved.
+     *
+     * A ceiling rather than a trim: a recent is something the app noticed, and
+     * dropping the oldest costs nobody anything, but a saved search is something
+     * a person decided to keep and silently discarding one would be a bug they
+     * could not see. So the save is refused instead, and says so.
+     *
+     * The number matches what the list endpoint returns — before this, saving
+     * past it simply made the newest ones invisible.
+     */
+    public const MAX_SAVED = 200;
+
     public function __construct(private SavedSearchMapper $mapper)
     {
     }
@@ -30,7 +43,11 @@ class SearchHistoryService
     {
         return array_map(
             static fn (SavedSearch $s) => $s->toArray(),
-            $this->mapper->findByKind($userId, $kind, $kind === SavedSearch::KIND_RECENT ? self::KEEP_RECENTS : 200)
+            $this->mapper->findByKind(
+                $userId,
+                $kind,
+                $kind === SavedSearch::KIND_RECENT ? self::KEEP_RECENTS : self::MAX_SAVED,
+            )
         );
     }
 
@@ -72,8 +89,18 @@ class SearchHistoryService
      * @param array<string,mixed> $query
      * @return array<string,mixed>
      */
+    /**
+     * @throws \RuntimeException when the user is already at {@see MAX_SAVED}
+     */
     public function save(string $userId, string $name, string $description, array $query): array
     {
+        if ($this->mapper->countByKind($userId, SavedSearch::KIND_SAVED) >= self::MAX_SAVED) {
+            throw new \RuntimeException(
+                'You have reached the maximum of ' . self::MAX_SAVED
+                . ' saved searches. Delete one to save another.'
+            );
+        }
+
         $entry = new SavedSearch();
         $entry->setUserId($userId);
         $entry->setKind(SavedSearch::KIND_SAVED);
@@ -162,12 +189,22 @@ class SearchHistoryService
      */
     private static function fingerprint(array $query): string
     {
+        $scope = is_array($query['scope'] ?? null) ? $query['scope'] : null;
+
         $identity = [
             'term' => trim((string)($query['term'] ?? '')),
             'conditions' => $query['conditions'] ?? [],
-            'mimetypes' => $query['mimetypes'] ?? [],
+            // The stored query holds preset *ids*, not the mimetypes they resolve
+            // to — reading 'mimetypes' here always found nothing, which quietly
+            // made two searches differing only by file type the same recent.
+            'typePreset' => $query['typePreset'] ?? null,
             'modifiedPreset' => $query['modifiedPreset'] ?? null,
             'matchAny' => (bool)($query['matchAny'] ?? false),
+            // Level and id only: renaming an entity type must not split one
+            // recent search into two.
+            'scope' => $scope === null
+                ? null
+                : ['level' => $scope['level'] ?? '', 'id' => (int)($scope['id'] ?? 0)],
         ];
 
         return hash('sha256', json_encode($identity) ?: '');
@@ -178,8 +215,10 @@ class SearchHistoryService
     {
         return trim((string)($query['term'] ?? '')) === ''
             && ($query['conditions'] ?? []) === []
-            && ($query['mimetypes'] ?? []) === []
-            && ($query['modifiedPreset'] ?? 'any') === 'any';
+            && ($query['typePreset'] ?? 'any') === 'any'
+            && ($query['modifiedPreset'] ?? 'any') === 'any'
+            // "Everything in this dossier" is a search someone will want back.
+            && ($query['scope'] ?? null) === null;
     }
 
     private static function trimTo(string $value, int $length): string
