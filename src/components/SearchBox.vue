@@ -32,7 +32,8 @@
         <component :is="entry.kind === 'saved' ? Save : RotateCcwClock" :size="18" />
         <span class="search-box__label">
           <strong>{{ titleOf(entry) }}</strong>
-          <span class="search-box__hint">{{ describeQuery(t, entry.query) || t('No filters') }}</span>
+          <span class="search-box__hint"
+                :title="describeQuery(t, entry.query)">{{ describeQuery(t, entry.query) || t('No filters') }}</span>
         </span>
       </li>
     </ul>
@@ -200,12 +201,17 @@ function onKeydown(event: KeyboardEvent) {
     min-width: 0;
   }
 
+  // Same reasoning as the Searches list: this line names every filter in the
+  // search, so clipping it at one line hides all but the first.
   &__hint {
     color: var(--color-text-maxcontrast);
     font-size: 90%;
     overflow: hidden;
     text-overflow: ellipsis;
-    white-space: nowrap;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
   }
 }
 </style>

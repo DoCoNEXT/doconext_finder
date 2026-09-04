@@ -45,8 +45,8 @@
                       @click="select(entry)"
                       @dblclick="run(entry)">
                 <strong>{{ entry.name }}</strong>
-                <span class="muted">{{ describe(entry) }}</span>
-                <span v-if="entry.description" class="muted">{{ entry.description }}</span>
+                <span class="muted" :title="describe(entry)">{{ describe(entry) }}</span>
+                <span v-if="entry.description" class="muted" :title="entry.description">{{ entry.description }}</span>
               </button>
               <NcActions :aria-label="t('Actions')">
                 <NcActionButton @click="run(entry)">
@@ -103,7 +103,7 @@
                       @click="select(entry)"
                       @dblclick="run(entry)">
                 <strong>{{ entry.query.term || t('(no search term)') }}</strong>
-                <span class="muted">{{ describe(entry) }}</span>
+                <span class="muted" :title="describe(entry)">{{ describe(entry) }}</span>
               </button>
               <NcActions :aria-label="t('Actions')">
                 <NcActionButton @click="run(entry)">
@@ -378,6 +378,19 @@ async function guard(action: () => Promise<unknown>) {
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
+    }
+
+    // A name is one thing and belongs on one line, but the grey line under it
+    // is a *list* of filters — and one clipped line can only ever show the
+    // first of them, so "In Dossiers · Email · Last 7 days" read as "In
+    // Dossiers …". Two lines hold the combinations people actually build; the
+    // title attribute carries the rest for the ones they don't.
+    span {
+      white-space: normal;
+      display: -webkit-box;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 2;
+      line-clamp: 2;
     }
 
     &:focus-visible {
