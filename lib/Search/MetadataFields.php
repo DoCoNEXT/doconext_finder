@@ -6,6 +6,8 @@ namespace OCA\DcnFinder\Search;
 
 use OCP\FilesMetadata\IFilesMetadataManager;
 use OCP\FilesMetadata\Model\IMetadataValueWrapper;
+use OCP\IGroupManager;
+use OCP\IUserManager;
 
 /**
  * The file metadata this server knows about.
@@ -24,8 +26,14 @@ class MetadataFields
     /** Marks a field as metadata in the API, e.g. `meta:dcn_core_ecli`. */
     public const PREFIX = 'meta:';
 
-    public function __construct(private IFilesMetadataManager $metadataManager)
-    {
+    /** Resolved principal ids, so a page of results asks about each one once. */
+    private array $principals = [];
+
+    public function __construct(
+        private IFilesMetadataManager $metadataManager,
+        private IUserManager $userManager,
+        private IGroupManager $groupManager,
+    ) {
     }
 
     /**
@@ -100,11 +108,57 @@ class MetadataFields
             };
 
             if ($value !== '') {
-                $values[$key] = $value;
+                $values[$key] = $this->readable($value);
             }
         }
 
         return $values;
+    }
+
+    /**
+     * Turns an account or group reference into the name that account or group
+     * actually goes by: `group:legal-staff` reads as "Legal staff".
+     *
+     * A shape, not an app: any app storing a `user:` or `group:` reference gets
+     * the same treatment, and anything else — or a reference to something that
+     * no longer exists — is left exactly as it was stored. A comma-separated
+     * list is resolved item by item, which is how a multi-valued field arrives.
+     *
+     * DoCoNEXT Core reduces its principal fields to bare ids before storing
+     * them, because the search index column is too narrow for the JSON they
+     * arrive as; that is what makes them show up here as `group:legal-staff`
+     * rather than as a person.
+     */
+    private function readable(string $value): string
+    {
+        if (!str_contains($value, 'user:') && !str_contains($value, 'group:')) {
+            return $value;
+        }
+
+        $parts = array_map(
+            fn (string $part) => $this->principalName(trim($part)),
+            explode(',', $value),
+        );
+
+        return implode(', ', $parts);
+    }
+
+    private function principalName(string $reference): string
+    {
+        if (array_key_exists($reference, $this->principals)) {
+            return $this->principals[$reference];
+        }
+
+        [$type, $id] = array_pad(explode(':', $reference, 2), 2, '');
+
+        $name = match ($type) {
+            'user'  => $this->userManager->get($id)?->getDisplayName(),
+            'group' => $this->groupManager->get($id)?->getDisplayName(),
+            default => null,
+        };
+
+        // An id nobody answers to is still the truest thing we can show.
+        return $this->principals[$reference] = $name ?? $reference;
     }
 
     /**

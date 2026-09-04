@@ -80,7 +80,19 @@
         <dl class="details">
           <template v-for="entry in metadata" :key="entry.key">
             <dt>{{ entry.label }}</dt>
-            <dd>{{ entry.value }}</dd>
+            <dd class="details__copyable">
+              <span>{{ entry.value }}</span>
+              <NcButton class="details__copy"
+                        variant="tertiary"
+                        :aria-label="t('Copy {field}', { field: entry.label })"
+                        :title="copiedKey === entry.key ? t('Copied') : t('Copy {field}', { field: entry.label })"
+                        @click="copyValue(entry.key, entry.value)">
+                <template #icon>
+                  <Check v-if="copiedKey === entry.key" :size="16" />
+                  <Copy v-else :size="16" />
+                </template>
+              </NcButton>
+            </dd>
           </template>
         </dl>
       </template>
@@ -142,11 +154,14 @@ import {
   NcActionLink,
   NcAppSidebar,
   NcAppSidebarTab,
+  NcButton,
   NcEmptyContent,
 } from '@nextcloud/vue'
-import { Eye, Info } from '@lucide/vue'
+import { Check, Copy, Eye, Info } from '@lucide/vue'
 import { generateUrl } from '@nextcloud/router'
+import { showError } from '@nextcloud/dialogs'
 import { useI18n } from '../composables/useI18n'
+import { useClipboard } from '../composables/useClipboard'
 import { useSearchStore } from '../stores/searchStore'
 import { useFileCommands } from '../composables/useFileCommands'
 import { folderOf, typeName } from '../filters/grouping'
@@ -197,6 +212,28 @@ const metadata = computed(() => {
     .sort((a, b) => a.label.localeCompare(b.label))
 })
 
+const { copy } = useClipboard()
+
+/** Which row last copied, so only that row's button shows the tick. */
+const copiedKey = ref('')
+
+/**
+ * @param key the metadata key whose button was pressed
+ * @param value what to put on the clipboard
+ */
+async function copyValue(key: string, value: string) {
+  if (await copy(value)) {
+    copiedKey.value = key
+    setTimeout(() => {
+      if (copiedKey.value === key) {
+        copiedKey.value = ''
+      }
+    }, 2000)
+  } else {
+    showError(t('Could not copy to the clipboard'))
+  }
+}
+
 const richPreview = HAS_RICH_PREVIEW
 
 /**
@@ -226,7 +263,12 @@ const previewUrl = computed(() => {
 <style scoped lang="scss">
 .details {
   display: grid;
-  grid-template-columns: auto 1fr;
+  // Nextcloud's sidebar gives every <dt> a fixed 130px with `white-space:
+  // nowrap`, so a longer label than that does not wrap — it paints straight
+  // over its own value ("Advocaat wederpartij" across "mr. J. Sanders").
+  // fit-content lets the label column take what it needs and no more than
+  // nearly half the panel; the dt rule below undoes the nowrap.
+  grid-template-columns: fit-content(45%) 1fr;
   gap: 4px 12px;
   margin: 12px 0;
 
@@ -236,11 +278,46 @@ const previewUrl = computed(() => {
   dt {
     text-align: start;
     color: var(--color-text-maxcontrast);
+    // Both from Nextcloud's own sidebar stylesheet; see the grid above.
+    width: auto;
+    white-space: normal;
+    overflow-wrap: anywhere;
   }
 
   dd {
     margin: 0;
     overflow-wrap: anywhere;
+  }
+
+  // A value and its copy button share the row; the button only appears for the
+  // row being pointed at or tabbed to, so a list of a dozen fields is not a
+  // list of a dozen buttons.
+  &__copyable {
+    display: flex;
+    align-items: start;
+    gap: 4px;
+  }
+
+  &__copy {
+    opacity: 0;
+    flex: 0 0 auto;
+    // NcButton's own 34px would set the height of every metadata row.
+    min-height: 24px !important;
+    min-width: 24px !important;
+    height: 24px;
+    width: 24px;
+  }
+
+  &__copyable:hover &__copy,
+  &__copy:focus-visible {
+    opacity: 1;
+  }
+
+  // Touch has no hover, so there is nothing to reveal the button — show it.
+  @media (hover: none) {
+    &__copy {
+      opacity: 1;
+    }
   }
 
   // The thumbnail gets the whole tab rather than a fixed 320px box: the panel
