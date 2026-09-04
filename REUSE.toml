@@ -11,7 +11,7 @@
 # done later without changing anything below.
 version = 1
 SPDX-PackageName = "doconext_finder"
-SPDX-PackageSupplier = "doconext_finder developers"
+SPDX-PackageSupplier = "DoCoNEXT <support@doconext.com>"
 SPDX-PackageDownloadLocation = "https://github.com/bart-doconext/doconext_finder"
 
 # Everything this app writes itself.
@@ -39,7 +39,7 @@ path = [
   ".php-cs-fixer.dist.php",
 ]
 precedence = "aggregate"
-SPDX-FileCopyrightText = "2026 doconext_finder developers"
+SPDX-FileCopyrightText = "2026 DoCoNEXT"
 SPDX-License-Identifier = "AGPL-3.0-or-later"
 
 # Files with nothing creative in them: dependency manifests, lock files and CI
@@ -68,5 +68,5 @@ SPDX-License-Identifier = "CC0-1.0"
 [[annotations]]
 path = ["js/**", "css/**"]
 precedence = "aggregate"
-SPDX-FileCopyrightText = "2026 doconext_finder developers and the authors of its dependencies"
+SPDX-FileCopyrightText = "2026 DoCoNEXT and the authors of its dependencies"
 SPDX-License-Identifier = "AGPL-3.0-or-later AND ISC AND MIT AND GPL-3.0-or-later AND BSD-3-Clause AND (MPL-2.0 OR Apache-2.0)"

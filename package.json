@@ -2,6 +2,7 @@
   "name": "doconext_finder",
   "version": "0.1.0",
   "license": "AGPL-3.0-or-later",
+  "author": "DoCoNEXT",
   "type": "module",
   "scripts": {
     "build": "vite build",
