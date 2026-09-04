@@ -267,7 +267,9 @@ async function guard(action: () => Promise<unknown>) {
   padding: 0 16px 12px;
 
   h3 {
-    margin: 8px 0 4px;
+    // No margin above it — see FavoritesView: the space at the top of a page is
+    // App.vue's to give, once, so the three pages start on the same line.
+    margin: 0 0 4px;
     font-weight: 700;
   }
 

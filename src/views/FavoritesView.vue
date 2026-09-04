@@ -146,9 +146,16 @@ async function unfavorite(file: FileResult) {
     display: flex;
     align-items: center;
     gap: 8px;
+    // The gap to what follows belongs to the row, not to the heading inside it:
+    // as the h3's own margin it grew the h3's margin box past the button beside
+    // it, and centring the row then put the two a few pixels out of line.
+    margin-bottom: 8px;
 
     h3 {
-      margin: 8px 0;
+      // No margin above it. The breathing room at the top of a page is set once,
+      // in App.vue, for all three pages; a heading that adds its own starts
+      // eight pixels below where the search page's first control starts.
+      margin: 0;
       font-weight: 700;
     }
   }
