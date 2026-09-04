@@ -104,6 +104,26 @@ class CoreScope
     }
 
     /**
+     * The entity a file belongs to, or null when it sits outside every managed
+     * folder — or when Core is not installed at all.
+     *
+     * The link comes from Core rather than being assembled here: Core owns its
+     * own routes, and a URL built from another app's knowledge of them is a URL
+     * that breaks quietly the day they change.
+     *
+     * @return array{id: int, name: string, code: string, typeId: int, typeName: string, url: string}|null
+     */
+    public function entityForFile(int $fileId): ?array
+    {
+        $core = $this->core();
+        if ($core === null) {
+            return null;
+        }
+
+        return $this->guard(static fn () => $core->entityForFile($fileId), null);
+    }
+
+    /**
      * The folders that bound a scope, as Nextcloud file ids.
      *
      * File ids rather than paths: a path is per-user and changes when someone

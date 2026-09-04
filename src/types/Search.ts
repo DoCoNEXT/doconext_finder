@@ -80,6 +80,19 @@ export interface ScopeEntity {
 	context: string
 }
 
+/**
+ * The Core entity a file sits in. `url` is Core's own page for it — built there,
+ * because Core owns its routes.
+ */
+export interface ScopeFileEntity {
+	id: number
+	name: string
+	code: string
+	typeId: number
+	typeName: string
+	url: string
+}
+
 /** Empty lists mean DoCoNEXT Core is absent; the folder scope does not need it. */
 export interface ScopeVocabulary {
 	realms: ScopeRealm[]

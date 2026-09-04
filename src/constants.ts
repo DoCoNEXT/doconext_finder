@@ -5,6 +5,7 @@
  * Every PHP handler that loads one of the app's bundles MUST call
  * InitialStateProvider::provide(), or this module throws on import.
  */
+import { getCapabilities } from '@nextcloud/capabilities'
 import { loadState } from '@nextcloud/initial-state'
 import type { FileTypeFilterEntry } from './types/Search'
 
@@ -21,6 +22,14 @@ interface AppConfig {
 	fileTypeFilters: FileTypeFilterEntry[]
 	/** True when DoCoNEXT Core can name entity types and entities to scope by. */
 	coreScope: boolean
+}
+
+/** The slice of the server's capabilities DoCoNEXT Core publishes about itself. */
+interface CoreCapability {
+	doconext_core?: {
+		/** The admin's name for Core, with Core's own default already applied. */
+		productName?: string
+	}
 }
 
 let config: AppConfig
@@ -65,6 +74,27 @@ export const FILE_TYPE_FILTERS: FileTypeFilterEntry[] = config.fileTypeFilters ?
  * fields are either there on first paint or not at all.
  */
 export const HAS_ENTITY_SCOPE = config.coreScope === true
+
+/**
+ * The name DoCoNEXT Core goes by on this server, for "Open in <name>".
+ *
+ * From the capabilities every page already carries, which is the route Core
+ * publishes it on precisely so integrating apps do not reach into its config:
+ * Core is the single source of truth for its own name, and an admin renaming it
+ * to "DMS" changes this label with it. The fallback only ever applies when Core
+ * is absent, and then the command that uses it is not rendered anyway.
+ *
+ * A function rather than a constant: reading capabilities needs `window`, and
+ * evaluating that at import time made this module unloadable anywhere without
+ * one — which the test suite noticed before anyone else could.
+ */
+export function coreProductName(): string {
+  try {
+    return (getCapabilities() as CoreCapability)?.doconext_core?.productName || 'DoCoNEXT Core'
+  } catch {
+    return 'DoCoNEXT Core'
+  }
+}
 
 export const API_BASE = `/apps/${APP_ID}/api`
 

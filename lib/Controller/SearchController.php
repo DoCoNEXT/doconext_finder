@@ -110,6 +110,27 @@ class SearchController extends ApiController
         ]);
     }
 
+    /**
+     * The DoCoNEXT Core entity a file belongs to, if any.
+     *
+     * Asked on demand rather than carried on every search result: most rows are
+     * never acted on, and this is one lookup per file.
+     */
+    #[NoAdminRequired]
+    #[FrontpageRoute(verb: 'GET', url: '/api/scope/entity-for-file')]
+    public function entityForFile(): DataResponse
+    {
+        if ($this->userSession->getUser() === null) {
+            return new DataResponse(['error' => 'not authenticated'], Http::STATUS_UNAUTHORIZED);
+        }
+
+        $fileId = (int)$this->request->getParam('fileId', 0);
+
+        return new DataResponse([
+            'entity' => $fileId > 0 ? $this->coreScope->entityForFile($fileId) : null,
+        ]);
+    }
+
     #[NoAdminRequired]
     #[FrontpageRoute(verb: 'POST', url: '/api/search')]
     public function search(): DataResponse

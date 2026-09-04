@@ -11,6 +11,7 @@ import { API_BASE } from '../constants'
 import type {
   FieldsResponse,
   ScopeEntity,
+  ScopeFileEntity,
   ScopeVocabulary,
   SearchHistory,
   SearchRequest,
@@ -66,6 +67,23 @@ export const SearchApi = {
         params: { q: term, entityTypeId },
       })
       return data.entities ?? []
+    } catch (error) {
+      throw describe(error)
+    }
+  },
+
+  /**
+   * The DoCoNEXT Core entity a file belongs to, or null when it belongs to none
+   * — which is a normal answer, not a failure.
+   * @param fileId the file to ask about
+   */
+  async entityForFile(fileId: number): Promise<ScopeFileEntity | null> {
+    try {
+      const { data } = await axios.get<{ entity: ScopeFileEntity | null }>(
+        url('/scope/entity-for-file'),
+        { params: { fileId } },
+      )
+      return data.entity ?? null
     } catch (error) {
       throw describe(error)
     }

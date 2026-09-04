@@ -19,6 +19,7 @@ import {
   FolderUp,
   Laptop,
   Link,
+  SquareArrowUpRight,
   Star,
   StarOff,
   Upload,
@@ -31,6 +32,8 @@ import { downloadFile } from '../services/download'
 import { openLocally } from '../services/openLocally'
 import { pickLocalFiles, uploadTo } from '../services/upload'
 import { folderOf } from '../filters/grouping'
+import { coreProductName, HAS_ENTITY_SCOPE } from '../constants'
+import { SearchApi } from '../services/SearchApi'
 import type { FileResult } from '../types/Search'
 
 export interface FileCommand {
@@ -139,6 +142,31 @@ export function useFileCommands(onChanged?: (_file: FileResult) => void) {
    * @param toggleFavorite called to star/unstar; omitted where the caller
    *   handles the star itself
    */
+  /**
+   * Opens the entity a file belongs to, in DoCoNEXT Core.
+   *
+   * A file outside every managed folder simply has no entity, which is not a
+   * failure — so it says so rather than opening something that is not there.
+   *
+   * @param file the row that was acted on
+   */
+  async function openEntity(file: FileResult) {
+    try {
+      const entity = await SearchApi.entityForFile(file.fileid)
+      if (entity === null) {
+        showError(t('{name} does not belong to a record in {product}', {
+          name: file.name,
+          product: coreProductName(),
+        }))
+
+        return
+      }
+      window.open(entity.url, '_blank', 'noopener')
+    } catch (e) {
+      showError((e as Error).message)
+    }
+  }
+
   function commandsFor(
     file: FileResult,
     toggleFavorite?: (_file: FileResult) => void,
@@ -169,6 +197,19 @@ export function useFileCommands(onChanged?: (_file: FileResult) => void) {
       href: folderLink(file),
       target: '_blank',
     })
+
+    // Offered for every row when Core is installed, and resolved only when
+    // asked: which entity a file belongs to is a lookup per file, and doing it
+    // for a whole page of results to decide whether to draw a menu entry would
+    // cost a hundred queries to answer a question nobody asked yet.
+    if (HAS_ENTITY_SCOPE) {
+      commands.push({
+        id: 'entity',
+        label: t('Open in {product}', { product: coreProductName() }),
+        icon: SquareArrowUpRight,
+        run: () => openEntity(file),
+      })
+    }
 
     if (!file.isFolder) {
       commands.push(
