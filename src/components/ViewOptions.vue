@@ -23,7 +23,7 @@
       </NcButton>
     </div>
 
-    <select v-if="addableLevels.length" :value="''" @change="onAddLevel">
+    <select v-if="addableLevels.length" value="" @change="onAddLevel">
       <option value="">
         {{ levels.length ? t('Add a level…') : t('Nothing') }}
       </option>
@@ -113,7 +113,7 @@
 
       <label v-if="addableFields.length" class="columns__add">
         <span class="muted">{{ t('Add a metadata column:') }}</span>
-        <select :value="''" @change="onAddColumn">
+        <select value="" @change="onAddColumn">
           <option value="">{{ t('Choose a field…') }}</option>
           <option v-for="field in addableFields" :key="field.field" :value="field.field">
             {{ field.label }}

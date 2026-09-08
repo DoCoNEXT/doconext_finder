@@ -1,5 +1,5 @@
 /**
- * Thin API client for the search endpoints. @nextcloud/axios handles the CSRF
+ * Thin API client for the search endpoints. `@nextcloud/axios` handles the CSRF
  * token + session cookie automatically.
  *
  * Search is a POST because a query is a structured document (a condition list),

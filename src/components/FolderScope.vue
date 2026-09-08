@@ -53,6 +53,8 @@ interface PickedNode {
   path?: string
 }
 
+const { t } = useI18n()
+
 /**
  * The picker renders no confirm button of its own — without a factory it shows
  * none at all, which is a dialog you can only cancel.
@@ -74,7 +76,6 @@ function confirmButton(nodes: PickedNode[]) {
   }]
 }
 
-const { t } = useI18n()
 const store = useSearchStore()
 
 const chosen = computed(() => (store.query.scope?.level === 'folder' ? store.query.scope : null))

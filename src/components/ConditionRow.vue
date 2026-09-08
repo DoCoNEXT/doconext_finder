@@ -111,8 +111,9 @@ const emit = defineEmits<{
 
 interface Option { id: string, label: string }
 
-const metadataLabelOf = (id: string) =>
-  props.schema.metadata.find((f) => f.field === id)?.label ?? metadataKeyOf(id)
+function metadataLabelOf(id: string) {
+  return props.schema.metadata.find((f) => f.field === id)?.label ?? metadataKeyOf(id)
+}
 
 const labelFor = (id: string) => (isMetadataField(id) ? metadataLabelOf(id) : fieldLabel(t, id))
 

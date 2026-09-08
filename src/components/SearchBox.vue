@@ -1,16 +1,16 @@
 <template>
   <div ref="root" class="search-box">
-    <NcTextField ref="field"
-                 :model-value="modelValue"
-                 :label="t('Search files')"
-                 :label-outside="true"
-                 :placeholder="t('Search by name, or pick a saved search…')"
-                 role="combobox"
-                 :aria-expanded="open"
-                 aria-autocomplete="list"
-                 @update:model-value="onInput"
-                 @focus="open = true"
-                 @keydown="onKeydown">
+    <NcTextField
+      :model-value="modelValue"
+      :label="t('Search files')"
+      :label-outside="true"
+      :placeholder="t('Search by name, or pick a saved search…')"
+      role="combobox"
+      :aria-expanded="open"
+      aria-autocomplete="list"
+      @update:model-value="onInput"
+      @focus="open = true"
+      @keydown="onKeydown">
       <template #icon>
         <Search :size="20" />
       </template>

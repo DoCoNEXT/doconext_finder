@@ -22,7 +22,7 @@
  * NcAppNavigation's `#search` slot, and put `railClass` on NcContent.
  *
  * `collapsed` is a module-level singleton rather than a fresh ref per call —
- * mirroring how @nextcloud/vue's own useIsMobile() shares one ref across every
+ * mirroring how `@nextcloud/vue`'s own useIsMobile() shares one ref across every
  * caller. An app can need the same live answer in more than one place at once:
  * NcContent's class and the toggle button both live in the shell, and a bigger
  * app can also have its navigation split across a couple of components (a

@@ -1,6 +1,6 @@
 /**
  * Translation helper. ALWAYS use this — never import `translate` from
- * @nextcloud/l10n directly (it needs the app id on every call). The English
+ * `@nextcloud/l10n` directly (it needs the app id on every call). The English
  * string itself is the translation key; missing keys fall back to it.
  *
  *   const { t } = useI18n()
