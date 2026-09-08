@@ -153,14 +153,16 @@ jobs:
         with:
           php-version: '8.2'
           coverage: none
+      # Audited from composer.lock rather than from an installed vendor/.
+      # `require` here is currently just `php`, so `composer install --no-dev`
+      # installs nothing and composer then refuses to audit an empty vendor:
+      # "No installed packages found ... or pass --locked to audit the lock
+      # file." --locked is that remedy. It needs no install, and it starts
+      # covering the first runtime dependency the day one is added.
       - name: Composer audit (production, blocking)
-        run: |
-          composer install --no-dev --no-scripts --no-progress
-          composer audit --no-dev
+        run: composer audit --locked --no-dev
       - name: Composer audit (incl. dev, informational)
-        run: |
-          composer install --no-scripts --no-progress
-          composer audit || true
+        run: composer audit --locked || true
 
       # --- JavaScript (npm) ---
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
