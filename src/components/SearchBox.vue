@@ -168,7 +168,11 @@ function onKeydown(event: KeyboardEvent) {
 
   &__list {
     position: absolute;
-    z-index: 100;
+    // Above NcSelect's chevron overlay: since @nextcloud/vue 9.10 .vs__actions
+    // is absolutely positioned with z-index 999, and neither it nor this list
+    // sits in a stacking context of its own, so the arrows of the filter row
+    // below would otherwise paint straight through the open suggestion list.
+    z-index: 1000;
     inset-inline: 0;
     top: calc(100% + 4px);
     margin: 0;
