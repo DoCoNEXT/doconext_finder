@@ -153,14 +153,20 @@ jobs:
         with:
           php-version: '8.2'
           coverage: none
-      # Audited from composer.lock rather than from an installed vendor/.
-      # `require` here is currently just `php`, so `composer install --no-dev`
-      # installs nothing and composer then refuses to audit an empty vendor:
-      # "No installed packages found ... or pass --locked to audit the lock
-      # file." --locked is that remedy. It needs no install, and it starts
-      # covering the first runtime dependency the day one is added.
+      # `require` here is currently just `php`, so composer.lock carries no
+      # production packages at all, and composer treats "nothing to audit" as
+      # an error rather than a pass — the message names --locked as the remedy
+      # but returns 1 with it too, because the empty set is the real problem.
+      # So the empty case is skipped explicitly. The audit itself runs, and
+      # blocks, from the moment a runtime dependency is added; --locked keeps
+      # it reading the lock file, so it needs no install to do that.
       - name: Composer audit (production, blocking)
-        run: composer audit --locked --no-dev
+        run: |
+          if [ "$(php -r 'echo count(json_decode(file_get_contents("composer.lock"), true)["packages"]);')" = "0" ]; then
+            echo "No production composer packages in composer.lock - nothing to audit."
+            exit 0
+          fi
+          composer audit --locked --no-dev
       - name: Composer audit (incl. dev, informational)
         run: composer audit --locked || true
 
