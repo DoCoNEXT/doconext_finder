@@ -194,6 +194,15 @@ function onKeydown(event: KeyboardEvent) {
     border-radius: var(--border-radius);
     cursor: pointer;
 
+    // Lucide renders a bare <svg>, and a flex item shrinks in proportion to
+    // its base size, so the icon gives up its share of the overflow whenever
+    // the description next to it is long — min-width: 0 on the label does not
+    // spare it. Without this, a two-line suggestion gets a visibly smaller
+    // icon than its neighbours.
+    > :deep(svg) {
+      flex-shrink: 0;
+    }
+
     &--active {
       background: var(--color-background-hover);
     }
