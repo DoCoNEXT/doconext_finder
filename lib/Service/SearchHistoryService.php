@@ -66,16 +66,20 @@ class SearchHistoryService
 
         $fingerprint = self::fingerprint($query);
 
-        // Running a saved search is a run of that saved search, not only of the
-        // recent it also leaves behind. The search box orders its suggestions on
-        // last_run across both kinds, so without this a saved search would carry
-        // the time it was named forever and sink past recents however often it
-        // is actually used.
+        // Running a saved search is a run of that saved search, and nothing
+        // besides: it already holds a place in the list, so a recent recorded
+        // beside it would only show the same query twice. Bumping it is what
+        // keeps the ordering honest — the search box orders both kinds on
+        // last_run, and without this a saved search would carry the time it was
+        // named forever and sink past recents however often it is used.
         $saved = $this->mapper->findByFingerprint($userId, SavedSearch::KIND_SAVED, $fingerprint);
 
         if ($saved !== null) {
             $saved->setLastRun(time());
             $this->mapper->update($saved);
+            $this->dropRecentTwin($userId, $fingerprint);
+
+            return;
         }
 
         $existing = $this->mapper->findByFingerprint($userId, SavedSearch::KIND_RECENT, $fingerprint);
@@ -123,7 +127,14 @@ class SearchHistoryService
         $entry->setFingerprint(self::fingerprint($query));
         $entry->setLastRun(time());
 
-        return $this->mapper->insert($entry)->toArray();
+        $saved = $this->mapper->insert($entry)->toArray();
+
+        // Saving happens right after running, so the same query is nearly
+        // always sitting in recents as well. The saved entry represents it from
+        // here on — dropped only once that entry exists.
+        $this->dropRecentTwin($userId, $entry->getFingerprint());
+
+        return $saved;
     }
 
     /**
@@ -169,7 +180,24 @@ class SearchHistoryService
         $entry->setFingerprint(self::fingerprint($query));
         $entry->setLastRun(time());
 
-        return $this->mapper->update($entry)->toArray();
+        $replaced = $this->mapper->update($entry)->toArray();
+        $this->dropRecentTwin($userId, $entry->getFingerprint());
+
+        return $replaced;
+    }
+
+    /**
+     * Removes the recent that carries the same query as a saved search. Recents
+     * exist to offer back what was never named; once a query has a name, the
+     * pair would read as two searches that happen to be identical.
+     */
+    private function dropRecentTwin(string $userId, string $fingerprint): void
+    {
+        $recent = $this->mapper->findByFingerprint($userId, SavedSearch::KIND_RECENT, $fingerprint);
+
+        if ($recent !== null) {
+            $this->mapper->delete($recent);
+        }
     }
 
     /** @throws DoesNotExistException */
