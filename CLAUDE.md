@@ -1,7 +1,13 @@
 # DoCoNEXT Nextcloud App — Conventions
 
-This file is inherited by every app scaffolded from `doconext_finder`.
-Keep it; prune the parts that don't apply and add app-specific context.
+This file is copied from `doconext_app_template`, which is the reference every
+DoCoNEXT app is scaffolded from. Keep it; prune the parts that don't apply and
+add app-specific context.
+
+A convention that applies to more than this app belongs in the template first:
+edit it there, then copy down. Editing only here is how the two drifted apart
+before — two hard-won rules about icons lived in this file for months while the
+template, and every app scaffolded after them, never saw them.
 
 ## Tech Stack
 - **Backend**: PHP 8.2+, Nextcloud App Framework (Nextcloud 31–34)
@@ -51,6 +57,12 @@ Ship **only** `img/app.svg` (white-filled, `fill="#ffffff"`) + `img/app-dark.svg
 
 Put the `fill` on the **root `<svg>` element and nowhere else** — exactly how core does it (`apps/files/img/app.svg`). The apps page (`apps/appstore`) inlines the file through `NcIconSvgWrapper`, whose `svg { fill: currentColor }` beats the presentation attribute on the root but loses against a `fill` on each `<path>`/`<rect>`; a per-child `fill="#ffffff"` therefore renders white-on-white, i.e. no icon at all in the list. (The app sidebar's `useAppIcon.ts` rewrites `fill="#fff"` to `currentColor` itself, so the bug shows up **only** in the apps list — check there, not in the sidebar.) Negative-space detail must be holes via `fill-rule="evenodd"` in one compound path, not white-filled shapes on top.
 
+## Serving and embedding files
+Two failures that cost hours each, both invisible from the code that suffers them.
+
+- **Never point an `<iframe>` (or a link you expect to render) at a WebDAV URL.** Nextcloud's DAV layer adds `Content-Disposition: attachment` to every GET (`apps/dav/lib/Connector/Sabre/FilesPlugin.php::httpGet`), suppressed only when `$downloadAttachment` is false — which `apps/dav/lib/Server.php` fills with `getSystemValueBool('debug', false) === false`. It is therefore absent on a dev instance with `debug` on and present everywhere else, so the preview renders locally and downloads on every deployed server. A client cannot override a response header: serve the bytes from an endpoint of your own that sets `Content-Disposition: inline`, or fetch them with axios as a blob (that header governs navigation and framing, never `fetch`).
+- **A response you intend to frame must say so.** The App Framework's default policy ends in `frame-ancestors 'none'`, so Chrome refuses to draw it and shows a broken-document icon **while the request still answers 200** — nothing appears in the network log. Attach an `EmptyContentSecurityPolicy` with `addAllowedFrameAncestorDomain("'self'")`. A `TemplateResponse` already carries `frame-ancestors 'self'`; a `DataResponse`/`StreamResponse` does not.
+
 ## Licensing
 REUSE layout, like every Nextcloud app: full licence texts in `LICENSES/`, `REUSE.toml` says which covers what (directory-level annotations, not per-file SPDX headers), and CI runs `fsfe/reuse-action`.
 
@@ -72,6 +84,13 @@ npm run lint / stylelint / build / test
 make appstore          # the release tarball, and what CI checks the shape of
 ```
 Psalm needs `<extraFiles><directory name="vendor"/></extraFiles>` in `psalm.xml`: without it, it never reads `vendor/nextcloud/ocp` and reports every OCP class as undefined.
+
+GitHub actions are pinned by **full commit SHA**, not by tag — core pins 217 of its 220 `uses:` lines that way. A tag is a moving pointer someone else controls.
+
+`npm ci` runs with no flags, and it must stay that way: `--legacy-peer-deps` disables peer *installation* as well as the check, which silently strips plugins their parents need. When a peer genuinely cannot be satisfied — `@nextcloud/viewer` declares `vue@^2.7.16` because the Viewer app has not migrated, though the published package never imports Vue — say so about that one package instead of turning the check off globally:
+```json
+"overrides": { "@nextcloud/viewer": { "vue": "$vue" } }
+```
 
 ## Dev + deploy
 The toolchain is pinned in `.nvmrc` (node 24); `npm`'s `preinstall` hook refuses
