@@ -1,16 +1,25 @@
 <?xml version="1.0"?>
 <psalm
-	errorLevel="4"
-	resolveFromConfigFile="true"
-	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xmlns="https://getpsalm.org/schema/config"
-	xsi:schemaLocation="https://getpsalm.org/schema/config vendor-bin/psalm/vendor/vimeo/psalm/config.xsd"
+    errorLevel="4"
+    resolveFromConfigFile="true"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns="https://getpsalm.org/schema/config"
+    xsi:schemaLocation="https://getpsalm.org/schema/config vendor/vimeo/psalm/config.xsd"
+    findUnusedBaselineEntry="true"
+    errorBaseline="tests/psalm-baseline.xml"
+    phpVersion="8.2"
 >
-	<projectFiles>
-		<directory name="lib" />
-		<ignoreFiles>
-			<directory name="vendor" />
-			<directory name="vendor-bin" />
-		</ignoreFiles>
-	</projectFiles>
+    <projectFiles>
+        <directory name="lib" />
+        <ignoreFiles>
+            <directory name="vendor" />
+            <directory name="vendor-bin" />
+        </ignoreFiles>
+    </projectFiles>
+    <!-- Without this, psalm never reads vendor/nextcloud/ocp and every OCP
+         class it meets is "undefined" — 168 phantom errors that say nothing
+         about this app's code. -->
+    <extraFiles>
+        <directory name="vendor"/>
+    </extraFiles>
 </psalm>

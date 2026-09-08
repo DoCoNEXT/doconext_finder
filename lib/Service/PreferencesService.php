@@ -112,11 +112,9 @@ class PreferencesService
     }
 
     /**
-     * Grouping is a list of levels, applied outermost first. Unknown or repeated
-     * levels are dropped rather than rejected, so a preference saved while an app
-     * was installed keeps working after it is removed — minus that level.
-     *
-     * @return list<string>
+     * The grid sorts on one column. A sort saved against a metadata field that
+     * has since been removed — or was never filterable — falls back to the
+     * modification time rather than being rejected.
      */
     private function sanitiseSort(string $sort): string
     {
@@ -195,7 +193,14 @@ class PreferencesService
         }
 
         // Name is what identifies a row; hiding it would leave an unreadable grid.
-        $byId['name']['visible'] = true;
+        // Rewritten whole rather than poking at ['visible']: the loop above put
+        // every built-in column in $byId, but assigning into one key of a value
+        // psalm cannot prove is set turns the entry's shape partial.
+        $byId['name'] = [
+            'id'      => 'name',
+            'visible' => true,
+            'label'   => $byId['name']['label'] ?? '',
+        ];
 
         $ordered = [];
         foreach (is_array($raw) ? $raw : [] as $entry) {

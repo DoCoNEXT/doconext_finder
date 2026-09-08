@@ -26,6 +26,7 @@ path = [
   "docs/**",
   "img/**",
   "l10n/**",
+  "translationfiles/**",
   "Makefile",
   "deploy.sh",
   "README.md",
@@ -53,6 +54,7 @@ path = [
   "composer.lock",
   "tsconfig.json",
   ".gitignore",
+  ".nvmrc",
   ".github/**",
   "vendor-bin/**",
 ]
@@ -60,13 +62,9 @@ precedence = "aggregate"
 SPDX-FileCopyrightText = "none"
 SPDX-License-Identifier = "CC0-1.0"
 
-# The build output. js/ and css/ are generated, and are not in git — but they
-# are in the app package, so they need to be accounted for. Every js/ bundle
-# also carries a .license sidecar of its own, which is the authoritative list
-# of the third-party packages compiled into it; this entry covers the CSS, the
-# source maps, and anything the sidecars do not reach.
-[[annotations]]
-path = ["js/**", "css/**"]
-precedence = "aggregate"
-SPDX-FileCopyrightText = "2026 DoCoNEXT and the authors of its dependencies"
-SPDX-License-Identifier = "AGPL-3.0-or-later AND ISC AND MIT AND GPL-3.0-or-later AND BSD-3-Clause AND (MPL-2.0 OR Apache-2.0)"
+# The build output (js/, css/) is generated and not in git, so `reuse lint`
+# never sees it and it is deliberately not annotated here: a licence text in
+# LICENSES/ that no tracked file uses fails the lint. In the release package
+# every js/ bundle carries a .license sidecar written by @nextcloud/vite-config
+# naming each package compiled into it, with its SPDX identifier and copyright
+# holder. That sidecar is the attribution for the bundled JavaScript.
