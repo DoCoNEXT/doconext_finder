@@ -10,9 +10,13 @@
 # The app ID is auto-detected from appinfo/info.xml (<id>), falling back to
 # the folder name. Pass --app only to override the detected value.
 #
+# The package uploaded is the one `make appstore` builds, so this needs what
+# that needs: node (see .nvmrc — run `nvm use` first), npm and composer.
+#
 # Examples:
 #   ./deploy.sh --host 1.2.3.4
 #   ./deploy.sh --host 1.2.3.4 --update
+#   ./deploy.sh --host 1.2.3.4 --user deployer --app other_app
 #
 # Options:
 #   --app       App ID (default: auto-detected from info.xml / folder name)
@@ -91,62 +95,44 @@ echo "============================================================"
 echo ""
 
 # ============================================================
-# STEP 1: Build frontend (runs locally)
+# STEP 1: Build the release package (runs locally)
+#
+# The package is the one `make appstore` builds — the same tarball a customer
+# or the App Store gets, with the same exclude list. Keeping a second list
+# here is how docs/private/ once ended up on a server.
 # ============================================================
-echo ">>> Building frontend..."
-cd "$(dirname "$0")"
-npm ci && npm run build
+echo ">>> Building release package..."
+cd "$SCRIPT_DIR"
 
-# ============================================================
-# STEP 2: Install PHP runtime dependencies (runs locally)
-# Skipped when the app has no composer.json (it autoloads OCA\<Id>\ from lib/
-# via Nextcloud directly and ships no PHP deps).
-# ============================================================
-if [ -f composer.json ]; then
-  echo ">>> Installing PHP dependencies..."
-  composer install --no-dev --optimize-autoloader --ignore-platform-reqs
-else
-  echo ">>> No composer.json — skipping PHP dependency install"
+# `make appstore` runs `composer install --no-dev` on this working tree, not on
+# a copy of it: psalm, phpunit and nextcloud/ocp all disappear, and the quality
+# gates then report thousands of phantom errors about missing OCP classes. Put
+# them back on the way out, whether or not the deploy succeeded.
+restore_dev_dependencies() {
+  echo ">>> Restoring local dev dependencies..."
+  (cd "$SCRIPT_DIR" && composer install --quiet) || true
+}
+trap restore_dev_dependencies EXIT
+
+make appstore
+
+TARBALL="$SCRIPT_DIR/build/artifacts/${APP}.tar.gz"
+if [[ ! -f "$TARBALL" ]]; then
+  echo "Error: expected $TARBALL after 'make appstore' — does app_name in the Makefile match --app?"
+  exit 1
 fi
 
-# ============================================================
-# STEP 3: Package the app (runs locally)
-# ============================================================
-echo ">>> Packaging app..."
-cd ..
-
-tar -czf ${APP}.tar.gz \
-  --exclude="${APP}/.claude" \
-  --exclude="${APP}/.vscode" \
-  --exclude="${APP}/.git" \
-  --exclude="${APP}/.gitignore" \
-  --exclude="${APP}/CLAUDE.md" \
-  --exclude="${APP}/CODE_OF_CONDUCT.md" \
-  --exclude="${APP}/Nextcloud.session.sql" \
-  --exclude="${APP}/node_modules" \
-  --exclude="${APP}/src" \
-  --exclude="${APP}/tests" \
-  --exclude="${APP}/vendor-bin" \
-  --exclude="${APP}/package.json" \
-  --exclude="${APP}/package-lock.json" \
-  --exclude="${APP}/psalm.xml" \
-  --exclude="${APP}/rector.php" \
-  --exclude="${APP}/tsconfig.json" \
-  --exclude="${APP}/vite.config.ts" \
-  --exclude="${APP}/stylelint.config.cjs" \
-  ${APP}/
-
-echo ">>> Verifying archive contents..."
-tar -tzf ${APP}.tar.gz | head -30
+echo ">>> Package contents (top level):"
+tar -tzf "$TARBALL" | cut -d/ -f2 | sort -u | tr '\n' ' '; echo
 
 # ============================================================
-# STEP 4: Upload to VPS (runs locally, connects via SCP)
+# STEP 2: Upload to VPS (runs locally, connects via SCP)
 # ============================================================
 echo ">>> Uploading to VPS..."
-scp ${APP}.tar.gz ${VPS_USER}@${VPS_HOST}:/tmp/
+scp "$TARBALL" ${VPS_USER}@${VPS_HOST}:/tmp/${APP}.tar.gz
 
 # ============================================================
-# STEP 5: Deploy on VPS (runs locally, connects via SSH)
+# STEP 3: Deploy on VPS (runs locally, connects via SSH)
 # You do NOT need to SSH in manually.
 #
 # Only SSH in manually if something goes wrong and you need
@@ -154,6 +140,11 @@ scp ${APP}.tar.gz ${VPS_USER}@${VPS_HOST}:/tmp/
 # ============================================================
 echo ">>> Deploying on VPS..."
 ssh ${VPS_USER}@${VPS_HOST} "
+  # Without this, every command below runs regardless of what the last one did:
+  # ssh starts a plain shell, so the outer 'set -e' does not reach in here. A
+  # failed 'occ app:enable' — a broken migration, say — would print its error,
+  # be stepped over, and the deploy would still end on '✓ Done!'.
+  set -e
   if [ '$UPDATE' = true ]; then
     echo '-> Disabling old version...'
     docker exec --user www-data $CONTAINER php occ app:disable $APP
@@ -183,12 +174,6 @@ ssh ${VPS_USER}@${VPS_HOST} "
   rm /tmp/$APP.tar.gz
   docker exec --user root $CONTAINER rm /tmp/$APP.tar.gz
 "
-
-# ============================================================
-# STEP 6: Clean up local tar.gz
-# ============================================================
-echo ">>> Cleaning up local archive..."
-rm -f "${SCRIPT_DIR}/../${APP}.tar.gz"
 
 echo ""
 if [ "$UPDATE" = true ]; then

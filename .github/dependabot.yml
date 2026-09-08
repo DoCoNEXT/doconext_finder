@@ -1,6 +1,12 @@
 # Dependabot opens PRs to patch vulnerable/outdated dependencies. It is the
 # *fixer* half of the loop; the CI audit gate (ci.yml `security` job) is the
 # *blocker* half that fails the build while a moderate+ advisory ships.
+#
+# Once an ecosystem has open-pull-requests-limit PRs open, Dependabot opens
+# nothing more for it — silently. That is how the loop stalled in doconext_core
+# in July 2026: eighteen npm PRs nobody merged, and no new ones since. Minor
+# and patch bumps are therefore grouped into one PR per ecosystem per week,
+# and the limit is low enough that a full ceiling is noticed, not ignored.
 version: 2
 updates:
   # PHP (Composer) packages.
@@ -8,17 +14,30 @@ updates:
     directory: "/"
     schedule:
       interval: weekly
-    open-pull-requests-limit: 10
+    open-pull-requests-limit: 5
+    groups:
+      composer-minor-patch:
+        update-types: ["minor", "patch"]
+    ignore:
+      # Must track the server's own doctrine/dbal (3rdparty pins ^3.10.4);
+      # it is only here so psalm types the OCP surface against the real API.
+      - dependency-name: "doctrine/dbal"
+        update-types: ["version-update:semver-major"]
 
   # JavaScript (npm) packages.
   - package-ecosystem: npm
     directory: "/"
     schedule:
       interval: weekly
-    open-pull-requests-limit: 10
+    open-pull-requests-limit: 5
     groups:
+      # The platform libraries move together; a partial bump breaks peer deps.
       nextcloud:
         patterns:
+          - "@nextcloud/*"
+      npm-minor-patch:
+        update-types: ["minor", "patch"]
+        exclude-patterns:
           - "@nextcloud/*"
     ignore:
       # @nextcloud/vite-config pins vite to 7.x. Vite 8 needs the breaking
@@ -28,10 +47,19 @@ updates:
       # this once v3.0.0 is released and bump vite + vite-config together.
       - dependency-name: "vite"
         update-types: ["version-update:semver-major"]
+      # TypeScript 7 is the Go-native compiler; @vue/tsconfig and the
+      # Nextcloud toolchain do not support it yet.
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
 
-  # GitHub Actions used by the workflows.
+  # GitHub Actions used by the workflows. The workflows pin actions to a
+  # commit SHA; Dependabot updates the SHA and the version comment together.
   - package-ecosystem: github-actions
     directory: "/"
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
+    groups:
+      actions:
+        patterns:
+          - "*"

@@ -52,27 +52,40 @@ Ship **only** `img/app.svg` (white-filled, `fill="#ffffff"`) + `img/app-dark.svg
 Put the `fill` on the **root `<svg>` element and nowhere else** — exactly how core does it (`apps/files/img/app.svg`). The apps page (`apps/appstore`) inlines the file through `NcIconSvgWrapper`, whose `svg { fill: currentColor }` beats the presentation attribute on the root but loses against a `fill` on each `<path>`/`<rect>`; a per-child `fill="#ffffff"` therefore renders white-on-white, i.e. no icon at all in the list. (The app sidebar's `useAppIcon.ts` rewrites `fill="#fff"` to `currentColor` itself, so the bug shows up **only** in the apps list — check there, not in the sidebar.) Negative-space detail must be holes via `fill-rule="evenodd"` in one compound path, not white-filled shapes on top.
 
 ## Licensing
-REUSE layout, like every Nextcloud app: full licence texts in `LICENSES/`, `REUSE.toml` says which covers what (directory-level annotations, not per-file SPDX headers), and CI runs `fsfe/reuse-action`. Adding a dependency adds its licence text to `LICENSES/` — the build already names it, because `extractLicenseInformation` writes a `js/<bundle>.mjs.license` sidecar listing every package compiled in. Do **not** hand-maintain a third-party licence file; nothing in the NC ecosystem ships one.
+REUSE layout, like every Nextcloud app: full licence texts in `LICENSES/`, `REUSE.toml` says which covers what (directory-level annotations, not per-file SPDX headers), and CI runs `fsfe/reuse-action`.
+
+`LICENSES/` holds **only** licences that a *tracked* file actually uses — `reuse lint` fails on a licence text nothing references, and that is a red CI, not a warning. So do **not** add a licence text when you add a dependency: `js/` and `css/` are generated and never in git, and each built bundle ships its own `js/<bundle>.mjs.license` sidecar (written by `@nextcloud/vite-config`) naming every package compiled in. That sidecar *is* the attribution. Add a licence text only when you check a third-party **file** into the repo — an icon copied from Lucide, say — and give it its own `[[annotations]]` block. Do not hand-maintain a third-party licence document; nothing in the NC ecosystem ships one.
 
 ## Translations
-NC loads `l10n/<lang>.json` (PHP) + `l10n/<lang>.js` (browser). Both must exist + stay in sync per language. `make l10n-pot` extracts strings; `make l10n` regenerates from `.po`. Missing keys fall back to English.
+NC loads `l10n/<lang>.json` (PHP) + `l10n/<lang>.js` (browser). Both must exist + stay in sync per language. `make l10n-pot` extracts strings into `translationfiles/`; `make l10n-from-po` writes a translated `.po` back **over** `l10n/<lang>.*` — run it only for a language whose `.po` is complete, or it ships English where you had translations. Missing keys fall back to English.
 
 ## Quality gates
+CI runs every one of these; `.github/workflows/ci.yml` is the source of truth.
 ```
-composer lint          # PHP syntax
+composer lint          # PHP syntax (CI: 8.2–8.5)
 composer cs:check      # PSR-12 (cs:fix to apply)
-composer psalm         # static analysis
-composer test:unit     # PHPUnit
+composer psalm         # static analysis; tests/psalm-baseline.xml holds the
+                       # known-and-accepted findings — never grow it to silence
+                       # a new one, fix the code instead
+composer test:unit     # PHPUnit (CI: 8.2–8.5, plus a run against the NC34 stubs)
 npm run lint / stylelint / build / test
+make appstore          # the release tarball, and what CI checks the shape of
 ```
+Psalm needs `<extraFiles><directory name="vendor"/></extraFiles>` in `psalm.xml`: without it, it never reads `vendor/nextcloud/ocp` and reports every OCP class as undefined.
 
 ## Dev + deploy
+The toolchain is pinned in `.nvmrc` (node 24); `npm`'s `preinstall` hook refuses
+an older one rather than letting it fail strangely later.
 ```
+nvm use                             # before any npm command
 php occ app:enable <id>
 php occ maintenance:repair          # after route/attr changes
 npm run watch                       # frontend watch
-./deploy.sh --app <id> --user root --host <host> [--container <name>] [--update]
+./deploy.sh --host <host> [--user root] [--container <name>] [--update]
 ```
+`deploy.sh` uploads exactly what `make appstore` builds — one exclude list, in
+the Makefile — and puts the dev composer dependencies back afterwards, since
+the release build strips them from this working tree.
 
 ## The example domain
 The template ships a working **Note** example (entity + mapper + service + controller + migration + Vue list). Delete it once you scaffold your own domain — it exists only to demonstrate the layers end-to-end.

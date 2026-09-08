@@ -5,47 +5,263 @@ on:
     branches: [main]
   pull_request:
 
+# Nothing in this workflow writes to the repository, so the token gets read
+# access and nothing else, whatever the repository's default setting says.
+permissions:
+  contents: read
+
+# A push that supersedes a running build cancels it; the result of the old
+# one would be discarded anyway.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  php:
+  php-lint:
+    name: PHP syntax
     runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      matrix:
+        php-version: ['8.2', '8.3', '8.4', '8.5']
     steps:
-      - uses: actions/checkout@v4
-      - uses: shivammathur/setup-php@v2
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          persist-credentials: false
+      - uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # 2.37.2
+        with:
+          php-version: ${{ matrix.php-version }}
+          coverage: none
+      - run: composer lint
+
+  php-cs:
+    name: PHP code style
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          persist-credentials: false
+      - uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # 2.37.2
         with:
           php-version: '8.2'
           coverage: none
-      - name: Install PHP deps
-        run: composer install --no-interaction --no-progress
-      - name: PHP lint
-        run: composer lint
-      - name: Coding standards
-        run: composer cs:check
-      - name: Psalm
-        run: composer psalm
+      - uses: ramsey/composer-install@26d8a556604053a9612623447203a691f406fbe6 # v4
+      - run: composer cs:check
+
+  psalm:
+    name: Psalm static analysis
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          persist-credentials: false
+      - uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # 2.37.2
+        with:
+          php-version: '8.2'
+          coverage: none
+      - uses: ramsey/composer-install@26d8a556604053a9612623447203a691f406fbe6 # v4
+      - run: composer psalm
+
+  phpunit:
+    name: PHPUnit (standalone)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      matrix:
+        php-version: ['8.2', '8.3', '8.4', '8.5']
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          persist-credentials: false
+      - uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # 2.37.2
+        with:
+          php-version: ${{ matrix.php-version }}
+          coverage: none
+      - uses: ramsey/composer-install@26d8a556604053a9612623447203a691f406fbe6 # v4
+      - run: composer test:unit
+
+  # info.xml claims Nextcloud 31 to 34. The lockfile pins the 33 API stubs;
+  # this run swaps in the 34 stubs so a class or signature that moved between
+  # the two fails here, not on a customer's upgrade.
+  phpunit-nc34:
+    name: PHPUnit (Nextcloud 34 API)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          persist-credentials: false
+      - uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # 2.37.2
+        with:
+          php-version: '8.2'
+          coverage: none
+      - uses: ramsey/composer-install@26d8a556604053a9612623447203a691f406fbe6 # v4
+      - run: composer require --dev --no-scripts --no-progress -W 'nextcloud/ocp:dev-stable34'
+      - run: composer test:unit
 
   frontend:
+    name: Frontend lint & build
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
-          node-version: '24'
-      - name: Install
-        run: npm ci
-      - name: Lint
-        run: npm run lint
-      - name: Stylelint
-        run: npm run stylelint
-      - name: Build
-        run: npm run build
-      - name: Unit tests
-        run: npm test
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version-file: '.nvmrc'
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run stylelint
+      - run: npm run test
+      - run: npm run build
 
-  # Checks that every file is covered by a licence — REUSE.toml plus LICENSES/.
-  # Worth automating: the annotations name directories, so a new top-level one
-  # falls outside them silently until something looks.
+  # Licensing metadata gate. Every tracked file must be covered by REUSE.toml
+  # (or an SPDX header), and every licence it names must have its text in
+  # LICENSES/. Fails on a new file nobody accounted for — which is the point.
+  # It also fails on a licence text in LICENSES/ that no tracked file uses, so
+  # do not add one "for the bundled dependencies": js/ and css/ are generated
+  # and never in git, and each built bundle ships its own .license sidecar.
   reuse:
+    name: REUSE compliance
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
-      - uses: fsfe/reuse-action@v5
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          persist-credentials: false
+      - uses: fsfe/reuse-action@676e2d560c9a403aa252096d99fcab3e1132b0f5 # v6.0.0
+
+  # Dependency vulnerability gate. Blocks on advisories in *shipped* deps
+  # (composer runtime + npm production) at moderate severity and above; CVEs in
+  # dev-only tooling (vitest, phpunit, etc.) are reported but non-blocking, since
+  # they never reach a customer's deployment. Dependabot still PRs fixes for both.
+  security:
+    name: Dependency audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          persist-credentials: false
+
+      # --- PHP (composer) ---
+      - uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # 2.37.2
+        with:
+          php-version: '8.2'
+          coverage: none
+      - name: Composer audit (production, blocking)
+        run: |
+          composer install --no-dev --no-scripts --no-progress
+          composer audit --no-dev
+      - name: Composer audit (incl. dev, informational)
+        run: |
+          composer install --no-scripts --no-progress
+          composer audit || true
+
+      # --- JavaScript (npm) ---
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version-file: '.nvmrc'
+          cache: npm
+      - run: npm ci
+      # Blocking gate on advisories in *shipped* (production) deps. The
+      # production graph is currently clean, so AUDIT_ALLOWLIST is empty. Add a
+      # GHSA id here only for a reviewed advisory in a package that cannot reach
+      # a deployment (a bundler, say), with the reason written next to it.
+      - name: npm audit (production, blocking)
+        env:
+          AUDIT_ALLOWLIST: ''
+        run: |
+          npm audit --omit=dev --json > npm-audit.json || true
+          node .github/scripts/audit-gate.mjs npm-audit.json
+      - name: npm audit (incl. dev, informational)
+        run: npm audit --audit-level=moderate || true
+
+  # Build the release tarball exactly as `make appstore` does, and refuse one
+  # that is the wrong shape — dev-only paths inside it, or a size that says
+  # css/ was never emptied between builds (vite appends, it does not replace).
+  package:
+    name: Release tarball
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          persist-credentials: false
+      - uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # 2.37.2
+        with:
+          php-version: '8.2'
+          coverage: none
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version-file: '.nvmrc'
+          cache: npm
+      - run: make appstore
+      - name: Check what shipped
+        run: |
+          tar -tzf build/artifacts/doconext_finder.tar.gz | cut -d/ -f2 | sort -u
+          # Everything below is dev-only; none of it may be in the package.
+          for p in src tests docs scripts .github .husky node_modules vendor-bin; do
+            if tar -tzf build/artifacts/doconext_finder.tar.gz | grep -q "^doconext_finder/$p/"; then
+              echo "::error::dev-only path '$p' is inside the tarball"; exit 1
+            fi
+          done
+          for f in CLAUDE.md deploy.sh Makefile package.json composer.json; do
+            if tar -tzf build/artifacts/doconext_finder.tar.gz | grep -q "^doconext_finder/$f$"; then
+              echo "::error::dev-only file '$f' is inside the tarball"; exit 1
+            fi
+          done
+          # A clean build is well under 1 MB and carries a handful of
+          # stylesheets; a few hundred means css/ was never emptied.
+          size=$(stat -c %s build/artifacts/doconext_finder.tar.gz)
+          echo "tarball: $((size / 1024)) KB, css files: $(tar -tzf build/artifacts/doconext_finder.tar.gz | grep -c '/css/.*\.css$')"
+          test "$size" -lt $((5 * 1024 * 1024)) || { echo "::error::tarball is $((size / 1024 / 1024)) MB"; exit 1; }
+
+  # SBOM + third-party license inventory for enterprise buyers / audits and to
+  # satisfy attribution duties of the MIT/Apache/BSD deps we redistribute.
+  # Produces a CycloneDX SBOM (npm) plus composer + npm license listings,
+  # uploaded as an artifact (regenerated on every run so it never drifts).
+  sbom:
+    name: SBOM & attribution
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          persist-credentials: false
+      - uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # 2.37.2
+        with:
+          php-version: '8.2'
+          coverage: none
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version-file: '.nvmrc'
+          cache: npm
+      - name: Collect production dependencies
+        run: |
+          composer install --no-dev --no-scripts --no-progress
+          npm ci
+      - name: Generate SBOM + license inventory
+        run: |
+          mkdir -p sbom
+          # Composer license inventory (built-in).
+          composer licenses --no-dev --format=json > sbom/licenses.composer.json
+          # npm production SBOM (CycloneDX) + license inventory.
+          # Pinned: `npx --yes` would otherwise fetch and run whatever version is
+          # newest today, with the checkout and node_modules in reach. Bump on
+          # purpose, not by accident.
+          npx --yes @cyclonedx/cyclonedx-npm@6.0.1 --omit dev --output-file sbom/sbom.npm.cdx.json
+          npx --yes license-checker-rseidelsohn@5.0.1 --production --json --out sbom/licenses.npm.json
+      - name: Upload SBOM & attribution
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: doconext_finder-sbom-attribution
+          path: sbom/
+          if-no-files-found: error
+          # The inventory's value is being current, and it regenerates on every
+          # run - so there's no reason to hold copies for the default 90 days.
+          retention-days: 30
