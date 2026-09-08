@@ -21,8 +21,16 @@
 
       <NcCheckboxRadioSwitch :model-value="preferences.descending"
                              @update:model-value="preferences.setDefaultSort(preferences.sort, $event)">
-        {{ t('Newest or largest first') }}
+        {{ t('Sort descending') }}
       </NcCheckboxRadioSwitch>
+      <!--
+        Named for the direction rather than for one field's version of it: the
+        list above sorts on names and metadata too, where "newest or largest"
+        says nothing.
+      -->
+      <p class="muted settings__hint">
+        {{ t('Highest value first — newest for dates, largest for sizes, Z to A for names.') }}
+      </p>
     </section>
 
     <section class="settings__section">
