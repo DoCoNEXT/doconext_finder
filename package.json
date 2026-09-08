@@ -13,6 +13,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "lint": "eslint src",
+    "typecheck": "vue-tsc --noEmit",
     "stylelint": "stylelint src/**/*.vue src/**/*.scss src/**/*.css"
   },
   "browserslist": [
@@ -40,7 +41,8 @@
     "eslint": "^10.9.1",
     "typescript": "^5.9.3",
     "vite": "^7.2.7",
-    "vitest": "^3.2.6"
+    "vitest": "^3.2.6",
+    "vue-tsc": "^3.1.8"
   },
   "engines": {
     "node": "^24",
