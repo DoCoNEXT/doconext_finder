@@ -4,54 +4,54 @@
 export type Operator = 'eq' | 'lt' | 'lte' | 'gt' | 'gte' | 'contains'
 
 export interface Condition {
-	field: string
-	operator: Operator
-	value: string | number | boolean
-	/** Not offered for join-backed fields; the server rejects those. */
-	negate?: boolean
-	/**
-	 * How the value reads when the value itself is an id — the name behind the
-	 * account "Created by" compares. A display snapshot, like the scope's label:
-	 * it is kept with a stored search and never sent to the server.
-	 */
-	label?: string
+  field: string
+  operator: Operator
+  value: string | number | boolean
+  /** Not offered for join-backed fields; the server rejects those. */
+  negate?: boolean
+  /**
+   * How the value reads when the value itself is an id — the name behind the
+   * account "Created by" compares. A display snapshot, like the scope's label:
+   * it is kept with a stored search and never sent to the server.
+   */
+  label?: string
 }
 
 export interface FileResult {
-	fileid: number
-	name: string
-	/** Path relative to the user's files root, e.g. Legal/Dossiers/case.pdf */
-	path: string
-	mimetype: string
-	isFolder: boolean
-	size: number
-	/** Unix seconds. */
-	mtime: number
-	creationTime: number
-	permissions: number
-	/** Mutated optimistically by the star toggle. */
-	favorite: boolean
-	/** uid of the file's owner. */
-	owner: string
-	/** Display name of the owner — the nearest thing Nextcloud keeps to a creator. */
-	createdBy: string
-	/** Display name of whoever wrote the current revision; the owner when unrecorded. */
-	modifiedBy: string
-	/** Registry key → displayable value, for keys this file actually carries. */
-	metadata: Record<string, string>
+  fileid: number
+  name: string
+  /** Path relative to the user's files root, e.g. Legal/Dossiers/case.pdf */
+  path: string
+  mimetype: string
+  isFolder: boolean
+  size: number
+  /** Unix seconds. */
+  mtime: number
+  creationTime: number
+  permissions: number
+  /** Mutated optimistically by the star toggle. */
+  favorite: boolean
+  /** uid of the file's owner. */
+  owner: string
+  /** Display name of the owner — the nearest thing Nextcloud keeps to a creator. */
+  createdBy: string
+  /** Display name of whoever wrote the current revision; the owner when unrecorded. */
+  modifiedBy: string
+  /** Registry key → displayable value, for keys this file actually carries. */
+  metadata: Record<string, string>
 }
 
 export interface SearchResponse {
-	results: FileResult[]
-	/** True when another page exists — the backend returns no total count. */
-	hasMore: boolean
-	offset: number
-	limit: number
-	/**
-	 * True when the scope covered more folders than are worth querying and the
-	 * server searched only some of them. Results are real but incomplete.
-	 */
-	truncated?: boolean
+  results: FileResult[]
+  /** True when another page exists — the backend returns no total count. */
+  hasMore: boolean
+  offset: number
+  limit: number
+  /**
+   * True when the scope covered more folders than are worth querying and the
+   * server searched only some of them. Results are real but incomplete.
+   */
+  truncated?: boolean
 }
 
 /**
@@ -66,24 +66,24 @@ export type ScopeLevel = 'folder' | 'realm' | 'entityType' | 'entity'
 
 /** A DoCoNEXT Core workspace, as offered by GET /api/scope. */
 export interface ScopeRealm {
-	id: number
-	name: string
+  id: number
+  name: string
 }
 
 export interface ScopeEntityType {
-	id: number
-	/** Plural, as the picker lists it: "Huurovereenkomsten". */
-	name: string
-	/** What one of them is called; labels the entity box once this type is chosen. */
-	singularName: string
-	realmId: number
+  id: number
+  /** Plural, as the picker lists it: "Huurovereenkomsten". */
+  name: string
+  /** What one of them is called; labels the entity box once this type is chosen. */
+  singularName: string
+  realmId: number
 }
 
 /** One typeahead suggestion. `context` is what tells two same-named ones apart. */
 export interface ScopeEntity {
-	id: number
-	name: string
-	context: string
+  id: number
+  name: string
+  context: string
 }
 
 /**
@@ -91,24 +91,24 @@ export interface ScopeEntity {
  * because Core owns its routes.
  */
 export interface ScopeFileEntity {
-	id: number
-	name: string
-	code: string
-	typeId: number
-	typeName: string
-	url: string
+  id: number
+  name: string
+  code: string
+  typeId: number
+  typeName: string
+  url: string
 }
 
 /** An account, as the "Created by" filter names it: picked by name, sent as id. */
 export interface Person {
-	uid: string
-	displayName: string
+  uid: string
+  displayName: string
 }
 
 /** Empty lists mean DoCoNEXT Core is absent; the folder scope does not need it. */
 export interface ScopeVocabulary {
-	realms: ScopeRealm[]
-	entityTypes: ScopeEntityType[]
+  realms: ScopeRealm[]
+  entityTypes: ScopeEntityType[]
 }
 
 /**
@@ -117,52 +117,52 @@ export interface ScopeVocabulary {
  * renamed or removed, and only the id is ever sent back to the server.
  */
 export interface ScopeSelection {
-	level: ScopeLevel
-	id: number
-	label: string
+  level: ScopeLevel
+  id: number
+  label: string
 }
 
 /** The server describes its own filterable surface, so menus aren't hardcoded. */
 export interface MetadataField {
-	/** Bare registry key, e.g. dcn_core_rechtsgebied. */
-	key: string
-	/** How the API addresses it, e.g. meta:dcn_core_rechtsgebied. */
-	field: string
-	label: string
-	type: string
-	/** Only indexed keys can be filtered or sorted on. */
-	filterable: boolean
+  /** Bare registry key, e.g. dcn_core_rechtsgebied. */
+  key: string
+  /** How the API addresses it, e.g. meta:dcn_core_rechtsgebied. */
+  field: string
+  label: string
+  type: string
+  /** Only indexed keys can be filtered or sorted on. */
+  filterable: boolean
 }
 
 export interface FieldsResponse {
-	/** field name → value type ('string' | 'integer' | 'boolean') */
-	fields: Record<string, string>
-	/** field name → the operators that field actually accepts */
-	operators: Record<string, Operator[]>
-	sorts: string[]
-	maxLimit: number
-	/** Whatever this server's apps registered — Core's fields appear here. */
-	metadata: MetadataField[]
-	metadataOperators: Operator[]
+  /** field name → value type ('string' | 'integer' | 'boolean') */
+  fields: Record<string, string>
+  /** field name → the operators that field actually accepts */
+  operators: Record<string, Operator[]>
+  sorts: string[]
+  maxLimit: number
+  /** Whatever this server's apps registered — Core's fields appear here. */
+  metadata: MetadataField[]
+  metadataOperators: Operator[]
 }
 
 export interface SearchRequest {
-	term?: string
-	conditions?: Condition[]
-	/**
-	 * Preset filters. Kept apart from `conditions` because they AND with
-	 * everything: "match any" must not widen the chosen type or date range.
-	 */
-	mimetypes?: string[]
-	/** Unix seconds; only files modified after this. */
-	modifiedAfter?: number
-	/** Where the search starts. Not a condition — see FileScope on the server. */
-	scope?: { level: ScopeLevel, id: number }
-	matchAny?: boolean
-	limit?: number
-	offset?: number
-	sort?: string
-	descending?: boolean
+  term?: string
+  conditions?: Condition[]
+  /**
+   * Preset filters. Kept apart from `conditions` because they AND with
+   * everything: "match any" must not widen the chosen type or date range.
+   */
+  mimetypes?: string[]
+  /** Unix seconds; only files modified after this. */
+  modifiedAfter?: number
+  /** Where the search starts. Not a condition — see FileScope on the server. */
+  scope?: { level: ScopeLevel, id: number }
+  matchAny?: boolean
+  limit?: number
+  offset?: number
+  sort?: string
+  descending?: boolean
 }
 
 /**
@@ -210,17 +210,17 @@ export type GroupScope = 'search' | 'favorites'
 
 /** Admin-configured "Type" filter entry — see GET config.fileTypeFilters. */
 export interface BuiltinFileTypeFilterEntry {
-	type: 'builtin'
-	/** One of the ids src/filters/presets.ts defines a label + mimetype list for. */
-	id: string
+  type: 'builtin'
+  /** One of the ids src/filters/presets.ts defines a label + mimetype list for. */
+  id: string
 }
 
 /** Admin-authored, shown as typed — never passed through translation. */
 export interface CustomFileTypeFilterEntry {
-	type: 'custom'
-	id: string
-	label: string
-	mimetypes: string[]
+  type: 'custom'
+  id: string
+  label: string
+  mimetypes: string[]
 }
 
 export type FileTypeFilterEntry = BuiltinFileTypeFilterEntry | CustomFileTypeFilterEntry

@@ -10,26 +10,26 @@ import { loadState } from '@nextcloud/initial-state'
 import type { FileTypeFilterEntry } from './types/Search'
 
 interface AppConfig {
-	appId: string
-	appName: string
-	/** Admin-configured display name, or '' when unset — see productName(). */
-	displayName: string
-	/** True when the Files Preview app is installed and its bundle was loaded. */
-	richPreview: boolean
-	/** Extensions "Open in local app" hands to DoCoNEXT Bridge; admin-configurable. */
-	bridgeExtensions: string[]
-	/** The search page's "Type" filter categories, admin-configured order + selection. */
-	fileTypeFilters: FileTypeFilterEntry[]
-	/** True when DoCoNEXT Core can name entity types and entities to scope by. */
-	coreScope: boolean
+  appId: string
+  appName: string
+  /** Admin-configured display name, or '' when unset — see productName(). */
+  displayName: string
+  /** True when the Files Preview app is installed and its bundle was loaded. */
+  richPreview: boolean
+  /** Extensions "Open in local app" hands to DoCoNEXT Bridge; admin-configurable. */
+  bridgeExtensions: string[]
+  /** The search page's "Type" filter categories, admin-configured order + selection. */
+  fileTypeFilters: FileTypeFilterEntry[]
+  /** True when DoCoNEXT Core can name entity types and entities to scope by. */
+  coreScope: boolean
 }
 
 /** The slice of the server's capabilities DoCoNEXT Core publishes about itself. */
 interface CoreCapability {
-	doconext_core?: {
-		/** The admin's name for Core, with Core's own default already applied. */
-		productName?: string
-	}
+  doconext_core?: {
+    /** The admin's name for Core, with Core's own default already applied. */
+    productName?: string
+  }
 }
 
 let config: AppConfig
