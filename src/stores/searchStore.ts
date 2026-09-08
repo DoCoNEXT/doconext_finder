@@ -7,6 +7,7 @@
  */
 import { defineStore } from 'pinia'
 import { SearchApi } from '../services/SearchApi'
+import { useHistoryStore } from './historyStore'
 import { usePreferencesStore } from './preferencesStore'
 import { anyTime, anyType, fileTypePresets, modifiedAfter, modifiedPresets } from '../filters/presets'
 import type { Translate } from '../filters/presets'
@@ -163,7 +164,13 @@ export const useSearchStore = defineStore('search', {
           this.error = 'scope-truncated'
         }
         if (record) {
+          // Not awaited: the results are already on screen and this only keeps
+          // the history in step. Reloading it matters because the search box
+          // orders its suggestions on when each search last ran, and it reads
+          // that list once on mount — without this the search just run would
+          // stay wherever it was until the page was left and come back.
           SearchApi.recordRecent({ ...this.query })
+            .then(() => useHistoryStore().load(true))
         }
       } catch (e) {
         this.error = (e as Error).message

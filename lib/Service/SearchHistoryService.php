@@ -65,6 +65,19 @@ class SearchHistoryService
         }
 
         $fingerprint = self::fingerprint($query);
+
+        // Running a saved search is a run of that saved search, not only of the
+        // recent it also leaves behind. The search box orders its suggestions on
+        // last_run across both kinds, so without this a saved search would carry
+        // the time it was named forever and sink past recents however often it
+        // is actually used.
+        $saved = $this->mapper->findByFingerprint($userId, SavedSearch::KIND_SAVED, $fingerprint);
+
+        if ($saved !== null) {
+            $saved->setLastRun(time());
+            $this->mapper->update($saved);
+        }
+
         $existing = $this->mapper->findByFingerprint($userId, SavedSearch::KIND_RECENT, $fingerprint);
 
         if ($existing !== null) {

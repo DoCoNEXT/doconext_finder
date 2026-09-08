@@ -28,11 +28,13 @@ export const useHistoryStore = defineStore('history', {
 
   getters: {
     /**
-     * Saved first: a search someone named is a better guess than one they ran
-     * once.
+     * Both kinds in one list, most recently run first. Whether a search was
+     * named is not what makes it the right guess — what someone just used is,
+     * and the box is reached for straight after using it.
      * @param state
      */
-    suggestions: (state): StoredSearch[] => [...state.saved, ...state.recents],
+    suggestions: (state): StoredSearch[] =>
+      [...state.saved, ...state.recents].sort((a, b) => b.lastRun - a.lastRun),
 
     /**
      * A saved search by name, matched the way a person reads a name: trimmed
@@ -99,13 +101,19 @@ export const useHistoryStore = defineStore('history', {
     },
 
     /**
-     * Best-effort ordering bump; never worth failing a run over.
+     * Best-effort ordering bump; never worth failing a run over. The reload is
+     * what the search box needs: it reads this list once on mount and orders
+     * its suggestions on lastRun, so bumping only the server would leave the
+     * search just run sitting wherever it was. Recents need no reload here —
+     * their run goes through recordRecent, which reloads for the same reason.
      * @param entry the search that was just run
      */
-    markRun(entry: StoredSearch) {
-      if (entry.kind === 'saved') {
-        SearchApi.markRun(entry.id)
+    async markRun(entry: StoredSearch) {
+      if (entry.kind !== 'saved') {
+        return
       }
+      await SearchApi.markRun(entry.id)
+      await this.load(true)
     },
   },
 })
