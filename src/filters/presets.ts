@@ -131,8 +131,11 @@ export function fileTypePresets(t: Translate): FileTypePreset[] {
 export interface ModifiedPreset {
   id: string
   label: string
-  /** Seconds back from now, or null for "any time". */
-  seconds: number | null
+  /**
+   * Seconds back from now, null for "any time", or 'midnight' for a preset
+   * that means a calendar day rather than a rolling window.
+   */
+  seconds: number | null | 'midnight'
 }
 
 const DAY = 86400
@@ -144,7 +147,11 @@ export function anyTime(t: Translate): ModifiedPreset {
 export function modifiedPresets(t: Translate): ModifiedPreset[] {
   return [
     anyTime(t),
-    { id: 'today', label: t('Today'), seconds: DAY },
+    // Since midnight, not the last 24 hours: at eleven in the morning a rolling
+    // day still reaches back into yesterday evening, and a list headed "Today"
+    // showing yesterday's files reads as a bug — which is how this was found.
+    // The other presets are honestly named as rolling windows and stay that way.
+    { id: 'today', label: t('Today'), seconds: 'midnight' },
     { id: 'week', label: t('Last 7 days'), seconds: 7 * DAY },
     { id: 'month', label: t('Last 30 days'), seconds: 30 * DAY },
     { id: 'year', label: t('Last 12 months'), seconds: 365 * DAY },
@@ -156,7 +163,18 @@ export function modifiedPresets(t: Translate): ModifiedPreset[] {
  * @param preset
  */
 export function modifiedAfter(preset: ModifiedPreset): number | null {
-  return preset.seconds === null
-    ? null
-    : Math.floor(Date.now() / 1000) - preset.seconds
+  if (preset.seconds === null) {
+    return null
+  }
+
+  if (preset.seconds === 'midnight') {
+    // The viewer's own midnight: the server stores UTC seconds, but "today" is
+    // a question about the calendar the person asking is looking at.
+    const midnight = new Date()
+    midnight.setHours(0, 0, 0, 0)
+
+    return Math.floor(midnight.getTime() / 1000)
+  }
+
+  return Math.floor(Date.now() / 1000) - preset.seconds
 }
