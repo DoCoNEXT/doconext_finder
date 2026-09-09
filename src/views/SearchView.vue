@@ -6,50 +6,15 @@
     <div class="finder__bar">
       <SearchBox v-model="searchTerm"
                  class="finder__term"
+                 :search-in="searchIn"
+                 :targets="HAS_CONTENT_SEARCH"
+                 :understand="HAS_ENTITY_SCOPE"
+                 :understand-disabled="!aiReady || distiller.running.value || store.loading || searchTerm.trim() === ''"
+                 :understanding="distiller.running.value"
+                 @update:search-in="searchIn = $event"
                  @search="search"
-                 @pick="runSuggestion" />
-
-      <!--
-        Where the term looks, not which engine runs: the filters below apply
-        either way. Only rendered when the server has an index to look in, so
-        the choice never offers something that cannot happen.
-      -->
-      <div v-if="HAS_CONTENT_SEARCH" class="finder__where">
-        <NcCheckboxRadioSwitch v-model="searchIn"
-                               type="radio"
-                               value="name"
-                               name="search-in"
-                               button-variant
-                               button-variant-grouped="horizontal">
-          {{ t('Name') }}
-        </NcCheckboxRadioSwitch>
-        <NcCheckboxRadioSwitch v-model="searchIn"
-                               type="radio"
-                               value="content"
-                               name="search-in"
-                               button-variant
-                               button-variant-grouped="horizontal">
-          {{ t('Contents') }}
-        </NcCheckboxRadioSwitch>
-      </div>
-
-      <!--
-        Not a mode: it fills the filters below and then gets out of the way, so
-        what runs afterwards is the ordinary structured search the rest of this
-        page already explains. Rendered whenever Core is here and disabled until
-        its AI answers for itself — a button that appears a beat late reads as a
-        glitch, one that greys out reads as a server still waking up.
-      -->
-      <NcButton v-if="HAS_ENTITY_SCOPE"
-                :disabled="!aiReady || distiller.running.value || store.loading || searchTerm.trim() === ''"
-                :title="t('Turn your question into filters')"
-                @click="askAi">
-        <template #icon>
-          <NcLoadingIcon v-if="distiller.running.value" :size="20" />
-          <Sparkles v-else :size="20" />
-        </template>
-        {{ t('Understand') }}
-      </NcButton>
+                 @pick="runSuggestion"
+                 @understand="askAi" />
 
       <NcButton variant="primary" :disabled="store.loading" @click="search">
         {{ t('Search') }}
@@ -209,7 +174,7 @@ import {
   NcNoteCard,
   NcSelect,
 } from '@nextcloud/vue'
-import { Save, Search, Sparkles, X } from '@lucide/vue'
+import { Save, Search, X } from '@lucide/vue'
 import { HAS_CONTENT_SEARCH, HAS_ENTITY_SCOPE } from '../constants'
 import { useI18n } from '../composables/useI18n'
 import { useSearchStore } from '../stores/searchStore'
@@ -472,18 +437,20 @@ async function save() {
     align-items: center;
     gap: 8px;
     margin-bottom: 10px;
+
+    // The box gives way, never the actions. Without this the buttons shrink to
+    // "Sear…" and "Sa…" once the term control claims its width — and a button
+    // whose label is cut is a button nobody can be sure of. Aimed through the
+    // component's own class because NcButton sets its box properties at the
+    // specificity a single scoped class reaches.
+    :deep(.button-vue) {
+      flex: 0 0 auto;
+    }
   }
 
   &__term {
     flex: 1 1 auto;
     min-width: 0;
-  }
-
-  // The pair reads as one control, so it must not be pulled apart when the bar
-  // runs out of room — the buttons beside it can give way instead.
-  &__where {
-    display: flex;
-    flex: 0 0 auto;
   }
 
   &__ranked {
