@@ -60,6 +60,7 @@ class PreferencesController extends ApiController
         bool $descending = true,
         string $doubleClick = 'open',
         bool $sidebarPinned = false,
+        string $highlightColor = '',
     ): DataResponse {
         $uid = $this->userSession->getUser()?->getUID();
 
@@ -74,6 +75,7 @@ class PreferencesController extends ApiController
                 'descending'        => $descending,
                 'doubleClick'       => $doubleClick,
                 'sidebarPinned'     => $sidebarPinned,
+                'highlightColor'    => $highlightColor,
             ]));
     }
 }

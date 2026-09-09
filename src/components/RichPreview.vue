@@ -17,6 +17,8 @@
  */
 import { onBeforeUnmount, ref, watch } from 'vue'
 import { downloadUrl } from '../services/download'
+import { usePreferencesStore } from '../stores/preferencesStore'
+import { readableTextOn } from '../filters/colors'
 import type { FileResult } from '../types/Search'
 
 const TAG = 'doconext-file-preview'
@@ -31,10 +33,37 @@ const props = defineProps<{
   highlight?: string
 }>()
 
+const preferences = usePreferencesStore()
+
 const host = ref<HTMLElement>()
 
 /** The element we created, so the terms can be updated without rebuilding it. */
 const preview = ref<HTMLElement>()
+
+/**
+ * Hands the renderer the colour to mark in, as the two custom properties it
+ * reads. Set on the preview element itself rather than on the page, because a
+ * custom property inside a `::highlight()` rule resolves against the element the
+ * marked text belongs to — measured in Chrome, where an inline property on this
+ * element wins and one on `<html>` would work too but would leave a setting of
+ * ours declared on the whole document.
+ *
+ * The text colour goes with it. Every colour the picker offers can be chosen,
+ * including a navy that black text disappears into, so which text reads on it is
+ * ours to answer rather than the user's to discover.
+ * @param element the preview element to paint
+ */
+function paint(element: HTMLElement) {
+  const colour = preferences.highlightColor
+  if (colour) {
+    element.style.setProperty('--doconext-preview-highlight', colour)
+    element.style.setProperty('--doconext-preview-highlight-text', readableTextOn(colour))
+  } else {
+    // Nothing declared: the renderer falls back to its own themed tint.
+    element.style.removeProperty('--doconext-preview-highlight')
+    element.style.removeProperty('--doconext-preview-highlight-text')
+  }
+}
 
 /**
  * The element is defined when the other app's bundle runs, which may be after
@@ -67,6 +96,7 @@ async function render() {
   element.setAttribute('mime', props.file.mimetype)
   element.setAttribute('source', downloadUrl(props.file))
   element.setAttribute('highlight', props.highlight ?? '')
+  paint(element)
   el.appendChild(element)
   preview.value = element
 }
@@ -79,6 +109,14 @@ watch(host, render)
 // rather than the whole preview being built again.
 watch(() => props.highlight, (terms) => {
   preview.value?.setAttribute('highlight', terms ?? '')
+})
+
+// Picking a colour in the settings tab repaints an open preview rather than
+// waiting for the next one.
+watch(() => preferences.highlightColor, () => {
+  if (preview.value) {
+    paint(preview.value)
+  }
 })
 
 onBeforeUnmount(() => {

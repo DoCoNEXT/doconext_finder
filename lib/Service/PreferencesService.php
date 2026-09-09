@@ -55,6 +55,14 @@ class PreferencesService
     /** What a double-click on a row does. */
     public const CLICK_ACTIONS = ['open', 'folder', 'none'];
 
+    /**
+     * A colour the user picked for the marked search terms in a preview, as
+     * `#rrggbb`. Empty means the preview app's own themed default, which is the
+     * only sensible fallback: this app does not draw the mark and has no
+     * business deciding what "no choice" looks like.
+     */
+    private const COLOUR = '/^#[0-9a-fA-F]{6}$/';
+
     /** Columns the grid can sort on, mirroring FileQuery::SORTS. */
     private const SORTS = ['name', 'size', 'mtime', 'creation_time'];
 
@@ -108,7 +116,23 @@ class PreferencesService
                 ? (string)$raw['doubleClick']
                 : 'open',
             'sidebarPinned' => (bool)($raw['sidebarPinned'] ?? false),
+            'highlightColor' => $this->sanitiseColour($raw['highlightColor'] ?? ''),
         ];
+    }
+
+    /**
+     * A picked colour, or '' for the default.
+     *
+     * Six-digit hex only. The value is written into a CSS custom property, so
+     * anything looser would be a way to smuggle a declaration into the page:
+     * `red; position: fixed` is a perfectly ordinary-looking string until it
+     * lands in a style attribute.
+     */
+    private function sanitiseColour(mixed $raw): string
+    {
+        $colour = is_string($raw) ? trim($raw) : '';
+
+        return preg_match(self::COLOUR, $colour) === 1 ? strtolower($colour) : '';
     }
 
     /**

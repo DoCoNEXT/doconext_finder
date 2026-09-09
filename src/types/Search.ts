@@ -261,4 +261,10 @@ export interface Preferences {
    * row without a panel appearing.
    */
   sidebarPinned: boolean
+  /**
+   * The colour the searched-for words are marked in inside a preview, as
+   * `#rrggbb`. Empty means the preview app's own themed default — this app does
+   * not draw the mark, so it has nothing better to put there.
+   */
+  highlightColor: string
 }

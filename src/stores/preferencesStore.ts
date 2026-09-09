@@ -30,6 +30,8 @@ interface State {
   doubleClick: string
   /** Whether the details panel is on screen; see `Preferences.sidebarPinned`. */
   sidebarPinned: boolean
+  /** Colour for the marked search terms in a preview; '' for the default. */
+  highlightColor: string
   loaded: boolean
 }
 
@@ -43,6 +45,7 @@ export const usePreferencesStore = defineStore('preferences', {
     descending: true,
     doubleClick: 'open',
     sidebarPinned: false,
+    highlightColor: '',
     loaded: false,
     revision: 0,
   }),
@@ -82,6 +85,7 @@ export const usePreferencesStore = defineStore('preferences', {
       this.descending = preferences.descending
       this.doubleClick = preferences.doubleClick
       this.sidebarPinned = preferences.sidebarPinned
+      this.highlightColor = preferences.highlightColor ?? ''
       this.loaded = true
     },
 
@@ -97,6 +101,7 @@ export const usePreferencesStore = defineStore('preferences', {
           descending: this.descending,
           doubleClick: this.doubleClick,
           sidebarPinned: this.sidebarPinned,
+          highlightColor: this.highlightColor,
         })
         // Adopt only while this is still the newest save in flight; a later edit
         // has already sent its own, whose response is the one that counts.
@@ -241,6 +246,15 @@ export const usePreferencesStore = defineStore('preferences', {
      */
     setSidebarPinned(pinned: boolean) {
       this.sidebarPinned = pinned
+      this.save()
+    },
+
+    /**
+     * The colour the search terms are marked in inside a preview.
+     * @param colour `#rrggbb`, or '' to go back to the preview's own default
+     */
+    setHighlightColor(colour: string) {
+      this.highlightColor = colour
       this.save()
     },
 
