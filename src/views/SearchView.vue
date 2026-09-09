@@ -13,6 +13,9 @@
         {{ t('Search') }}
       </NcButton>
       <NcButton :disabled="!store.hasCriteria" @click="save">
+        <template #icon>
+          <Save :size="20" />
+        </template>
         {{ t('Save') }}
       </NcButton>
       <!--
@@ -25,6 +28,9 @@
                 :aria-label="t('New search')"
                 :title="t('Clear the term, the filters and the results')"
                 @click="store.reset()">
+        <template #icon>
+          <X :size="20" />
+        </template>
         {{ t('New search') }}
       </NcButton>
     </div>
@@ -136,7 +142,7 @@ import {
   NcNoteCard,
   NcSelect,
 } from '@nextcloud/vue'
-import { Search } from '@lucide/vue'
+import { Save, Search, X } from '@lucide/vue'
 import { useI18n } from '../composables/useI18n'
 import { useSearchStore } from '../stores/searchStore'
 import { useSelectionStore } from '../stores/selectionStore'
