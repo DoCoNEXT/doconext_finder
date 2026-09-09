@@ -33,6 +33,24 @@
         </NcCheckboxRadioSwitch>
       </div>
 
+      <!--
+        Not a mode: it fills the filters below and then gets out of the way, so
+        what runs afterwards is the ordinary structured search the rest of this
+        page already explains. Rendered whenever Core is here and disabled until
+        its AI answers for itself — a button that appears a beat late reads as a
+        glitch, one that greys out reads as a server still waking up.
+      -->
+      <NcButton v-if="HAS_ENTITY_SCOPE"
+                :disabled="!aiReady || distiller.running.value || store.loading || searchTerm.trim() === ''"
+                :title="t('Turn your question into filters')"
+                @click="askAi">
+        <template #icon>
+          <NcLoadingIcon v-if="distiller.running.value" :size="20" />
+          <Sparkles v-else :size="20" />
+        </template>
+        {{ t('Understand') }}
+      </NcButton>
+
       <NcButton variant="primary" :disabled="store.loading" @click="search">
         {{ t('Search') }}
       </NcButton>
@@ -80,6 +98,21 @@
     </div>
 
     <ScopeSelector />
+
+    <!--
+      What the question was understood to mean, in Core's own words. Shown
+      because a scope that arrives without explanation is a scope nobody can
+      correct: the chips say what was applied, the line below says what could
+      not be. Both stay editable in the filters underneath — these are a
+      receipt, not a control.
+    -->
+    <div v-if="distiller.chips.value.length" class="finder__chips">
+      <span v-for="chip in distiller.chips.value" :key="chip" class="finder__chip">{{ chip }}</span>
+    </div>
+    <p v-if="distiller.dropped.value.length" class="muted finder__dropped">
+      {{ t('Not applied here: {items}', { items: distiller.dropped.value.join(' · ') }) }}
+    </p>
+    <p v-if="aiMessage" class="muted finder__dropped">{{ aiMessage }}</p>
 
     <details class="finder__filters" :open="store.query.conditions.length > 0">
       <summary>{{ filterSummary }}</summary>
@@ -176,13 +209,15 @@ import {
   NcNoteCard,
   NcSelect,
 } from '@nextcloud/vue'
-import { Save, Search, X } from '@lucide/vue'
-import { HAS_CONTENT_SEARCH } from '../constants'
+import { Save, Search, Sparkles, X } from '@lucide/vue'
+import { HAS_CONTENT_SEARCH, HAS_ENTITY_SCOPE } from '../constants'
 import { useI18n } from '../composables/useI18n'
 import { useSearchStore } from '../stores/searchStore'
 import { useSelectionStore } from '../stores/selectionStore'
 import { useHistoryStore } from '../stores/historyStore'
 import { useSaveSearch } from '../composables/useSaveSearch'
+import { useDistiller } from '../composables/useDistiller'
+import { CoreAiApi } from '../services/CoreAiApi'
 import { anyTime, anyType, fileTypePresets, modifiedPresets } from '../filters/presets'
 import ConditionRow from '../components/ConditionRow.vue'
 import FolderScope from '../components/FolderScope.vue'
@@ -239,6 +274,32 @@ const searchIn = computed<'name' | 'content'>({
   },
 })
 
+const distiller = useDistiller()
+
+/**
+ * Whether Core's AI can actually run. A round trip, unlike everything else this
+ * page gates on — Core publishes its name in the capabilities but not yet its
+ * AI availability, so there is nothing synchronous to read. Gating whether the
+ * button is enabled, rather than whether it exists, keeps the bar from
+ * reflowing once the answer lands.
+ */
+const aiReady = ref(false)
+
+onMounted(async () => {
+  if (HAS_ENTITY_SCOPE) {
+    aiReady.value = (await CoreAiApi.status()).available
+  }
+})
+
+const aiMessage = computed(() => {
+  switch (distiller.outcome.value) {
+    case 'empty': return t('Nothing in that question maps to a filter this workspace has.')
+    case 'failed': return t('Could not understand that question. The filters below still work.')
+    case 'timeout': return t('Understanding the question took too long. Try again, or set the filters yourself.')
+    default: return ''
+  }
+})
+
 const searchTerm = computed({
   get: () => (searchIn.value === 'content' ? store.query.content : store.query.term),
   set: (value: string) => {
@@ -249,6 +310,27 @@ const searchTerm = computed({
     }
   },
 })
+
+/**
+ * Hands whatever is in the box to Core, applies what comes back, and runs it.
+ *
+ * The question is consumed: it was a way of describing filters, and leaving it
+ * in the box afterwards would search for its words as well as its meaning.
+ */
+async function askAi() {
+  const question = searchTerm.value.trim()
+  if (question === '') {
+    return
+  }
+
+  const realmId = store.query.scope?.level === 'realm' ? store.query.scope.id : null
+  const understood = await distiller.distil(t, question, store.query, store.schema, realmId)
+
+  if (understood) {
+    store.apply(understood)
+    store.run(t, 0)
+  }
+}
 const selection = useSelectionStore()
 const history = useHistoryStore()
 const { saveSearch } = useSaveSearch()
@@ -406,6 +488,26 @@ async function save() {
 
   &__ranked {
     margin: 0 0 4px;
+    font-size: 90%;
+  }
+
+  &__chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 6px;
+  }
+
+  &__chip {
+    padding: 2px 10px;
+    border-radius: var(--border-radius-pill, 16px);
+    background: var(--color-primary-element-light);
+    color: var(--color-primary-element-light-text);
+    font-size: 90%;
+  }
+
+  &__dropped {
+    margin: 0 0 6px;
     font-size: 90%;
   }
 

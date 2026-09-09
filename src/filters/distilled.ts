@@ -1,0 +1,265 @@
+/**
+ * Turns what Core's distiller understood into this app's own search state.
+ *
+ * Not a one-to-one copy. Core hands back the pieces a WebDAV DASL query is
+ * built from — mimetype patterns, an ISO date range, metadata equalities — and
+ * this app searches the filecache through a validated FileQuery instead. Dates
+ * become unix seconds, metadata keys gain their prefixes, and anything this
+ * server cannot actually filter on is dropped.
+ *
+ * Dropped *visibly*. A distilled scope is a claim about what the question meant,
+ * and silently ignoring half of it would leave someone looking at results that
+ * do not answer what they asked. Every function here reports what it could not
+ * apply so the interface can say so.
+ */
+import { fileTypePresets } from './presets'
+import type { Translate } from './presets'
+import type { DistilledFileScope } from '../types/Ai'
+import type { Condition, FieldsResponse, SearchState } from '../types/Search'
+
+/** Core writes its registry keys into file metadata under this prefix. */
+const CORE_KEY_PREFIX = 'dcn_core_'
+
+/** How this app addresses a metadata field in a condition. */
+const META_PREFIX = 'meta:'
+
+export interface AppliedScope {
+  /** The state to run, ready to hand to the store. */
+  state: SearchState
+  /** Human-readable reasons, one per piece that could not be applied. */
+  dropped: string[]
+}
+
+/**
+ * @param t translation function
+ * @param scope what Core understood
+ * @param base the state to build on — the current one, so the user's scope survives
+ * @param schema this server's filterable surface, or null when not loaded yet
+ * @param contentSearch whether the topic can become a content search
+ */
+export function applyDistilled(
+  t: Translate,
+  scope: DistilledFileScope,
+  base: SearchState,
+  schema: FieldsResponse | null,
+  contentSearch: boolean,
+): AppliedScope {
+  const dropped: string[] = []
+  const conditions: Condition[] = []
+
+  const state: SearchState = {
+    ...base,
+    term: '',
+    content: '',
+    typePreset: 'any',
+    modifiedPreset: 'any',
+    conditions,
+    // A distilled scope is a conjunction: every piece narrows the question the
+    // user asked. Whatever "match any" was set to before described a different
+    // search entirely.
+    matchAny: false,
+  }
+
+  applyType(t, scope, state, dropped)
+  applyDates(scope, conditions, dropped)
+  applyMetadata(scope, schema, conditions, dropped)
+  applyTopic(scope, state, contentSearch, dropped)
+
+  return { state, dropped }
+}
+
+/**
+ * The file type, if one of this server's Type filters happens to mean exactly
+ * what the distiller chose.
+ *
+ * Only an exact match counts. The Type filter is a fixed list an admin curates,
+ * while the distiller answers with raw mimetype patterns, so "PDF" may have no
+ * entry to land in. Widening to a preset that merely contains the patterns
+ * would quietly search more than was asked, and narrowing is worse — so an
+ * unmatched type is reported rather than approximated.
+ */
+function applyType(t: Translate, scope: DistilledFileScope, state: SearchState, dropped: string[]): void {
+  if (scope.mimetypes.length === 0) {
+    return
+  }
+
+  const wanted = [...scope.mimetypes].sort().join('|')
+  const preset = fileTypePresets(t).find(
+    (p) => p.id !== 'any' && [...p.mimetypes].sort().join('|') === wanted,
+  )
+
+  if (preset) {
+    state.typePreset = preset.id
+    return
+  }
+
+  dropped.push(t('File type "{label}" — this server has no matching Type filter', {
+    label: scope.mimeLabel || scope.mimetypes.join(', '),
+  }))
+}
+
+/**
+ * The date range, as conditions rather than as a preset: the presets are
+ * rolling windows ("last 7 days") and a question like "from 2025" is an
+ * absolute range, which only a condition can express.
+ */
+function applyDates(scope: DistilledFileScope, conditions: Condition[], dropped: string[]): void {
+  if (scope.dateFieldKey !== null) {
+    applyMetadataDate(scope, conditions, dropped)
+    return
+  }
+
+  if (scope.dateField === null) {
+    return
+  }
+
+  const field = scope.dateField === 'created' ? 'creation_time' : 'mtime'
+  const from = startOfDay(scope.dateFrom)
+  const to = endOfDay(scope.dateTo)
+
+  if (from !== null) {
+    conditions.push({ field, operator: 'gte', value: from, label: scope.dateLabel ?? undefined })
+  }
+  if (to !== null) {
+    conditions.push({ field, operator: 'lte', value: to, label: scope.dateLabel ?? undefined })
+  }
+}
+
+/**
+ * A business date — a judgment date, a publication date — rather than the
+ * file's own.
+ *
+ * Metadata lives in one indexed string column, so it compares as text: no
+ * greater-than, no range. A year is therefore matched as a substring, which is
+ * exactly what the desktop client does and works because these values are
+ * written ISO-first. A range that is not a whole single year cannot be
+ * expressed at all, and says so.
+ */
+function applyMetadataDate(scope: DistilledFileScope, conditions: Condition[], dropped: string[]): void {
+  const year = sameYear(scope.dateFrom, scope.dateTo)
+
+  if (year === null) {
+    dropped.push(scope.dateLabel ?? '')
+    return
+  }
+
+  conditions.push({
+    field: META_PREFIX + CORE_KEY_PREFIX + scope.dateFieldKey,
+    operator: 'contains',
+    value: year,
+    label: scope.dateLabel ?? undefined,
+  })
+}
+
+/**
+ * The metadata equalities.
+ *
+ * Core decides "searchable" from its own field flag; this app decides
+ * "filterable" from Nextcloud's metadata index. The two can disagree — a field
+ * Core is happy to distil against may never have been indexed here — so every
+ * condition is checked against this server's own schema before it is used.
+ */
+function applyMetadata(
+  scope: DistilledFileScope,
+  schema: FieldsResponse | null,
+  conditions: Condition[],
+  dropped: string[],
+): void {
+  for (const meta of scope.metadata) {
+    const key = CORE_KEY_PREFIX + meta.fieldKey
+    const known = schema?.metadata.find((f) => f.key === key)
+
+    if (schema !== null && (known === undefined || !known.filterable)) {
+      dropped.push(`${meta.fieldLabel}: ${meta.valueLabel}`)
+      continue
+    }
+
+    conditions.push({
+      field: META_PREFIX + key,
+      operator: 'eq',
+      value: meta.value,
+      label: meta.valueLabel,
+    })
+  }
+}
+
+/**
+ * The subject itself — everything the distiller could not turn into a filter.
+ *
+ * It goes to the content search, which is where it was always meant to go: as a
+ * filename filter it ANDs a good scope down to nothing whenever the word is not
+ * in the names, which is why it used to be offered as an opt-in chip. Without a
+ * full-text index there is still nowhere safe to put it, so it is reported
+ * instead of guessed at.
+ */
+function applyTopic(
+  scope: DistilledFileScope,
+  state: SearchState,
+  contentSearch: boolean,
+  dropped: string[],
+): void {
+  const topic = scope.topic?.trim() ?? ''
+  if (topic === '') {
+    return
+  }
+
+  if (!contentSearch) {
+    dropped.push(`“${topic}”`)
+    return
+  }
+
+  state.content = topic
+  state.sort = 'relevance'
+  state.descending = true
+}
+
+/** ISO date → unix seconds at the start of that day, in the viewer's timezone. */
+function startOfDay(iso: string | null): number | null {
+  const date = parseIso(iso)
+  if (date === null) {
+    return null
+  }
+  date.setHours(0, 0, 0, 0)
+
+  return Math.floor(date.getTime() / 1000)
+}
+
+/**
+ * ISO date → unix seconds at the *end* of that day. "Until 31 December" means
+ * the whole of the 31st; cutting at its midnight would lose a day's files.
+ */
+function endOfDay(iso: string | null): number | null {
+  const date = parseIso(iso)
+  if (date === null) {
+    return null
+  }
+  date.setHours(23, 59, 59, 0)
+
+  return Math.floor(date.getTime() / 1000)
+}
+
+function parseIso(iso: string | null): Date | null {
+  if (!iso) {
+    return null
+  }
+  const [year, month, day] = iso.split('-').map(Number)
+  if (!year || !month || !day) {
+    return null
+  }
+
+  return new Date(year, month - 1, day)
+}
+
+/** The year both ends of a range fall in, or null when they do not. */
+function sameYear(from: string | null, to: string | null): string | null {
+  const years = [from, to]
+    .filter((v): v is string => typeof v === 'string' && v.length >= 4)
+    .map((v) => v.slice(0, 4))
+
+  const first = years[0]
+  if (first === undefined || years.some((y) => y !== first)) {
+    return null
+  }
+
+  return first
+}

@@ -150,6 +150,8 @@ export interface FieldsResponse {
 
 export interface SearchRequest {
   term?: string
+  /** Matched against the file's text by the full-text index — see SearchState. */
+  content?: string
   conditions?: Condition[]
   /**
    * Preset filters. Kept apart from `conditions` because they AND with
