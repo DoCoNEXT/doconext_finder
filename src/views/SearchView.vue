@@ -74,9 +74,17 @@
     <div v-if="distiller.chips.value.length" class="finder__chips">
       <span v-for="chip in distiller.chips.value" :key="chip" class="finder__chip">{{ chip }}</span>
     </div>
-    <p v-if="distiller.dropped.value.length" class="muted finder__dropped">
-      {{ t('Not applied here: {items}', { items: distiller.dropped.value.join(' · ') }) }}
-    </p>
+    <!--
+      A warning, not a muted aside: this says the search on screen is narrower
+      than the question that produced it, which is the one thing about a
+      distilled scope somebody has to notice.
+    -->
+    <NcNoteCard v-if="distiller.dropped.value.length" type="warning">
+      {{ t('Understood, but not applied — this search does not cover it:') }}
+      <ul class="finder__unapplied">
+        <li v-for="item in distiller.dropped.value" :key="item">{{ item }}</li>
+      </ul>
+    </NcNoteCard>
     <p v-if="aiMessage" class="muted finder__dropped">{{ aiMessage }}</p>
 
     <details class="finder__filters" :open="store.query.conditions.length > 0">
@@ -300,7 +308,18 @@ const selection = useSelectionStore()
 const history = useHistoryStore()
 const { saveSearch } = useSaveSearch()
 
-const typeOptions = fileTypePresets(t)
+/**
+ * The configured Type filters, plus the distilled one when a question asked for
+ * something the list has no name for. Shown as an ordinary option so the filter
+ * is visible and can be changed — a filter that acts but does not appear is the
+ * kind nobody can correct.
+ */
+const typeOptions = computed(() => {
+  const presets = fileTypePresets(t)
+  const custom = store.query.customType
+
+  return custom ? [...presets, custom] : presets
+})
 const timeOptions = modifiedPresets(t)
 
 onMounted(() => store.loadSchema())
@@ -315,8 +334,15 @@ watch(() => store.results, () => selection.onResults())
  * objects, so a stored search never carries a stale label.
  */
 const typeOption = computed<FileTypePreset>({
-  get: () => typeOptions.find((o) => o.id === store.query.typePreset) ?? anyType(t),
-  set: (next) => { store.query.typePreset = next?.id ?? 'any' },
+  get: () => typeOptions.value.find((o) => o.id === store.query.typePreset) ?? anyType(t),
+  set: (next) => {
+    store.query.typePreset = next?.id ?? 'any'
+    // Picking any other option retires the distilled one: keeping it in the
+    // list would offer a type that belongs to a question already answered.
+    if (next?.id !== store.query.customType?.id) {
+      store.query.customType = null
+    }
+  },
 })
 
 const timeOption = computed<ModifiedPreset>({
@@ -476,6 +502,11 @@ async function save() {
   &__dropped {
     margin: 0 0 6px;
     font-size: 90%;
+  }
+
+  &__unapplied {
+    margin: 4px 0 0;
+    padding-inline-start: 20px;
   }
 
   &__presets {

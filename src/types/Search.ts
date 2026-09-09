@@ -185,6 +185,14 @@ export interface SearchState {
    */
   content: string
   typePreset: string
+  /**
+   * A file type the distiller chose that no configured Type filter matches —
+   * "Word document", say, where this server only offers the broader
+   * "Documents". Carried as a whole preset so it can sit in the Type dropdown
+   * as an ordinary option, editable and visible, rather than as a hidden
+   * filter. Null whenever `typePreset` names a real one.
+   */
+  customType: { id: string, label: string, mimetypes: string[] } | null
   modifiedPreset: string
   conditions: Condition[]
   matchAny: boolean

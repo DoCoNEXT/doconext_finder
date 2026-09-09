@@ -52,6 +52,7 @@ export function applyDistilled(
     term: '',
     content: '',
     typePreset: 'any',
+    customType: null,
     modifiedPreset: 'any',
     conditions,
     // A distilled scope is a conjunction: every piece narrows the question the
@@ -60,7 +61,7 @@ export function applyDistilled(
     matchAny: false,
   }
 
-  applyType(t, scope, state, dropped)
+  applyType(t, scope, state)
   applyDates(scope, conditions, dropped)
   applyMetadata(scope, schema, conditions, dropped)
   applyTopic(scope, state, contentSearch, dropped)
@@ -69,16 +70,18 @@ export function applyDistilled(
 }
 
 /**
- * The file type, if one of this server's Type filters happens to mean exactly
- * what the distiller chose.
+ * The file type.
  *
- * Only an exact match counts. The Type filter is a fixed list an admin curates,
- * while the distiller answers with raw mimetype patterns, so "PDF" may have no
- * entry to land in. Widening to a preset that merely contains the patterns
- * would quietly search more than was asked, and narrowing is worse — so an
- * unmatched type is reported rather than approximated.
+ * An exact match against a configured Type filter is preferred, so the dropdown
+ * shows the name this server already uses. Failing that the distilled type is
+ * carried as a filter of its own rather than dropped: the admin's list is
+ * curated and coarse — "Documents" covering everything from PDF to Markdown —
+ * while a question can be as precise as "Word document", and answering a
+ * precise question with a broader filter searches more than was asked.
  */
-function applyType(t: Translate, scope: DistilledFileScope, state: SearchState, dropped: string[]): void {
+const DISTILLED_TYPE_ID = 'distilled'
+
+function applyType(t: Translate, scope: DistilledFileScope, state: SearchState): void {
   if (scope.mimetypes.length === 0) {
     return
   }
@@ -93,9 +96,12 @@ function applyType(t: Translate, scope: DistilledFileScope, state: SearchState, 
     return
   }
 
-  dropped.push(t('File type "{label}" — this server has no matching Type filter', {
+  state.typePreset = DISTILLED_TYPE_ID
+  state.customType = {
+    id: DISTILLED_TYPE_ID,
     label: scope.mimeLabel || scope.mimetypes.join(', '),
-  }))
+    mimetypes: scope.mimetypes,
+  }
 }
 
 /**

@@ -25,6 +25,7 @@ export function emptyState(): SearchState {
     term: '',
     content: '',
     typePreset: 'any',
+    customType: null,
     modifiedPreset: 'any',
     conditions: [],
     matchAny: false,
@@ -118,7 +119,11 @@ export const useSearchStore = defineStore('search', {
      * @param limit how many rows to ask for
      */
     request(t: Translate, offset: number, limit: number) {
-      const type = fileTypePresets(t).find((p) => p.id === this.query.typePreset) ?? anyType(t)
+      // The distilled type wins when it is the one selected: it exists precisely
+      // because no configured filter says what the question asked for.
+      const type = this.query.customType?.id === this.query.typePreset
+        ? this.query.customType
+        : fileTypePresets(t).find((p) => p.id === this.query.typePreset) ?? anyType(t)
       const time = modifiedPresets(t).find((p) => p.id === this.query.modifiedPreset) ?? anyTime(t)
 
       return {

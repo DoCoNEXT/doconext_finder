@@ -6,35 +6,32 @@
       queueing up among the buttons that act on the whole search.
     -->
     <div class="search-box__frame">
-      <div :class="['search-box__field', { 'search-box__field--targets': targets }]"
-           :style="{ '--dcn-targets-width': targetsWidth }">
-        <!--
-          Inside the field's leading padding, the way the button below sits in
-          its trailing one. The magnifier steps aside when this is shown: two
-          leading affordances in one box is one too many, and the segment says
-          what the box searches more precisely than a glyph does.
-        -->
-        <div v-if="targets" ref="targetsEl" class="search-box__targets">
-          <NcCheckboxRadioSwitch :model-value="searchIn"
-                                 type="radio"
-                                 value="name"
-                                 name="search-in"
-                                 button-variant
-                                 button-variant-grouped="horizontal"
-                                 @update:model-value="emit('update:searchIn', 'name')">
-            {{ t('Name') }}
-          </NcCheckboxRadioSwitch>
-          <NcCheckboxRadioSwitch :model-value="searchIn"
-                                 type="radio"
-                                 value="content"
-                                 name="search-in"
-                                 button-variant
-                                 button-variant-grouped="horizontal"
-                                 @update:model-value="emit('update:searchIn', 'content')">
-            {{ t('Contents') }}
-          </NcCheckboxRadioSwitch>
-        </div>
+      <!--
+        Attached to the front of the field rather than inside it: it names what
+        the box searches, so it reads before the words rather than beside them.
+      -->
+      <div v-if="targets" class="search-box__targets">
+        <NcCheckboxRadioSwitch :model-value="searchIn"
+                               type="radio"
+                               value="name"
+                               name="search-in"
+                               button-variant
+                               button-variant-grouped="horizontal"
+                               @update:model-value="emit('update:searchIn', 'name')">
+          {{ t('Name') }}
+        </NcCheckboxRadioSwitch>
+        <NcCheckboxRadioSwitch :model-value="searchIn"
+                               type="radio"
+                               value="content"
+                               name="search-in"
+                               button-variant
+                               button-variant-grouped="horizontal"
+                               @update:model-value="emit('update:searchIn', 'content')">
+          {{ t('Contents') }}
+        </NcCheckboxRadioSwitch>
+      </div>
 
+      <div :class="['search-box__field', { 'search-box__field--attached': targets }]">
         <NcTextField
           :model-value="modelValue"
           :label="t('Search files')"
@@ -46,7 +43,7 @@
           @update:model-value="onInput"
           @focus="open = true"
           @keydown="onKeydown">
-          <template v-if="!targets" #icon>
+          <template #icon>
             <Search :size="20" />
           </template>
         </NcTextField>
@@ -152,40 +149,16 @@ const placeholder = computed(() => (
 ))
 
 const root = ref<HTMLElement>()
-const targetsEl = ref<HTMLElement>()
 
-/**
- * How much room the segment needs inside the field, as a CSS length.
- *
- * Measured rather than hardcoded: "Name" and "Contents" are translated, and a
- * fixed reservation would either waste space or let a longer language run under
- * the text. Written to a custom property the styles below feed into
- * --input-padding-start.
- */
-const targetsWidth = ref('0px')
-let observer: ResizeObserver | null = null
 const open = ref(false)
 const highlighted = ref(-1)
 
 onMounted(() => {
   history.load()
   document.addEventListener('click', onDocumentClick)
-
-  if (targetsEl.value) {
-    observer = new ResizeObserver((entries) => {
-      const width = entries[0]?.contentRect.width
-      if (width !== undefined) {
-        targetsWidth.value = `${Math.ceil(width)}px`
-      }
-    })
-    observer.observe(targetsEl.value)
-  }
 })
 
-onBeforeUnmount(() => {
-  document.removeEventListener('click', onDocumentClick)
-  observer?.disconnect()
-})
+onBeforeUnmount(() => document.removeEventListener('click', onDocumentClick))
 
 /**
  * A click anywhere else closes the list; the field keeps its own focus rules.
@@ -286,27 +259,34 @@ function onKeydown(event: KeyboardEvent) {
     gap: 0;
   }
 
-  // Sits in the field's leading padding, mirroring the button in its trailing
-  // one. Absolute rather than in the flow, so the input keeps its own border,
-  // background and focus ring instead of this component reimplementing them.
   &__targets {
-    position: absolute;
-    inset-inline-start: 5px;
-    top: 50%;
-    transform: translateY(-50%);
-    z-index: 1;
     display: flex;
+    flex: 0 0 auto;
 
-    // Short enough to clear the input's own border: the field's box is 34px
-    // with a 2px wrapper padding, so anything taller than the 30px inside it
-    // would overhang the rounded edge.
+    // Into the 2px NcInputField keeps around its input for the focus ring.
+    // Without this the two borders stand 2px apart and read as two controls;
+    // the ring still draws over the seam when the field takes focus.
+    margin-inline-end: -2px;
+
+    // The height to match is the input's *visible* box — 30px, the clickable
+    // area less that 2px of ring space on each side — not the 34px the wrapper
+    // occupies, and certainly not the 38px this variant defaults to.
     :deep(.checkbox-radio-switch) {
-      height: 26px;
+      height: 30px;
     }
 
     :deep(.checkbox-content) {
-      min-height: 26px;
+      min-height: 30px;
       padding-block: 0;
+    }
+
+    // The group rounds its own trailing corners, which left the seam as a round
+    // edge meeting the field's flattened one — a notch rather than a join. Both
+    // sides have to be square for the pair to read as one box rounded only on
+    // the outside.
+    :deep(.checkbox-radio-switch--button-variant-h-grouped:last-of-type) {
+      border-start-end-radius: 0;
+      border-end-end-radius: 0;
     }
   }
 
@@ -323,11 +303,11 @@ function onKeydown(event: KeyboardEvent) {
       --input-padding-end: calc(var(--default-clickable-area) + var(--default-grid-baseline));
     }
 
-    // The leading reservation is the measured width of the segment plus the
-    // margin either side of it, so a longer translation pushes the text along
-    // instead of disappearing under it.
-    &--targets :deep(.input-field) {
-      --input-padding-start: calc(var(--dcn-targets-width, 0px) + 2 * var(--default-grid-baseline));
+    // Flattened where the segment meets it, so the seam reads as one border
+    // rather than two controls touching.
+    &--attached :deep(.input-field__input) {
+      border-start-start-radius: 0;
+      border-end-start-radius: 0;
     }
 
     // Nested rather than a bare `&__understand`, and deliberately: NcButton
@@ -338,8 +318,11 @@ function onKeydown(event: KeyboardEvent) {
     > .search-box__understand {
       position: absolute;
       inset-inline-end: var(--default-grid-baseline);
-      top: 50%;
-      transform: translateY(-50%);
+      // Not translateY(-50%): NcButton sets its own transform while pressed,
+      // which replaced the centring one and made the button jump down half its
+      // height on every click. It is exactly as tall as the field, so nothing
+      // needs centring anyway.
+      top: 0;
       // Above the input's own background, which would otherwise paint over it.
       z-index: 1;
     }

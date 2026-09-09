@@ -23,10 +23,12 @@ export function describeQuery(t: Translate, query: SearchState): string {
   // is not visible anywhere else, and a saved search that reads the same whether
   // it matched names or contents is two different searches under one label.
   if (query.content?.trim()) {
-    parts.push(t('Contents mention "{phrase}"', { phrase: query.content.trim() }))
+    parts.push(t('Contents mention “{phrase}”', { phrase: query.content.trim() }))
   }
 
-  const type = fileTypePresets(t).find((p) => p.id === query.typePreset)
+  const type = query.customType?.id === query.typePreset
+    ? query.customType
+    : fileTypePresets(t).find((p) => p.id === query.typePreset)
   if (type && type.id !== 'any') {
     parts.push(type.label)
   }

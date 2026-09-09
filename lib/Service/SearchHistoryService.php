@@ -255,6 +255,10 @@ class SearchHistoryService
     private static function isEmpty(array $query): bool
     {
         return trim((string)($query['term'] ?? '')) === ''
+            // A question answered entirely by the full-text index carries no
+            // term and no filters, and is exactly the search someone will want
+            // back — the distiller produces nothing else.
+            && trim((string)($query['content'] ?? '')) === ''
             && ($query['conditions'] ?? []) === []
             && ($query['typePreset'] ?? 'any') === 'any'
             && ($query['modifiedPreset'] ?? 'any') === 'any'
