@@ -32,7 +32,7 @@
                 :disabled="!store.hasCriteria && !store.searched"
                 :aria-label="t('New search')"
                 :title="t('Clear the term, the filters and the results')"
-                @click="store.reset()">
+                @click="newSearch">
         <template #icon>
           <X :size="20" />
         </template>
@@ -76,14 +76,17 @@
     <ScopeSelector />
 
     <!--
-      What the question was understood to mean, in Core's own words. Shown
-      because a scope that arrives without explanation is a scope nobody can
-      correct: the chips say what was applied, the line below says what could
-      not be. Both stay editable in the filters underneath — these are a
-      receipt, not a control.
+      What the question was understood to mean, and a way to disagree with it.
+      Each chip shows only while the query still carries the filter it names, so
+      clearing one here, changing it in the filters below, or starting a new
+      search all take it off the row without anything having to remember to.
     -->
-    <div v-if="distiller.chips.value.length" class="finder__chips">
-      <span v-for="chip in distiller.chips.value" :key="chip" class="finder__chip">{{ chip }}</span>
+    <div v-if="scopeChips.length" class="finder__chips">
+      <NcChip v-for="chip in scopeChips"
+              :key="chip.label"
+              :text="chip.label"
+              :aria-label="t('Remove {filter}', { filter: chip.label })"
+              @close="clearChip(chip)" />
     </div>
     <!--
       A warning, not a muted aside: this says the search on screen is narrower
@@ -190,6 +193,7 @@ import {
   NcCheckboxRadioSwitch,
   NcEmptyContent,
   NcLoadingIcon,
+  NcChip,
   NcNoteCard,
   NcSelect,
 } from '@nextcloud/vue'
@@ -210,6 +214,7 @@ import FileTable from '../components/FileTable.vue'
 import SearchBox from '../components/SearchBox.vue'
 import ViewOptions from '../components/ViewOptions.vue'
 import type { FileTypePreset, ModifiedPreset } from '../filters/presets'
+import type { ScopeChip } from '../filters/distilled'
 import type { StoredSearch } from '../types/Search'
 
 const { t } = useI18n()
@@ -411,6 +416,43 @@ const message = computed(() => {
   }
 })
 
+/**
+ * The distilled chips that are still true of the query.
+ *
+ * Derived rather than stored: the filters they name are ordinary parts of the
+ * search, editable in their own controls, and a chip that outlived its filter
+ * would be claiming something the search no longer does.
+ */
+const scopeChips = computed(() => distiller.chips.value.filter((chip) => {
+  switch (chip.kind) {
+    case 'type':
+      return store.query.typePreset !== 'any'
+    case 'topic':
+      return store.query.content.trim() !== ''
+    default:
+      return store.query.conditions.some((c) => c.field === chip.field && c.value === chip.value)
+  }
+}))
+
+/**
+ * @param chip the chip to take back out of the query
+ */
+function clearChip(chip: ScopeChip) {
+  if (chip.kind === 'type') {
+    store.query.typePreset = 'any'
+    store.query.customType = null
+  } else if (chip.kind === 'topic') {
+    store.query.content = ''
+    if (store.query.sort === 'relevance') {
+      store.query.sort = 'mtime'
+    }
+  } else {
+    store.query.conditions = store.query.conditions.filter(
+      (c) => !(c.field === chip.field && c.value === chip.value),
+    )
+  }
+}
+
 /** True while the rows on screen came back ranked rather than enumerated. */
 const rankedResults = computed(() => (
   store.results.length > 0 && store.query.content.trim() !== ''
@@ -422,6 +464,18 @@ const messageType = computed(() => (
 
 function search() {
   store.run(t, 0)
+}
+
+/**
+ * Clears the search and everything said about it.
+ *
+ * The chips look after themselves — they show only while the query still
+ * carries what they name — but what the distiller could not apply, and how the
+ * last attempt ended, are notes about a question that is now gone.
+ */
+function newSearch() {
+  store.reset()
+  distiller.reset()
 }
 
 /**
@@ -518,14 +572,6 @@ async function save() {
     flex-wrap: wrap;
     gap: 6px;
     margin-bottom: 6px;
-  }
-
-  &__chip {
-    padding: 2px 10px;
-    border-radius: var(--border-radius-pill, 16px);
-    background: var(--color-primary-element-light);
-    color: var(--color-primary-element-light-text);
-    font-size: 90%;
   }
 
   &__dropped {

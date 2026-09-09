@@ -11,6 +11,7 @@ import { CoreAiApi } from '../services/CoreAiApi'
 import { applyDistilled } from '../filters/distilled'
 import { HAS_CONTENT_SEARCH } from '../constants'
 import type { Translate } from '../filters/presets'
+import type { ScopeChip } from '../filters/distilled'
 import type { FieldsResponse, SearchState } from '../types/Search'
 
 /** How often to ask whether the model is done. */
@@ -28,8 +29,12 @@ export function useDistiller() {
   /** True while a question is being understood. */
   const running = ref(false)
 
-  /** What Core understood, as labels — empty until something is understood. */
-  const chips = ref<string[]>([])
+  /**
+   * What Core understood, each carrying enough to undo itself. Kept as written
+   * at distil time; the view decides which are still true of the query, so a
+   * chip whose filter has since been changed or cleared stops showing itself.
+   */
+  const chips = ref<ScopeChip[]>([])
 
   /** Pieces this server could not apply, in the user's words. */
   const dropped = ref<string[]>([])
@@ -98,7 +103,7 @@ export function useDistiller() {
           if (mine !== generation) {
             return null
           }
-          chips.value = poll.understood.chips
+          chips.value = applied.chips
           dropped.value = applied.dropped
           outcome.value = 'ready'
 

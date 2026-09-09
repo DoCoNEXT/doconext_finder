@@ -23,9 +23,28 @@ const CORE_KEY_PREFIX = 'dcn_core_'
 /** How this app addresses a metadata field in a condition. */
 const META_PREFIX = 'meta:'
 
+/**
+ * One thing the distiller understood, and enough to undo it.
+ *
+ * Not a label: a chip nobody can remove is a claim rather than a control, and
+ * the piece it names is buried in a condition list the user did not write. The
+ * `kind` and its coordinates say which part of the query to clear, and let the
+ * chip disappear on its own once that part is gone — cleared here, edited in
+ * the filters below, or wiped by "New search".
+ */
+export interface ScopeChip {
+  label: string
+  kind: 'type' | 'condition' | 'topic'
+  /** For a condition chip: which one, matched by value rather than by index. */
+  field?: string
+  value?: string | number | boolean
+}
+
 export interface AppliedScope {
   /** The state to run, ready to hand to the store. */
   state: SearchState
+  /** What was understood, each removable on its own. */
+  chips: ScopeChip[]
   /** Human-readable reasons, one per piece that could not be applied. */
   dropped: string[]
 }
@@ -45,6 +64,7 @@ export function applyDistilled(
   contentSearch: boolean,
 ): AppliedScope {
   const dropped: string[] = []
+  const chips: ScopeChip[] = []
   const conditions: Condition[] = []
 
   const state: SearchState = {
@@ -61,12 +81,12 @@ export function applyDistilled(
     matchAny: false,
   }
 
-  applyType(t, scope, state)
-  applyDates(scope, conditions, dropped)
-  applyMetadata(scope, schema, conditions, dropped)
-  applyTopic(scope, state, contentSearch, dropped)
+  applyType(t, scope, state, chips)
+  applyDates(scope, conditions, chips, dropped)
+  applyMetadata(scope, schema, conditions, chips, dropped)
+  applyTopic(scope, state, contentSearch, chips, dropped)
 
-  return { state, dropped }
+  return { state, chips, dropped }
 }
 
 /**
@@ -81,7 +101,7 @@ export function applyDistilled(
  */
 const DISTILLED_TYPE_ID = 'distilled'
 
-function applyType(t: Translate, scope: DistilledFileScope, state: SearchState): void {
+function applyType(t: Translate, scope: DistilledFileScope, state: SearchState, chips: ScopeChip[]): void {
   if (scope.mimetypes.length === 0) {
     return
   }
@@ -93,15 +113,15 @@ function applyType(t: Translate, scope: DistilledFileScope, state: SearchState):
 
   if (preset) {
     state.typePreset = preset.id
+    chips.push({ label: preset.label, kind: 'type' })
+
     return
   }
 
+  const label = scope.mimeLabel || scope.mimetypes.join(', ')
   state.typePreset = DISTILLED_TYPE_ID
-  state.customType = {
-    id: DISTILLED_TYPE_ID,
-    label: scope.mimeLabel || scope.mimetypes.join(', '),
-    mimetypes: scope.mimetypes,
-  }
+  state.customType = { id: DISTILLED_TYPE_ID, label, mimetypes: scope.mimetypes }
+  chips.push({ label, kind: 'type' })
 }
 
 /**
@@ -109,9 +129,15 @@ function applyType(t: Translate, scope: DistilledFileScope, state: SearchState):
  * rolling windows ("last 7 days") and a question like "from 2025" is an
  * absolute range, which only a condition can express.
  */
-function applyDates(scope: DistilledFileScope, conditions: Condition[], dropped: string[]): void {
+function applyDates(
+  scope: DistilledFileScope,
+  conditions: Condition[],
+  chips: ScopeChip[],
+  dropped: string[],
+): void {
   if (scope.dateFieldKey !== null) {
-    applyMetadataDate(scope, conditions, dropped)
+    applyMetadataDate(scope, conditions, chips, dropped)
+
     return
   }
 
@@ -129,6 +155,17 @@ function applyDates(scope: DistilledFileScope, conditions: Condition[], dropped:
   if (to !== null) {
     conditions.push({ field, operator: 'lte', value: to, label: scope.dateLabel ?? undefined })
   }
+
+  // One chip for the range, keyed on its opening bound: removing it takes both
+  // ends, because half a range is not a filter anyone asked for.
+  if (from !== null || to !== null) {
+    chips.push({
+      label: scope.dateLabel ?? '',
+      kind: 'condition',
+      field,
+      value: from ?? to ?? undefined,
+    })
+  }
 }
 
 /**
@@ -141,20 +178,23 @@ function applyDates(scope: DistilledFileScope, conditions: Condition[], dropped:
  * written ISO-first. A range that is not a whole single year cannot be
  * expressed at all, and says so.
  */
-function applyMetadataDate(scope: DistilledFileScope, conditions: Condition[], dropped: string[]): void {
+function applyMetadataDate(
+  scope: DistilledFileScope,
+  conditions: Condition[],
+  chips: ScopeChip[],
+  dropped: string[],
+): void {
   const year = sameYear(scope.dateFrom, scope.dateTo)
 
   if (year === null) {
     dropped.push(scope.dateLabel ?? '')
+
     return
   }
 
-  conditions.push({
-    field: META_PREFIX + CORE_KEY_PREFIX + scope.dateFieldKey,
-    operator: 'contains',
-    value: year,
-    label: scope.dateLabel ?? undefined,
-  })
+  const field = META_PREFIX + CORE_KEY_PREFIX + scope.dateFieldKey
+  conditions.push({ field, operator: 'contains', value: year, label: scope.dateLabel ?? undefined })
+  chips.push({ label: scope.dateLabel ?? year, kind: 'condition', field, value: year })
 }
 
 /**
@@ -169,6 +209,7 @@ function applyMetadata(
   scope: DistilledFileScope,
   schema: FieldsResponse | null,
   conditions: Condition[],
+  chips: ScopeChip[],
   dropped: string[],
 ): void {
   for (const meta of scope.metadata) {
@@ -186,6 +227,12 @@ function applyMetadata(
       value: meta.value,
       label: meta.valueLabel,
     })
+    chips.push({
+      label: `${meta.fieldLabel}: ${meta.valueLabel}`,
+      kind: 'condition',
+      field: META_PREFIX + key,
+      value: meta.value,
+    })
   }
 }
 
@@ -202,6 +249,7 @@ function applyTopic(
   scope: DistilledFileScope,
   state: SearchState,
   contentSearch: boolean,
+  chips: ScopeChip[],
   dropped: string[],
 ): void {
   const topic = scope.topic?.trim() ?? ''
@@ -217,6 +265,7 @@ function applyTopic(
   state.content = topic
   state.sort = 'relevance'
   state.descending = true
+  chips.push({ label: `“${topic}”`, kind: 'topic' })
 }
 
 /** ISO date → unix seconds at the start of that day, in the viewer's timezone. */
