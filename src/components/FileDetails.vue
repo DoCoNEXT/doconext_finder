@@ -114,7 +114,7 @@
         /core/preview thumbnail: only some types have one, so the image is shown
         optimistically and removed if it fails rather than probed first.
       -->
-      <RichPreview v-if="previewOpened && richPreview" :file="file" />
+      <RichPreview v-if="previewOpened && richPreview" :file="file" :highlight="highlight" />
 
       <img v-else-if="previewOpened && previewUrl && !previewFailed"
            class="details__preview"
@@ -173,7 +173,11 @@ import type { FileResult } from '../types/Search'
 const { t } = useI18n()
 const search = useSearchStore()
 
-const props = defineProps<{ file: FileResult | null }>()
+const props = defineProps<{
+  file: FileResult | null
+  /** The words the search looked for; the preview marks them in the document. */
+  highlight?: string
+}>()
 
 const emit = defineEmits<{
   (e: 'close'): void

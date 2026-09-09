@@ -37,6 +37,13 @@ export function emptyState(): SearchState {
 
 interface State {
   query: SearchState
+  /**
+   * The words the search that produced these results looked for, for the
+   * preview to mark in the document. Held apart from `query`, which changes
+   * with every keystroke in the search box: the marks belong to the search that
+   * ran, not to the one being typed.
+   */
+  highlight: string
   schema: FieldsResponse | null
   results: FileResult[]
   hasMore: boolean
@@ -50,6 +57,7 @@ interface State {
 export const useSearchStore = defineStore('search', {
   state: (): State => ({
     query: emptyState(),
+    highlight: '',
     schema: null,
     results: [],
     hasMore: false,
@@ -95,6 +103,7 @@ export const useSearchStore = defineStore('search', {
     reset() {
       const preferences = usePreferencesStore()
       this.query = { ...emptyState(), sort: preferences.sort, descending: preferences.descending }
+      this.highlight = ''
       this.results = []
       this.searched = false
       this.loadedAll = false
@@ -173,6 +182,7 @@ export const useSearchStore = defineStore('search', {
         this.hasMore = response.hasMore
         this.offset = response.offset
         this.searched = true
+        this.highlight = searchedWords(this.query)
         if (response.truncated) {
           this.error = 'scope-truncated'
         }
@@ -224,6 +234,7 @@ export const useSearchStore = defineStore('search', {
         this.offset = 0
         this.searched = true
         this.loadedAll = true
+        this.highlight = searchedWords(this.query)
         if (more) {
           this.error = 'capped'
         }
@@ -261,6 +272,19 @@ export const useSearchStore = defineStore('search', {
     },
   },
 })
+
+/**
+ * What a search asked for in words, for a preview to mark.
+ *
+ * Both text fields, not only the content one: a name term is regularly in the
+ * document as well — a case number typed into "Name" is exactly what you want
+ * lit up once the file is open — and marking a word that is not there costs
+ * nothing.
+ * @param query the search that ran
+ */
+function searchedWords(query: SearchState): string {
+  return [query.content.trim(), query.term.trim()].filter(Boolean).join(' ')
+}
 
 /**
  * The condition as the server should see it: the display label is this app's

@@ -21,9 +21,20 @@ import type { FileResult } from '../types/Search'
 
 const TAG = 'doconext-file-preview'
 
-const props = defineProps<{ file: FileResult }>()
+const props = defineProps<{
+  file: FileResult
+  /**
+   * What the search looked for, as it was typed. The renderer marks those words
+   * in the document — a content search returns files whose relevance is
+   * invisible until you can see where the term actually sits.
+   */
+  highlight?: string
+}>()
 
 const host = ref<HTMLElement>()
+
+/** The element we created, so the terms can be updated without rebuilding it. */
+const preview = ref<HTMLElement>()
 
 /**
  * The element is defined when the other app's bundle runs, which may be after
@@ -50,18 +61,30 @@ async function render() {
   }
 
   el.replaceChildren()
-  const preview = document.createElement(TAG)
-  preview.setAttribute('file-id', String(props.file.fileid))
-  preview.setAttribute('basename', props.file.name)
-  preview.setAttribute('mime', props.file.mimetype)
-  preview.setAttribute('source', downloadUrl(props.file))
-  el.appendChild(preview)
+  const element = document.createElement(TAG)
+  element.setAttribute('file-id', String(props.file.fileid))
+  element.setAttribute('basename', props.file.name)
+  element.setAttribute('mime', props.file.mimetype)
+  element.setAttribute('source', downloadUrl(props.file))
+  element.setAttribute('highlight', props.highlight ?? '')
+  el.appendChild(element)
+  preview.value = element
 }
 
 watch(() => props.file.fileid, render, { immediate: true })
 watch(host, render)
 
-onBeforeUnmount(() => host.value?.replaceChildren())
+// A new search over the same open file changes what is marked but not what is
+// drawn, so the attribute is written to the element that is already there
+// rather than the whole preview being built again.
+watch(() => props.highlight, (terms) => {
+  preview.value?.setAttribute('highlight', terms ?? '')
+})
+
+onBeforeUnmount(() => {
+  host.value?.replaceChildren()
+  preview.value = undefined
+})
 </script>
 
 <style scoped lang="scss">

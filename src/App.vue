@@ -95,11 +95,12 @@
     -->
     <FileDetails v-if="showsResults && preferences.sidebarPinned"
                  :file="selection.file"
+                 :highlight="highlight"
                  @close="preferences.setSidebarPinned(false)"
                  @changed="refreshList"
                  @toggle-favorite="toggleFavorite" />
 
-    <FilePreviewDialog />
+    <FilePreviewDialog :highlight="highlight" />
   </NcContent>
 </template>
 
@@ -157,6 +158,13 @@ const page = ref<Page>('search')
 const favorites = ref<InstanceType<typeof FavoritesView> | null>(null)
 
 const showsResults = computed(() => page.value === 'search' || page.value === 'favorites')
+
+/**
+ * The words a preview marks in the document, and only where a search put them
+ * there: Favorites is a list, not a question, so a file opened from it is shown
+ * unmarked rather than carrying the last search's terms into it.
+ */
+const highlight = computed(() => (page.value === 'search' ? store.highlight : ''))
 
 /**
  * Switching page drops the selection. Search results and favorites are separate

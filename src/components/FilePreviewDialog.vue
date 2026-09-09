@@ -9,7 +9,10 @@
         Preview app's element when that app is installed, Nextcloud's own
         thumbnail otherwise.
       -->
-      <RichPreview v-if="richPreview" :file="file" class="full-preview__body" />
+      <RichPreview v-if="richPreview"
+                   :file="file"
+                   :highlight="highlight"
+                   class="full-preview__body" />
 
       <img v-else-if="previewUrl && !failed"
            class="full-preview__image"
@@ -51,6 +54,11 @@ import RichPreview from './RichPreview.vue'
 
 const { t } = useI18n()
 const preview = usePreviewStore()
+
+defineProps<{
+  /** The words the search looked for; the preview marks them in the document. */
+  highlight?: string
+}>()
 
 const file = computed(() => preview.file)
 const richPreview = HAS_RICH_PREVIEW
