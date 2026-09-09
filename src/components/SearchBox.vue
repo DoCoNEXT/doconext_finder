@@ -1,42 +1,12 @@
 <template>
   <div ref="root" class="search-box">
-    <!--
-      One control, three parts: where the term looks, the term, and what to make
-      of it. All three act on the same words, so they share a frame rather than
-      queueing up among the buttons that act on the whole search.
-    -->
     <div class="search-box__frame">
-      <!--
-        Attached to the front of the field rather than inside it: it names what
-        the box searches, so it reads before the words rather than beside them.
-      -->
-      <div v-if="targets" class="search-box__targets">
-        <NcCheckboxRadioSwitch :model-value="searchIn"
-                               type="radio"
-                               value="name"
-                               name="search-in"
-                               button-variant
-                               button-variant-grouped="horizontal"
-                               @update:model-value="emit('update:searchIn', 'name')">
-          {{ t('Name') }}
-        </NcCheckboxRadioSwitch>
-        <NcCheckboxRadioSwitch :model-value="searchIn"
-                               type="radio"
-                               value="content"
-                               name="search-in"
-                               button-variant
-                               button-variant-grouped="horizontal"
-                               @update:model-value="emit('update:searchIn', 'content')">
-          {{ t('Contents') }}
-        </NcCheckboxRadioSwitch>
-      </div>
-
-      <div :class="['search-box__field', { 'search-box__field--attached': targets }]">
+      <div class="search-box__field">
         <NcTextField
           :model-value="modelValue"
           :label="t('Search files')"
           :label-outside="true"
-          :placeholder="placeholder"
+          :placeholder="boxPlaceholder"
           role="combobox"
           :aria-expanded="open"
           aria-autocomplete="list"
@@ -95,12 +65,7 @@
 
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
-import {
-  NcButton,
-  NcCheckboxRadioSwitch,
-  NcLoadingIcon,
-  NcTextField,
-} from '@nextcloud/vue'
+import { NcButton, NcLoadingIcon, NcTextField } from '@nextcloud/vue'
 import { RotateCcwClock, Save, Search, Sparkles } from '@lucide/vue'
 import { useI18n } from '../composables/useI18n'
 import { useHistoryStore } from '../stores/historyStore'
@@ -115,17 +80,14 @@ const history = useHistoryStore()
 
 const props = withDefaults(defineProps<{
   modelValue: string
-  /** Which field the box writes to; only meaningful while `targets` is true. */
-  searchIn?: 'name' | 'content'
-  /** Whether this server can search inside files at all. */
-  targets?: boolean
+  /** What the box says it will do; the caller decides, since it knows the target. */
+  placeholder?: string
   /** Whether DoCoNEXT Core is here to read a question. */
   understand?: boolean
   understandDisabled?: boolean
   understanding?: boolean
 }>(), {
-  searchIn: 'name',
-  targets: false,
+  placeholder: '',
   understand: false,
   understandDisabled: false,
   understanding: false,
@@ -133,7 +95,6 @@ const props = withDefaults(defineProps<{
 
 const emit = defineEmits<{
   (e: 'update:modelValue', value: string): void
-  (e: 'update:searchIn', value: 'name' | 'content'): void
   /** Enter with nothing highlighted: run what is in the box. */
   (e: 'search'): void
   (e: 'pick', entry: StoredSearch): void
@@ -141,12 +102,8 @@ const emit = defineEmits<{
   (e: 'understand'): void
 }>()
 
-/** The placeholder says what the box will do, which the target control changes. */
-const placeholder = computed(() => (
-  props.targets && props.searchIn === 'content'
-    ? t('Search inside files, or pick a saved search…')
-    : t('Search by name, or pick a saved search…')
-))
+/** The caller's wording, or the plain one when it did not say. */
+const boxPlaceholder = computed(() => props.placeholder || t('Search by name, or pick a saved search…'))
 
 const root = ref<HTMLElement>()
 
@@ -259,37 +216,6 @@ function onKeydown(event: KeyboardEvent) {
     gap: 0;
   }
 
-  &__targets {
-    display: flex;
-    flex: 0 0 auto;
-
-    // Into the 2px NcInputField keeps around its input for the focus ring.
-    // Without this the two borders stand 2px apart and read as two controls;
-    // the ring still draws over the seam when the field takes focus.
-    margin-inline-end: -2px;
-
-    // The height to match is the input's *visible* box — 30px, the clickable
-    // area less that 2px of ring space on each side — not the 34px the wrapper
-    // occupies, and certainly not the 38px this variant defaults to.
-    :deep(.checkbox-radio-switch) {
-      height: 30px;
-    }
-
-    :deep(.checkbox-content) {
-      min-height: 30px;
-      padding-block: 0;
-    }
-
-    // The group rounds its own trailing corners, which left the seam as a round
-    // edge meeting the field's flattened one — a notch rather than a join. Both
-    // sides have to be square for the pair to read as one box rounded only on
-    // the outside.
-    :deep(.checkbox-radio-switch--button-variant-h-grouped:last-of-type) {
-      border-start-end-radius: 0;
-      border-end-end-radius: 0;
-    }
-  }
-
   &__field {
     position: relative;
     flex: 1 1 auto;
@@ -301,13 +227,6 @@ function onKeydown(event: KeyboardEvent) {
     // value handed down from an ancestor never reaches the input.
     :deep(.input-field) {
       --input-padding-end: calc(var(--default-clickable-area) + var(--default-grid-baseline));
-    }
-
-    // Flattened where the segment meets it, so the seam reads as one border
-    // rather than two controls touching.
-    &--attached :deep(.input-field__input) {
-      border-start-start-radius: 0;
-      border-end-start-radius: 0;
     }
 
     // Nested rather than a bare `&__understand`, and deliberately: NcButton

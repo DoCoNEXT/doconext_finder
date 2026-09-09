@@ -6,12 +6,10 @@
     <div class="finder__bar">
       <SearchBox v-model="searchTerm"
                  class="finder__term"
-                 :search-in="searchIn"
-                 :targets="HAS_CONTENT_SEARCH"
+                 :placeholder="termPlaceholder"
                  :understand="HAS_ENTITY_SCOPE"
                  :understand-disabled="!aiReady || distiller.running.value || store.loading || searchTerm.trim() === ''"
                  :understanding="distiller.running.value"
-                 @update:search-in="searchIn = $event"
                  @search="search"
                  @pick="runSuggestion"
                  @understand="askAi" />
@@ -46,6 +44,19 @@
          the DoCoNEXT fields get their own line below. -->
     <div class="finder__presets">
       <FolderScope />
+
+      <!--
+        Where the term looks is a filter like any other — it narrows what
+        matches — so it belongs in the row of filters rather than glued to the
+        box. Only offered when this server has an index to look inside.
+      -->
+      <NcSelect v-if="HAS_CONTENT_SEARCH"
+                v-model="targetOption"
+                class="finder__preset"
+                label="label"
+                :options="targetOptions"
+                :clearable="false"
+                :input-label="t('Search in')" />
 
       <NcSelect v-model="typeOption"
                 class="finder__preset"
@@ -272,6 +283,24 @@ const aiMessage = computed(() => {
     default: return ''
   }
 })
+
+/** The two things a term can be matched against, as ordinary filter options. */
+const targetOptions = computed(() => [
+  { id: 'name' as const, label: t('File name') },
+  { id: 'content' as const, label: t('File contents') },
+])
+
+const targetOption = computed({
+  get: () => targetOptions.value.find((o) => o.id === searchIn.value) ?? targetOptions.value[0],
+  set: (next) => { searchIn.value = next?.id ?? 'name' },
+})
+
+/** The box says what it will do, since the control that decides sits elsewhere. */
+const termPlaceholder = computed(() => (
+  searchIn.value === 'content'
+    ? t('Search inside files, or pick a saved search…')
+    : t('Search by name, or pick a saved search…')
+))
 
 const searchTerm = computed({
   get: () => (searchIn.value === 'content' ? store.query.content : store.query.term),
