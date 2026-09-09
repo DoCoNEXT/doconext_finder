@@ -51,7 +51,19 @@
             <td v-for="column in columns" :key="column.id" :class="cellClass(column.id)">
               <span v-if="column.id === 'name'" class="results__name" :title="row.file.name">
                 <component :is="iconFor(row.file.mimetype, row.file.isFolder)" :size="20" />
-                <span>{{ row.file.name }}</span>
+                <span>
+                  {{ row.file.name }}
+                  <!--
+                    The passage that matched, under the name it belongs to. A
+                    content search returns files whose relevance is invisible
+                    from the outside — the term is nowhere in the name, the
+                    path or any column — so without this the row gives no
+                    reason for being in the list.
+                  -->
+                  <small v-if="row.file.excerpt" class="results__excerpt muted">
+                    {{ row.file.excerpt }}
+                  </small>
+                </span>
               </span>
               <span v-else :title="cellText(row.file, column.id)" class="muted">
                 {{ cellText(row.file, column.id) }}
@@ -284,6 +296,18 @@ function cellText(file: FileResult, id: string): string {
 
   &__actions {
     width: 44px;
+  }
+
+  &__excerpt {
+    // Two lines: enough to show the term in context, never enough to turn the
+    // row into a paragraph and cost the list its scannability.
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    overflow: hidden;
+    font-size: 90%;
+    line-height: 1.35;
   }
 
   &__name {

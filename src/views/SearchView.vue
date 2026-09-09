@@ -4,10 +4,34 @@
          it; the filters that narrow it sit underneath. Type and Modified used
          to share the line and pushed the box down to a third of the width. -->
     <div class="finder__bar">
-      <SearchBox v-model="store.query.term"
+      <SearchBox v-model="searchTerm"
                  class="finder__term"
                  @search="search"
                  @pick="runSuggestion" />
+
+      <!--
+        Where the term looks, not which engine runs: the filters below apply
+        either way. Only rendered when the server has an index to look in, so
+        the choice never offers something that cannot happen.
+      -->
+      <div v-if="HAS_CONTENT_SEARCH" class="finder__where">
+        <NcCheckboxRadioSwitch v-model="searchIn"
+                               type="radio"
+                               value="name"
+                               name="search-in"
+                               button-variant
+                               button-variant-grouped="horizontal">
+          {{ t('Name') }}
+        </NcCheckboxRadioSwitch>
+        <NcCheckboxRadioSwitch v-model="searchIn"
+                               type="radio"
+                               value="content"
+                               name="search-in"
+                               button-variant
+                               button-variant-grouped="horizontal">
+          {{ t('Contents') }}
+        </NcCheckboxRadioSwitch>
+      </div>
 
       <NcButton variant="primary" :disabled="store.loading" @click="search">
         {{ t('Search') }}
@@ -91,6 +115,16 @@
                  scope="search"
                  :partial="store.hasMore && !store.loadedAll" />
 
+    <!--
+      A content search is the one query in this app that is not exhaustive: the
+      index answers with its best matches, and the filters narrow those. Saying
+      so is the difference between "these are all of them" and "these are the
+      ones it found first", which otherwise look identical.
+    -->
+    <p v-if="rankedResults" class="muted finder__ranked">
+      {{ t('Ranked by how well the contents match. The index answers with its best matches, so this is not a complete list.') }}
+    </p>
+
     <div class="finder__results">
       <NcLoadingIcon v-if="store.loading" class="finder__loading" :size="32" />
 
@@ -133,7 +167,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import {
   NcButton,
   NcCheckboxRadioSwitch,
@@ -143,6 +177,7 @@ import {
   NcSelect,
 } from '@nextcloud/vue'
 import { Save, Search, X } from '@lucide/vue'
+import { HAS_CONTENT_SEARCH } from '../constants'
 import { useI18n } from '../composables/useI18n'
 import { useSearchStore } from '../stores/searchStore'
 import { useSelectionStore } from '../stores/selectionStore'
@@ -160,6 +195,60 @@ import type { StoredSearch } from '../types/Search'
 
 const { t } = useI18n()
 const store = useSearchStore()
+
+/**
+ * Where the one box writes, when neither field has anything in it yet.
+ *
+ * Only consulted in that case: which field a query *is* using outranks what was
+ * clicked last, so loading a saved content search shows its term instead of an
+ * empty name box beside a control claiming to search names.
+ */
+const preferredSearchIn = ref<'name' | 'content'>('name')
+
+/**
+ * Which of the two term fields the one box reads and writes.
+ *
+ * The state keeps them apart — a name term and a content term are different
+ * predicates, and only one of them is answered by the index — but a user has a
+ * single question and types it once. Switching carries the text across rather
+ * than stranding it in a field nobody can see any more.
+ */
+const searchIn = computed<'name' | 'content'>({
+  get: () => {
+    if (store.query.content.trim() !== '') {
+      return 'content'
+    }
+    return store.query.term.trim() !== '' ? 'name' : preferredSearchIn.value
+  },
+  set: (next) => {
+    const carried = searchIn.value === 'content' ? store.query.content : store.query.term
+    preferredSearchIn.value = next
+    store.query.term = next === 'name' ? carried : ''
+    store.query.content = next === 'content' ? carried : ''
+
+    // Relevance only exists while the index is ranking something. Left selected
+    // after a switch back to names it would sort by an order nothing computes;
+    // not selected on a switch to contents it would throw away the one ordering
+    // a content search is good at.
+    if (next === 'content') {
+      store.query.sort = 'relevance'
+      store.query.descending = true
+    } else if (store.query.sort === 'relevance') {
+      store.query.sort = 'mtime'
+    }
+  },
+})
+
+const searchTerm = computed({
+  get: () => (searchIn.value === 'content' ? store.query.content : store.query.term),
+  set: (value: string) => {
+    if (searchIn.value === 'content') {
+      store.query.content = value
+    } else {
+      store.query.term = value
+    }
+  },
+})
 const selection = useSelectionStore()
 const history = useHistoryStore()
 const { saveSearch } = useSaveSearch()
@@ -219,6 +308,11 @@ const message = computed(() => {
     default: return store.error
   }
 })
+
+/** True while the rows on screen came back ranked rather than enumerated. */
+const rankedResults = computed(() => (
+  store.results.length > 0 && store.query.content.trim() !== ''
+))
 
 const messageType = computed(() => (
   store.error === 'capped' || store.error === 'scope-truncated' ? 'warning' : 'error'
@@ -301,6 +395,18 @@ async function save() {
   &__term {
     flex: 1 1 auto;
     min-width: 0;
+  }
+
+  // The pair reads as one control, so it must not be pulled apart when the bar
+  // runs out of room — the buttons beside it can give way instead.
+  &__where {
+    display: flex;
+    flex: 0 0 auto;
+  }
+
+  &__ranked {
+    margin: 0 0 4px;
+    font-size: 90%;
   }
 
   &__presets {

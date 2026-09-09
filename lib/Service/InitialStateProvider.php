@@ -29,6 +29,7 @@ class InitialStateProvider
         private BridgeSettings $bridgeSettings,
         private CoreScope $coreScope,
         private FileTypeFilterSettings $fileTypeFilterSettings,
+        private ContentSearchService $contentSearch,
     ) {
     }
 
@@ -57,6 +58,11 @@ class InitialStateProvider
             // first paint or not at all — a control that appears a beat later
             // reads as a glitch.
             'coreScope' => $this->coreScope->hasEntityVocabulary(),
+            // Whether this server has a full-text index, and so whether the
+            // search box can offer to look inside files rather than only at
+            // their names. Synchronous for the same reason as coreScope: the
+            // choice belongs in the first paint or not at all.
+            'contentSearch' => $this->contentSearch->isAvailable(),
         ]);
     }
 }

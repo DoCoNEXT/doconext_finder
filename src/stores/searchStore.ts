@@ -23,6 +23,7 @@ const MAX_LOADED_ROWS = 2000
 export function emptyState(): SearchState {
   return {
     term: '',
+    content: '',
     typePreset: 'any',
     modifiedPreset: 'any',
     conditions: [],
@@ -68,6 +69,7 @@ export const useSearchStore = defineStore('search', {
      */
     hasCriteria(state): boolean {
       return state.query.term.trim() !== ''
+        || state.query.content.trim() !== ''
         || state.query.conditions.length > 0
         || state.query.typePreset !== 'any'
         || state.query.modifiedPreset !== 'any'
@@ -121,6 +123,7 @@ export const useSearchStore = defineStore('search', {
 
       return {
         term: this.query.term.trim(),
+        content: this.query.content.trim(),
         // A half-filled row would fail the whole request; drop it rather than
         // making the user delete it before searching. The display label goes no
         // further than this app, for the reason the scope's does not either.
@@ -133,7 +136,12 @@ export const useSearchStore = defineStore('search', {
           ? { level: this.query.scope.level, id: this.query.scope.id }
           : undefined,
         matchAny: this.query.matchAny,
-        sort: this.query.sort,
+        // Relevance is the index's ordering, so it means nothing without a
+        // content term. The server drops it too; sending mtime instead keeps
+        // the request honest about what it will get back.
+        sort: this.query.sort === 'relevance' && this.query.content.trim() === ''
+          ? 'mtime'
+          : this.query.sort,
         descending: this.query.descending,
         limit,
         offset: Math.max(0, offset),

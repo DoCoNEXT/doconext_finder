@@ -14,6 +14,14 @@ namespace OCA\DcnFinder\Search;
  *
  * {@see $scope} is not a condition at all: it decides which folder the search
  * starts from, so no combination of conditions can widen past it.
+ *
+ * {@see $content} looks inside the files rather than at their names, and is the
+ * one part of a query this app cannot answer itself: it is resolved by the
+ * full-text index and comes back ranked and windowed, where everything else
+ * here is exact and exhaustive. It is deliberately a separate field from
+ * {@see $term} — "called invoice" and "mentions invoice" are different
+ * questions, and answering both at once would union an exact set with a ranked
+ * one, leaving no honest order to present them in.
  */
 final class FileQuery
 {
@@ -26,6 +34,7 @@ final class FileQuery
      */
     private function __construct(
         public readonly string $term,
+        public readonly string $content,
         public readonly array $conditions,
         public readonly array $mimetypes,
         public readonly ?int $modifiedAfter,
@@ -40,6 +49,13 @@ final class FileQuery
 
     /** Sortable columns. Anything else falls back to mtime. */
     public const SORTS = ['mtime', 'name', 'size', 'creation_time'];
+
+    /**
+     * Not a column: the order the full-text index returned the page in. Only
+     * meaningful while {@see $content} is set — there is nothing to rank a
+     * result by when nothing was matched against its text.
+     */
+    public const SORT_RELEVANCE = 'relevance';
 
     /**
      * @param array<string,mixed> $body
@@ -58,6 +74,7 @@ final class FileQuery
         );
 
         $term = trim((string)($body['term'] ?? ''));
+        $content = trim((string)($body['content'] ?? ''));
 
         // Preset filters are separate from the condition list on purpose: they AND with
         // everything, so switching the condition group to "match any" cannot accidentally
@@ -79,7 +96,7 @@ final class FileQuery
             ? FileScope::fromArray($body['scope'])
             : null;
 
-        if ($term === '' && $conditions === [] && $mimetypes === [] && $modifiedAfter === null && $scope === null) {
+        if ($term === '' && $content === '' && $conditions === [] && $mimetypes === [] && $modifiedAfter === null && $scope === null) {
             throw new \InvalidArgumentException('provide a search term or at least one filter');
         }
 
@@ -89,12 +106,16 @@ final class FileQuery
         $sort = (string)($body['sort'] ?? 'mtime');
         // Metadata keys are sortable too, and are checked against the registry by
         // the service rather than against a fixed list here.
-        if (!in_array($sort, self::SORTS, true) && !MetadataFields::isMetadata($sort)) {
+        $sortable = in_array($sort, self::SORTS, true)
+            || MetadataFields::isMetadata($sort)
+            || ($sort === self::SORT_RELEVANCE && $content !== '');
+        if (!$sortable) {
             $sort = 'mtime';
         }
 
         return new self(
             term: $term,
+            content: $content,
             conditions: $conditions,
             mimetypes: $mimetypes,
             modifiedAfter: $modifiedAfter,

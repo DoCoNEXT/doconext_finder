@@ -31,6 +31,8 @@ export interface FileResult {
   permissions: number
   /** Mutated optimistically by the star toggle. */
   favorite: boolean
+  /** The passage a content search matched, or '' — see SearchState.content. */
+  excerpt: string
   /** uid of the file's owner. */
   owner: string
   /** Display name of the owner — the nearest thing Nextcloud keeps to a creator. */
@@ -173,6 +175,13 @@ export interface SearchRequest {
  */
 export interface SearchState {
   term: string
+  /**
+   * Searched for inside the files rather than in their names. Separate from
+   * `term` because they are different questions — "called invoice" against
+   * "mentions invoice" — and because only this one is answered by the full-text
+   * index, which returns a ranked window where the rest of a query is exact.
+   */
+  content: string
   typePreset: string
   modifiedPreset: string
   conditions: Condition[]

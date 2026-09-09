@@ -22,6 +22,8 @@ interface AppConfig {
   fileTypeFilters: FileTypeFilterEntry[]
   /** True when DoCoNEXT Core can name entity types and entities to scope by. */
   coreScope: boolean
+  /** True when this server has a full-text index, so files can be searched by content. */
+  contentSearch: boolean
 }
 
 /** The slice of the server's capabilities DoCoNEXT Core publishes about itself. */
@@ -74,6 +76,16 @@ export const FILE_TYPE_FILTERS: FileTypeFilterEntry[] = config.fileTypeFilters ?
  * fields are either there on first paint or not at all.
  */
 export const HAS_ENTITY_SCOPE = config.coreScope === true
+
+/**
+ * Whether the search box may offer to look inside files rather than only at
+ * their names. False means this server has no full-text index; the name search
+ * is always offered and does not depend on this.
+ *
+ * Read from the initial state for the same reason as HAS_ENTITY_SCOPE: a choice
+ * that appears one round trip after the box it belongs to reads as a glitch.
+ */
+export const HAS_CONTENT_SEARCH = config.contentSearch === true
 
 /**
  * The name DoCoNEXT Core goes by on this server, for "Open in <name>".
