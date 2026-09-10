@@ -5,15 +5,55 @@ declare(strict_types=1);
 namespace OCA\DcnFinder\AppInfo;
 
 /**
- * Single source of truth for the app id + its user-facing name.
+ * Single source of truth for the app's identity: who ships it, what it is
+ * called internally, and what it is called on screen.
  *
- * The product is identified everywhere by a configurable DISPLAY name (so the
+ * The identity is spelled out in parts (company + app, each with an
+ * abbreviation) and everything else is composed from them, exactly as
+ * DoCoNEXT Core does it. Nothing else in the app may spell an app id, a log
+ * prefix or a table prefix out by hand: a rebrand is then a change to the four
+ * strings at the top of this file, and {@see \OCA\DcnFinder\Db\DbConstants}
+ * follows along.
+ *
+ * The abbreviations exist because two identifiers have a length budget: log
+ * lines are grepped by eye, and DB object names are capped at 30 characters on
+ * Oracle — see DbConstants.
+ *
+ * The product is identified on screen by a configurable DISPLAY name (so the
  * customer can rebrand it) with a functional fallback — the internal app id is
  * never shown to users.
  */
 final class AppConstants
 {
-    public const APP_ID = 'doconext_finder';
+    /** Company name, as it appears in the app id. */
+    public const COMPANY_NAME = 'doconext';
+
+    /** Company abbreviation, for the identifiers with a length budget. */
+    public const COMPANY_NAME_ABBREV = 'dcn';
+
+    /** App name, as it appears in the app id (the part after the company). */
+    public const APP_NAME = 'finder';
+
+    /**
+     * App abbreviation, for the identifiers with a length budget. Equal to
+     * APP_NAME here — 'finder' is already short enough — but kept separate
+     * because the composed identifiers below are built from the abbreviations.
+     */
+    public const APP_NAME_ABBREV = 'finder';
+
+    /**
+     * The app's unique id — must equal <id> in appinfo/info.xml and the app's
+     * directory name exactly. Used by Nextcloud internally (routing, app
+     * registry, app-config namespace, asset paths).
+     */
+    public const APP_ID = self::COMPANY_NAME . '_' . self::APP_NAME;
+
+    /**
+     * Prefix for this app's log messages, so they are easy to grep in
+     * nextcloud.log. Derived from the abbreviations, so a rebrand only changes
+     * the constants above. Currently renders `[dcn-finder]`.
+     */
+    public const LOG_PREFIX = '[' . self::COMPANY_NAME_ABBREV . '-' . self::APP_NAME_ABBREV . ']';
 
     /** app-config key holding the admin-set display name (see Settings). */
     public const DISPLAY_NAME_KEY = 'display_name';

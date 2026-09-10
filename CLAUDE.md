@@ -19,10 +19,10 @@ template, and every app scaffolded after them, never saw them.
 ```
 appinfo/       info.xml (id/version/deps/settings), routes.php (empty — see below)
 lib/
-├── AppInfo/   Application.php (bootstrap), AppConstants.php (APP_ID + display name)
+├── AppInfo/   Application.php (bootstrap), AppConstants.php (identity: APP_ID, log prefix, display name)
 ├── Controller/ thin HTTP layer (ApiController for /api/*; PageController for pages)
 ├── Service/    business logic — the ONLY layer that talks to Mappers
-├── Db/         Entity + QBMapper per table
+├── Db/         DbConstants.php (every table name) + Entity + QBMapper per table
 ├── Migration/  VersionXXXXXXDateYYYYMMDDHHMMSS.php
 └── Settings/   Admin/Personal Settings + Section
 src/           Vue: main.ts, admin/personal-settings.ts entries, views/, components/,
@@ -41,8 +41,28 @@ img/           app.svg (white-filled) + app-dark.svg (black-filled)
 ## Backend conventions
 - PSR-12, type hints everywhere. Controllers stay thin; logic lives in Services; only Services use Mappers.
 - API request bodies are **snake_case**; PHP return arrays + all TS types are **camelCase** (`Entity::toArray()`).
-- Migration index/FK/constraint names must be **globally unique across the whole NC schema** — prefix with the app's DB prefix.
+- Migration index/FK/constraint names must be **globally unique across the whole NC schema** — build them from `DbConstants::DB_TABLE_PREFIX`.
 - The user-facing product name is **configurable** (app-config `display_name`) with a functional fallback (`AppConstants::DEFAULT_DISPLAY_NAME`) — never surface the raw app id.
+
+### Identity constants (same shape in every DoCoNEXT app)
+The app's identity lives in parts, and everything else is composed from them —
+`AppConstants` holds `COMPANY_NAME` / `COMPANY_NAME_ABBREV` / `APP_NAME` /
+`APP_NAME_ABBREV`, and composes `APP_ID` and `LOG_PREFIX`; `Db/DbConstants`
+composes `DB_TABLE_PREFIX` from the two abbreviations and every table name from
+that. The abbreviations exist because two identifiers have a length budget: log
+lines are grepped by eye, and Oracle caps DB object names at 30 characters.
+
+- **Never spell out an app id, a table name or an index prefix by hand.** Mappers
+  take `DbConstants::DB_TABLENAME_*`; migrations take the same constant for
+  `createTable`/`hasTable` and `DB_TABLE_PREFIX . '<short>_idx'` for indexes.
+- A new table is two lines in `DbConstants`: a `private const` for the bare name
+  and a `public const DB_TABLENAME_*` composing it onto the prefix.
+- A table an app no longer has, but a migration still names (a table it drops or
+  renames), is spelled out as a **frozen literal** instead of composed. A
+  historical name must not follow a rebrand to something that never existed.
+- Composed values are byte-identical to the literals they replaced
+  (`dcn_finder_searches`, `dcn_finder_srch_*_idx`) — this was a refactor of who
+  owns the string, never a schema change.
 
 ## Frontend conventions
 - **Always** use the `useI18n` composable — never import `translate` from `@nextcloud/l10n` directly. Key = the English string.

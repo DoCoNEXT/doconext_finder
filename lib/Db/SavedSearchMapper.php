@@ -16,7 +16,7 @@ class SavedSearchMapper extends QBMapper
 {
     public function __construct(IDBConnection $db)
     {
-        parent::__construct($db, 'dcn_finder_searches', SavedSearch::class);
+        parent::__construct($db, DbConstants::DB_TABLENAME_SEARCHES, SavedSearch::class);
     }
 
     /**

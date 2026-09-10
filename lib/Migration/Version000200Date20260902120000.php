@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OCA\DcnFinder\Migration;
 
 use Closure;
+use OCA\DcnFinder\Db\DbConstants;
 use OCP\DB\ISchemaWrapper;
 use OCP\DB\Types;
 use OCP\Migration\IOutput;
@@ -23,7 +24,9 @@ use OCP\Migration\SimpleMigrationStep;
  * nothing and turn every filter addition into a migration.
  *
  * IMPORTANT: index names must be globally unique across the whole Nextcloud
- * schema, not just this table — hence the app prefix.
+ * schema, not just this table — hence the app prefix. Build them from
+ * DbConstants::DB_TABLE_PREFIX, and never spell a table name out here:
+ * DbConstants owns both.
  *
  * @psalm-suppress UnusedClass
  */
@@ -36,12 +39,12 @@ class Version000200Date20260902120000 extends SimpleMigrationStep
         $schema = $schemaClosure();
 
         // The example table the app template ships; nothing referenced it.
-        if ($schema->hasTable('dcn_finder_notes')) {
-            $schema->dropTable('dcn_finder_notes');
+        if ($schema->hasTable(DbConstants::DB_TABLENAME_LEGACY_NOTES)) {
+            $schema->dropTable(DbConstants::DB_TABLENAME_LEGACY_NOTES);
         }
 
-        if (!$schema->hasTable('dcn_finder_searches')) {
-            $table = $schema->createTable('dcn_finder_searches');
+        if (!$schema->hasTable(DbConstants::DB_TABLENAME_SEARCHES)) {
+            $table = $schema->createTable(DbConstants::DB_TABLENAME_SEARCHES);
             $table->addColumn('id', Types::BIGINT, ['autoincrement' => true, 'notnull' => true]);
             $table->addColumn('user_id', Types::STRING, ['notnull' => true, 'length' => 64]);
             // 'saved' (named, kept) or 'recent' (auto-captured, capped).
@@ -56,8 +59,8 @@ class Version000200Date20260902120000 extends SimpleMigrationStep
 
             $table->setPrimaryKey(['id']);
             // Every read is "this user's searches of this kind, newest first".
-            $table->addIndex(['user_id', 'kind', 'last_run'], 'dcn_finder_srch_ukl_idx');
-            $table->addIndex(['user_id', 'kind', 'fingerprint'], 'dcn_finder_srch_ukf_idx');
+            $table->addIndex(['user_id', 'kind', 'last_run'], DbConstants::DB_TABLE_PREFIX . 'srch_ukl_idx');
+            $table->addIndex(['user_id', 'kind', 'fingerprint'], DbConstants::DB_TABLE_PREFIX . 'srch_ukf_idx');
         }
 
         return $schema;

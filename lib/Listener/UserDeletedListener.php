@@ -17,7 +17,7 @@ use Psr\Log\LoggerInterface;
  * Nextcloud clears what it stores on a user's behalf — preferences among them,
  * which is why {@see \OCA\DcnFinder\Service\PreferencesService} needs nothing
  * here — but an app's own table is the app's own responsibility. Without this,
- * `dcn_finder_searches` keeps rows keyed to a user id that no longer exists:
+ * The searches table keeps rows keyed to a user id that no longer exists:
  * invisible, never read, and still someone's search terms.
  *
  * Listens after the fact rather than before: a deletion that fails part-way
@@ -46,7 +46,7 @@ class UserDeletedListener implements IEventListener
         } catch (\Throwable $e) {
             // The account is already gone; failing loudly here would only break
             // whatever else still has to run for this deletion.
-            $this->logger->error('Could not remove searches for a deleted account', [
+            $this->logger->error(AppConstants::LOG_PREFIX . ' Could not remove searches for a deleted account', [
                 'exception' => $e,
                 'app'       => AppConstants::APP_ID,
             ]);
@@ -55,7 +55,7 @@ class UserDeletedListener implements IEventListener
         }
 
         if ($removed > 0) {
-            $this->logger->info('Removed searches for a deleted account', [
+            $this->logger->info(AppConstants::LOG_PREFIX . ' Removed searches for a deleted account', [
                 'count' => $removed,
                 'app'   => AppConstants::APP_ID,
             ]);

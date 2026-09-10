@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace OCA\DcnFinder\Service;
 
+use OCA\DcnFinder\AppInfo\AppConstants;
 use OCP\FullTextSearch\IFullTextSearchManager;
 use OCP\FullTextSearch\Model\IIndexDocument;
 use OCP\FullTextSearch\Model\ISearchResult;
@@ -56,7 +57,7 @@ class ContentSearchService
         try {
             return $this->fullTextSearch->isAvailable();
         } catch (\Throwable $e) {
-            $this->logger->warning('full-text search availability check failed', ['exception' => $e]);
+            $this->logger->warning(AppConstants::LOG_PREFIX . ' full-text search availability check failed', ['exception' => $e]);
 
             return false;
         }
@@ -98,7 +99,7 @@ class ContentSearchService
             // A search that cannot reach its index is a failed content search,
             // not a failed search: the caller falls back to the structured part
             // rather than showing the user an error they cannot act on.
-            $this->logger->warning('full-text search failed', ['exception' => $e]);
+            $this->logger->warning(AppConstants::LOG_PREFIX . ' full-text search failed', ['exception' => $e]);
 
             return $empty;
         }

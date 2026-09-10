@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace OCA\DcnFinder\Controller;
 
+use OCA\DcnFinder\AppInfo\AppConstants;
 use OCA\DcnFinder\Search\FileCondition;
 use OCA\DcnFinder\Search\FileQuery;
 use OCA\DcnFinder\Search\MetadataFields;
@@ -184,14 +185,14 @@ class SearchController extends ApiController
         } catch (\InvalidArgumentException $e) {
             // The query builder rejects some operator/field pairings we cannot detect
             // up front. Report its own words rather than a blank failure.
-            $this->logger->warning('File search rejected', ['exception' => $e, 'app' => $this->appName]);
+            $this->logger->warning(AppConstants::LOG_PREFIX . ' File search rejected', ['exception' => $e, 'app' => $this->appName]);
 
             return new DataResponse(
                 ['error' => $this->explain($e->getMessage())],
                 Http::STATUS_BAD_REQUEST,
             );
         } catch (\Throwable $e) {
-            $this->logger->error('File search failed', ['exception' => $e, 'app' => $this->appName]);
+            $this->logger->error(AppConstants::LOG_PREFIX . ' File search failed', ['exception' => $e, 'app' => $this->appName]);
 
             return new DataResponse(['error' => 'search failed'], Http::STATUS_INTERNAL_SERVER_ERROR);
         }

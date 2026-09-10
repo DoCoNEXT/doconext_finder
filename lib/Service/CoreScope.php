@@ -174,7 +174,7 @@ class CoreScope
         try {
             return $this->container->get(self::CORE_VOCABULARY);
         } catch (\Throwable $e) {
-            $this->logger->warning('Core scope vocabulary could not be resolved', [
+            $this->logger->warning(AppConstants::LOG_PREFIX . ' Core scope vocabulary could not be resolved', [
                 'exception' => $e,
                 'app'       => AppConstants::APP_ID,
             ]);
@@ -197,7 +197,7 @@ class CoreScope
         try {
             return $call();
         } catch (\Throwable $e) {
-            $this->logger->warning('Core scope call failed', [
+            $this->logger->warning(AppConstants::LOG_PREFIX . ' Core scope call failed', [
                 'exception' => $e,
                 'app'       => AppConstants::APP_ID,
             ]);
