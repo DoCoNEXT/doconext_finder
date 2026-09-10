@@ -19,11 +19,11 @@ export function describeQuery(t: Translate, query: SearchState): string {
     parts.push(t('In {name}', { name: query.scope.label }))
   }
 
-  // The term itself is not described — the box shows it — but *where* it looked
-  // is not visible anywhere else, and a saved search that reads the same whether
-  // it matched names or contents is two different searches under one label.
-  if (query.content?.trim()) {
-    parts.push(t('Contents mention “{phrase}”', { phrase: query.content.trim() }))
+  // The term itself is not described — the box shows it — but how wide its net
+  // is, is not visible anywhere else, and a saved search that reads the same
+  // whether it looked inside the files or not is two searches under one label.
+  if (query.searchContent) {
+    parts.push(t('Contents too'))
   }
 
   const type = query.customType?.id === query.typePreset

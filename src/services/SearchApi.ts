@@ -25,6 +25,43 @@ import type {
 const url = (path: string) => generateUrl(`${API_BASE}${path}`)
 
 /**
+ * A stored query as this version of the interface reads it.
+ *
+ * Searches kept from before the term and the phrase to look inside files became
+ * one question hold the two in separate fields — `{ term: '', content: 'lease' }`
+ * for "look inside the files", sorted by the index's own relevance. Read back
+ * unchanged they would open with an empty search box, so the phrase becomes the
+ * term with the toggle on: the same search, expressed in the controls that now
+ * run it. Relevance goes with it — nothing offers that ordering any more.
+ *
+ * Applied at the door every stored search comes through, so nothing downstream
+ * has to know the old shape existed.
+ * @param query whatever the server had stored for this search
+ */
+function restored(query: SearchState & { content?: string }): SearchState {
+  const phrase = (query.content ?? '').trim()
+  const rest: SearchState & { content?: string } = { ...query }
+  delete rest.content
+  if (phrase === '') {
+    return rest
+  }
+
+  return {
+    ...rest,
+    term: rest.term.trim() === '' ? phrase : rest.term,
+    searchContent: true,
+    sort: rest.sort === 'relevance' ? 'mtime' : rest.sort,
+  }
+}
+
+/**
+ * @param entry one stored search, straight off the wire
+ */
+function restoredSearch(entry: StoredSearch): StoredSearch {
+  return { ...entry, query: restored(entry.query) }
+}
+
+/**
  * Turns an axios failure into the server's own message where it sent one.
  * @param error
  */
@@ -144,7 +181,10 @@ export const SearchApi = {
   async history(): Promise<SearchHistory> {
     try {
       const { data } = await axios.get<SearchHistory>(url('/searches'))
-      return data
+      return {
+        saved: (data.saved ?? []).map(restoredSearch),
+        recents: (data.recents ?? []).map(restoredSearch),
+      }
     } catch (error) {
       throw describe(error)
     }

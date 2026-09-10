@@ -118,9 +118,12 @@ class FileSearchService
         if ($query->content !== '') {
             $ranked = $this->contentSearch->search($uid, $query->content);
 
-            // No content match is an empty result, not an unfiltered one. Skipping
-            // the clause here would silently turn "mentions X" into "everything".
-            if ($ranked['ids'] === []) {
+            // Nothing in the index matched. With a term beside it that is simply
+            // the empty half of an alternative — the name clause still has to
+            // run. Alone, it is an empty result rather than an unfiltered one:
+            // dropping the clause would silently turn "mentions X" into
+            // "everything".
+            if ($ranked['ids'] === [] && $query->term === '') {
                 return $this->emptyPage($query, $truncated);
             }
         }
@@ -368,29 +371,40 @@ class FileSearchService
     }
 
     /**
-     * Term AND (conditions joined by and/or). Both halves are optional, but
-     * FileQuery guarantees at least one is present.
-     */
-    /**
+     * (term OR content) AND (conditions joined by and/or). Every part is
+     * optional, but FileQuery guarantees at least one is present.
+     *
      * @param list<int> $contentIds file ids the full-text index matched, if any
      */
     private function buildOperator(FileQuery $query, array $contentIds = []): ISearchOperator
     {
         $parts = [];
 
-        // `fileid` is one of the filecache columns SearchBuilder exposes, and the
-        // only one that accepts `in` — which is what lets the index's answer be
-        // an ordinary clause here instead of a second pass in PHP.
-        if ($contentIds !== []) {
-            $parts[] = new SearchComparison(ISearchComparison::COMPARE_IN, 'fileid', $contentIds);
-        }
+        // The two ways of matching what was typed are alternatives: looking
+        // inside the files widens the search rather than narrowing it. ANDing
+        // them asks for a file whose *name* says "invoice" and whose *text* also
+        // says it, which is almost none of them.
+        $text = [];
 
         if ($query->term !== '') {
-            $parts[] = new SearchComparison(
+            $text[] = new SearchComparison(
                 ISearchComparison::COMPARE_LIKE,
                 'name',
                 '%' . addcslashes($query->term, '%_\\') . '%',
             );
+        }
+
+        // `fileid` is one of the filecache columns SearchBuilder exposes, and the
+        // only one that accepts `in` — which is what lets the index's answer be
+        // an ordinary clause here instead of a second pass in PHP.
+        if ($contentIds !== []) {
+            $text[] = new SearchComparison(ISearchComparison::COMPARE_IN, 'fileid', $contentIds);
+        }
+
+        if (count($text) === 1) {
+            $parts[] = $text[0];
+        } elseif (count($text) > 1) {
+            $parts[] = new SearchBinaryOperator(ISearchBinaryOperator::OPERATOR_OR, $text);
         }
 
         // Preset filters AND with everything, so "match any" on the advanced conditions

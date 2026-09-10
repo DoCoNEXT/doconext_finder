@@ -241,6 +241,10 @@ class SearchHistoryService
             'typePreset' => $query['typePreset'] ?? null,
             'modifiedPreset' => $query['modifiedPreset'] ?? null,
             'matchAny' => (bool)($query['matchAny'] ?? false),
+            // Two searches for the same word, one of them reading inside the
+            // files, are different searches: they return different rows and cost
+            // very different amounts to run.
+            'searchContent' => (bool)($query['searchContent'] ?? false),
             // Level and id only: renaming an entity type must not split one
             // recent search into two.
             'scope' => $scope === null
@@ -255,9 +259,10 @@ class SearchHistoryService
     private static function isEmpty(array $query): bool
     {
         return trim((string)($query['term'] ?? '')) === ''
-            // A question answered entirely by the full-text index carries no
-            // term and no filters, and is exactly the search someone will want
-            // back — the distiller produces nothing else.
+            // Not `searchContent`: that says where the term is looked for, so it
+            // means nothing without one. Older stored searches kept the phrase
+            // to look inside files for in a field of its own, and a query that
+            // carries only that is still a search someone will want back.
             && trim((string)($query['content'] ?? '')) === ''
             && ($query['conditions'] ?? []) === []
             && ($query['typePreset'] ?? 'any') === 'any'

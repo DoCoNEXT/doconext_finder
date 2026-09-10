@@ -18,10 +18,17 @@ namespace OCA\DcnFinder\Search;
  * {@see $content} looks inside the files rather than at their names, and is the
  * one part of a query this app cannot answer itself: it is resolved by the
  * full-text index and comes back ranked and windowed, where everything else
- * here is exact and exhaustive. It is deliberately a separate field from
- * {@see $term} — "called invoice" and "mentions invoice" are different
- * questions, and answering both at once would union an exact set with a ranked
- * one, leaving no honest order to present them in.
+ * here is exact and exhaustive.
+ *
+ * It stays a separate field from {@see $term} because the two are answered by
+ * different engines, but they are *alternatives*, not a conjunction: a file
+ * matches when its name matches the term or its text matches the content
+ * phrase. "Search for invoice, and look inside the files too" is one question
+ * with a wider answer, not two questions ANDed into almost nothing — a name
+ * that contains the word rarely also has it in the text, so requiring both
+ * emptied the result set. The union costs the ranked order the index gives:
+ * see {@see SORT_RELEVANCE}, which is why that sort is refused once a term is
+ * present.
  */
 final class FileQuery
 {
@@ -51,9 +58,13 @@ final class FileQuery
     public const SORTS = ['mtime', 'name', 'size', 'creation_time'];
 
     /**
-     * Not a column: the order the full-text index returned the page in. Only
-     * meaningful while {@see $content} is set — there is nothing to rank a
-     * result by when nothing was matched against its text.
+     * Not a column: the order the full-text index returned the page in.
+     *
+     * Only meaningful while {@see $content} is set and {@see $term} is not:
+     * there is nothing to rank a result by when nothing was matched against its
+     * text, and once names are matched too the rows are a union of a ranked
+     * window and an exhaustive set — every name-only row would land at the
+     * bottom in file-id order, which is not a ranking of anything.
      */
     public const SORT_RELEVANCE = 'relevance';
 
@@ -108,7 +119,7 @@ final class FileQuery
         // the service rather than against a fixed list here.
         $sortable = in_array($sort, self::SORTS, true)
             || MetadataFields::isMetadata($sort)
-            || ($sort === self::SORT_RELEVANCE && $content !== '');
+            || ($sort === self::SORT_RELEVANCE && $content !== '' && $term === '');
         if (!$sortable) {
             $sort = 'mtime';
         }

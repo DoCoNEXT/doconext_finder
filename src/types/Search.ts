@@ -31,7 +31,7 @@ export interface FileResult {
   permissions: number
   /** Mutated optimistically by the star toggle. */
   favorite: boolean
-  /** The passage a content search matched, or '' — see SearchState.content. */
+  /** The passage a content search matched, or '' — see SearchState.searchContent. */
   excerpt: string
   /** uid of the file's owner. */
   owner: string
@@ -150,7 +150,12 @@ export interface FieldsResponse {
 
 export interface SearchRequest {
   term?: string
-  /** Matched against the file's text by the full-text index — see SearchState. */
+  /**
+   * Matched against the file's text by the full-text index, as an *alternative*
+   * to `term` rather than a further narrowing of it. Still a field of its own on
+   * the wire because the two are answered by different engines; the interface
+   * fills it with the term itself — see SearchState.searchContent.
+   */
   content?: string
   conditions?: Condition[]
   /**
@@ -178,12 +183,15 @@ export interface SearchRequest {
 export interface SearchState {
   term: string
   /**
-   * Searched for inside the files rather than in their names. Separate from
-   * `term` because they are different questions — "called invoice" against
-   * "mentions invoice" — and because only this one is answered by the full-text
-   * index, which returns a ranked window where the rest of a query is exact.
+   * Whether the term is looked for inside the files as well as in their names.
+   *
+   * Widens the search rather than narrowing it: a file matches when its name
+   * matches or its text does. It is a toggle rather than a second box because
+   * there is one question — "find me the lease" — and asking it twice, once per
+   * field, was the part nobody could make sense of. Only offered where the
+   * server has a full-text index; see HAS_CONTENT_SEARCH.
    */
-  content: string
+  searchContent: boolean
   typePreset: string
   /**
    * A file type the distiller chose that no configured Type filter matches —

@@ -23,7 +23,7 @@ const MAX_LOADED_ROWS = 2000
 export function emptyState(): SearchState {
   return {
     term: '',
-    content: '',
+    searchContent: false,
     typePreset: 'any',
     customType: null,
     modifiedPreset: 'any',
@@ -78,7 +78,6 @@ export const useSearchStore = defineStore('search', {
      */
     hasCriteria(state): boolean {
       return state.query.term.trim() !== ''
-        || state.query.content.trim() !== ''
         || state.query.conditions.length > 0
         || state.query.typePreset !== 'any'
         || state.query.modifiedPreset !== 'any'
@@ -135,9 +134,13 @@ export const useSearchStore = defineStore('search', {
         : fileTypePresets(t).find((p) => p.id === this.query.typePreset) ?? anyType(t)
       const time = modifiedPresets(t).find((p) => p.id === this.query.modifiedPreset) ?? anyTime(t)
 
+      const term = this.query.term.trim()
+
       return {
-        term: this.query.term.trim(),
-        content: this.query.content.trim(),
+        term,
+        // The same words, handed to the other engine. Sent as a field of its own
+        // because that is what the index answers; the server ORs the two.
+        content: this.query.searchContent ? term : '',
         // A half-filled row would fail the whole request; drop it rather than
         // making the user delete it before searching. The display label goes no
         // further than this app, for the reason the scope's does not either.
@@ -150,12 +153,7 @@ export const useSearchStore = defineStore('search', {
           ? { level: this.query.scope.level, id: this.query.scope.id }
           : undefined,
         matchAny: this.query.matchAny,
-        // Relevance is the index's ordering, so it means nothing without a
-        // content term. The server drops it too; sending mtime instead keeps
-        // the request honest about what it will get back.
-        sort: this.query.sort === 'relevance' && this.query.content.trim() === ''
-          ? 'mtime'
-          : this.query.sort,
+        sort: this.query.sort,
         descending: this.query.descending,
         limit,
         offset: Math.max(0, offset),
@@ -182,7 +180,9 @@ export const useSearchStore = defineStore('search', {
         this.hasMore = response.hasMore
         this.offset = response.offset
         this.searched = true
-        this.highlight = searchedWords(this.query)
+        // The words the search asked for, for a preview to mark in the document
+        // it opens. Held apart from `query`, which changes with every keystroke.
+        this.highlight = this.query.term.trim()
         if (response.truncated) {
           this.error = 'scope-truncated'
         }
@@ -234,7 +234,7 @@ export const useSearchStore = defineStore('search', {
         this.offset = 0
         this.searched = true
         this.loadedAll = true
-        this.highlight = searchedWords(this.query)
+        this.highlight = this.query.term.trim()
         if (more) {
           this.error = 'capped'
         }
@@ -272,19 +272,6 @@ export const useSearchStore = defineStore('search', {
     },
   },
 })
-
-/**
- * What a search asked for in words, for a preview to mark.
- *
- * Both text fields, not only the content one: a name term is regularly in the
- * document as well — a case number typed into "Name" is exactly what you want
- * lit up once the file is open — and marking a word that is not there costs
- * nothing.
- * @param query the search that ran
- */
-function searchedWords(query: SearchState): string {
-  return [query.content.trim(), query.term.trim()].filter(Boolean).join(' ')
-}
 
 /**
  * The condition as the server should see it: the display label is this app's

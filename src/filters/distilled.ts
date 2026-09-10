@@ -70,7 +70,7 @@ export function applyDistilled(
   const state: SearchState = {
     ...base,
     term: '',
-    content: '',
+    searchContent: false,
     typePreset: 'any',
     customType: null,
     modifiedPreset: 'any',
@@ -239,11 +239,12 @@ function applyMetadata(
 /**
  * The subject itself — everything the distiller could not turn into a filter.
  *
- * It goes to the content search, which is where it was always meant to go: as a
- * filename filter it ANDs a good scope down to nothing whenever the word is not
- * in the names, which is why it used to be offered as an opt-in chip. Without a
- * full-text index there is still nowhere safe to put it, so it is reported
- * instead of guessed at.
+ * It becomes the term with "search contents too" on, which is the only place it
+ * is safe: as a name-only filter it ANDs a good scope down to nothing whenever
+ * the word is not in the names, which is why it used to be offered as an opt-in
+ * chip and then sent to the content search alone. Matching names *or* text has
+ * neither problem — it can only widen. Without a full-text index there is still
+ * nowhere safe to put it, so it is reported instead of guessed at.
  */
 function applyTopic(
   scope: DistilledFileScope,
@@ -262,9 +263,8 @@ function applyTopic(
     return
   }
 
-  state.content = topic
-  state.sort = 'relevance'
-  state.descending = true
+  state.term = topic
+  state.searchContent = true
   chips.push({ label: `“${topic}”`, kind: 'topic' })
 }
 

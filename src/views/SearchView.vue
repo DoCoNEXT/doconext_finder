@@ -46,17 +46,11 @@
       <FolderScope />
 
       <!--
-        Where the term looks is a filter like any other — it narrows what
-        matches — so it belongs in the row of filters rather than glued to the
-        box. Only offered when this server has an index to look inside.
+        Not a filter, so not shaped like one: it does not narrow what matches,
+        it widens it. Sits at the head of the row all the same, because it is
+        the one control here that changes what the words in the box mean. Only
+        offered when this server has an index to look inside.
       -->
-      <NcSelect v-if="HAS_CONTENT_SEARCH"
-                v-model="targetOption"
-                class="finder__preset"
-                label="label"
-                :options="targetOptions"
-                :clearable="false"
-                :input-label="t('Search in')" />
 
       <NcSelect v-model="typeOption"
                 class="finder__preset"
@@ -71,6 +65,15 @@
                 :options="timeOptions"
                 :clearable="false"
                 :input-label="t('Modified')" />
+
+      <NcCheckboxRadioSwitch v-if="HAS_CONTENT_SEARCH"
+                             v-model="searchContent"
+                             type="switch"
+                             class="finder__contents"
+                             :title="t('Also match files whose text mentions the term, not only their names')">
+        {{ t('Search file contents too') }}
+      </NcCheckboxRadioSwitch>
+
     </div>
 
     <ScopeSelector />
@@ -136,13 +139,14 @@
                  :partial="store.hasMore && !store.loadedAll" />
 
     <!--
-      A content search is the one query in this app that is not exhaustive: the
-      index answers with its best matches, and the filters narrow those. Saying
-      so is the difference between "these are all of them" and "these are the
-      ones it found first", which otherwise look identical.
+      Reading inside the files is the one part of a search here that is not
+      exhaustive: the index answers with its best matches, and the filters
+      narrow those. Names are matched in full, so only the other half of the
+      list is capped — saying so is the difference between "these are all of
+      them" and "these are the ones it found first".
     -->
     <p v-if="rankedResults" class="muted finder__ranked">
-      {{ t('Ranked by how well the contents match. The index answers with its best matches, so this is not a complete list.') }}
+      {{ t('Every matching name is listed. Files that only mention the term are the index’s best matches, so there may be more of those.') }}
     </p>
 
     <div class="finder__results">
@@ -221,46 +225,17 @@ const { t } = useI18n()
 const store = useSearchStore()
 
 /**
- * Where the one box writes, when neither field has anything in it yet.
+ * Whether the term is looked for inside the files as well as in their names.
  *
- * Only consulted in that case: which field a query *is* using outranks what was
- * clicked last, so loading a saved content search shows its term instead of an
- * empty name box beside a control claiming to search names.
+ * A toggle beside one box rather than a choice between two: the search used to
+ * ask "search in names or in contents", which made a user pick a field before
+ * they had asked their question, and quietly emptied the box when they changed
+ * their mind. Looking inside is now something a search *also* does, so turning
+ * it on can only ever add rows.
  */
-const preferredSearchIn = ref<'name' | 'content'>('name')
-
-/**
- * Which of the two term fields the one box reads and writes.
- *
- * The state keeps them apart — a name term and a content term are different
- * predicates, and only one of them is answered by the index — but a user has a
- * single question and types it once. Switching carries the text across rather
- * than stranding it in a field nobody can see any more.
- */
-const searchIn = computed<'name' | 'content'>({
-  get: () => {
-    if (store.query.content.trim() !== '') {
-      return 'content'
-    }
-    return store.query.term.trim() !== '' ? 'name' : preferredSearchIn.value
-  },
-  set: (next) => {
-    const carried = searchIn.value === 'content' ? store.query.content : store.query.term
-    preferredSearchIn.value = next
-    store.query.term = next === 'name' ? carried : ''
-    store.query.content = next === 'content' ? carried : ''
-
-    // Relevance only exists while the index is ranking something. Left selected
-    // after a switch back to names it would sort by an order nothing computes;
-    // not selected on a switch to contents it would throw away the one ordering
-    // a content search is good at.
-    if (next === 'content') {
-      store.query.sort = 'relevance'
-      store.query.descending = true
-    } else if (store.query.sort === 'relevance') {
-      store.query.sort = 'mtime'
-    }
-  },
+const searchContent = computed<boolean>({
+  get: () => store.query.searchContent,
+  set: (next) => { store.query.searchContent = next },
 })
 
 const distiller = useDistiller()
@@ -289,33 +264,16 @@ const aiMessage = computed(() => {
   }
 })
 
-/** The two things a term can be matched against, as ordinary filter options. */
-const targetOptions = computed(() => [
-  { id: 'name' as const, label: t('File name') },
-  { id: 'content' as const, label: t('File contents') },
-])
-
-const targetOption = computed({
-  get: () => targetOptions.value.find((o) => o.id === searchIn.value) ?? targetOptions.value[0],
-  set: (next) => { searchIn.value = next?.id ?? 'name' },
-})
-
-/** The box says what it will do, since the control that decides sits elsewhere. */
+/** The box says how wide its net is, since the control that decides sits below it. */
 const termPlaceholder = computed(() => (
-  searchIn.value === 'content'
-    ? t('Search inside files, or pick a saved search…')
-    : t('Search by name, or pick a saved search…')
+  store.query.searchContent
+    ? t('Search by name and contents, or pick a recent or saved search…')
+    : t('Search by name, or pick a recent or saved search…')
 ))
 
 const searchTerm = computed({
-  get: () => (searchIn.value === 'content' ? store.query.content : store.query.term),
-  set: (value: string) => {
-    if (searchIn.value === 'content') {
-      store.query.content = value
-    } else {
-      store.query.term = value
-    }
-  },
+  get: () => store.query.term,
+  set: (value: string) => { store.query.term = value },
 })
 
 /**
@@ -428,7 +386,7 @@ const scopeChips = computed(() => distiller.chips.value.filter((chip) => {
     case 'type':
       return store.query.typePreset !== 'any'
     case 'topic':
-      return store.query.content.trim() !== ''
+      return store.query.term.trim() !== ''
     default:
       return store.query.conditions.some((c) => c.field === chip.field && c.value === chip.value)
   }
@@ -442,10 +400,7 @@ function clearChip(chip: ScopeChip) {
     store.query.typePreset = 'any'
     store.query.customType = null
   } else if (chip.kind === 'topic') {
-    store.query.content = ''
-    if (store.query.sort === 'relevance') {
-      store.query.sort = 'mtime'
-    }
+    store.query.term = ''
   } else {
     store.query.conditions = store.query.conditions.filter(
       (c) => !(c.field === chip.field && c.value === chip.value),
@@ -453,9 +408,9 @@ function clearChip(chip: ScopeChip) {
   }
 }
 
-/** True while the rows on screen came back ranked rather than enumerated. */
+/** True while part of what is on screen came from the index rather than the filecache. */
 const rankedResults = computed(() => (
-  store.results.length > 0 && store.query.content.trim() !== ''
+  store.results.length > 0 && store.query.searchContent && store.query.term.trim() !== ''
 ))
 
 const messageType = computed(() => (
@@ -595,6 +550,21 @@ async function save() {
   &__preset {
     flex: 0 1 220px;
     min-width: 170px;
+  }
+
+  /*
+   * Lines up with the boxes beside it, not with their labels: the row aligns on
+   * the bottom, every NcSelect carries a 4px bottom margin, and a flex row
+   * aligns margin boxes — so without the same margin this control's baseline
+   * sits 4px below theirs. The height is the select's real one, the clickable
+   * area plus its own border, for the same reason FolderScope copies it.
+   */
+  &__contents {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    margin-bottom: 4px;
+    min-height: calc(var(--default-clickable-area) + 2 * var(--border-width-input));
   }
 
   &__filters {

@@ -103,7 +103,7 @@ const emit = defineEmits<{
 }>()
 
 /** The caller's wording, or the plain one when it did not say. */
-const boxPlaceholder = computed(() => props.placeholder || t('Search by name, or pick a saved search…'))
+const boxPlaceholder = computed(() => props.placeholder || t('Search by name, or pick a recent or saved search…'))
 
 const root = ref<HTMLElement>()
 
