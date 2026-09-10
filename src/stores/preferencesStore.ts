@@ -30,6 +30,8 @@ interface State {
   doubleClick: string
   /** Whether the details panel is on screen; see `Preferences.sidebarPinned`. */
   sidebarPinned: boolean
+  /** How wide it was dragged, in pixels; 0 to let it size itself. */
+  sidebarWidth: number
   /** Colour for the marked search terms in a preview; '' for the default. */
   highlightColor: string
   loaded: boolean
@@ -45,6 +47,7 @@ export const usePreferencesStore = defineStore('preferences', {
     descending: true,
     doubleClick: 'open',
     sidebarPinned: false,
+    sidebarWidth: 0,
     highlightColor: '',
     loaded: false,
     revision: 0,
@@ -85,6 +88,7 @@ export const usePreferencesStore = defineStore('preferences', {
       this.descending = preferences.descending
       this.doubleClick = preferences.doubleClick
       this.sidebarPinned = preferences.sidebarPinned
+      this.sidebarWidth = preferences.sidebarWidth ?? 0
       this.highlightColor = preferences.highlightColor ?? ''
       this.loaded = true
     },
@@ -101,6 +105,7 @@ export const usePreferencesStore = defineStore('preferences', {
           descending: this.descending,
           doubleClick: this.doubleClick,
           sidebarPinned: this.sidebarPinned,
+          sidebarWidth: this.sidebarWidth,
           highlightColor: this.highlightColor,
         })
         // Adopt only while this is still the newest save in flight; a later edit
@@ -250,6 +255,20 @@ export const usePreferencesStore = defineStore('preferences', {
     },
 
     /**
+     * Remembers how wide the details panel was dragged.
+     *
+     * Saved on release rather than on every pointer move: the panel follows the
+     * drag through a CSS custom property, so nothing on screen is waiting for
+     * the round trip, and a drag across the window would otherwise be a few
+     * hundred writes.
+     * @param width in pixels, or 0 to let the panel size itself to the window
+     */
+    setSidebarWidth(width: number) {
+      this.sidebarWidth = Math.round(width)
+      this.save()
+    },
+
+    /**
      * The colour the search terms are marked in inside a preview.
      * @param colour `#rrggbb`, or '' to go back to the preview's own default
      */
@@ -267,6 +286,7 @@ export const usePreferencesStore = defineStore('preferences', {
       this.descending = true
       this.doubleClick = 'open'
       this.sidebarPinned = false
+      this.sidebarWidth = 0
       // An empty column list makes the server rebuild the defaults and hand
       // them back, so the defaults live in one place.
       await this.save()

@@ -66,6 +66,19 @@ class PreferencesService
     /** Columns the grid can sort on, mirroring FileQuery::SORTS. */
     private const SORTS = ['name', 'size', 'mtime', 'creation_time'];
 
+    /**
+     * How wide the user dragged the details panel, in CSS pixels. 0 means they
+     * never did, and the panel keeps sizing itself to the window.
+     *
+     * The bounds are the panel's own, not the window's: a stored width is a
+     * number on an account, and the account is read on a phone as well as on
+     * the monitor it was set from, so the page clamps it against the viewport
+     * again when it applies it. Here it only has to stay a width a panel could
+     * plausibly have.
+     */
+    private const MIN_SIDEBAR_WIDTH = 300;
+    private const MAX_SIDEBAR_WIDTH = 1200;
+
     public function __construct(
         private IUserConfig $userConfig,
         private MetadataFields $metadataFields,
@@ -116,8 +129,24 @@ class PreferencesService
                 ? (string)$raw['doubleClick']
                 : 'open',
             'sidebarPinned' => (bool)($raw['sidebarPinned'] ?? false),
+            'sidebarWidth'  => $this->sanitiseSidebarWidth($raw['sidebarWidth'] ?? 0),
             'highlightColor' => $this->sanitiseColour($raw['highlightColor'] ?? ''),
         ];
+    }
+
+    /**
+     * A dragged panel width, or 0 for "size yourself".
+     *
+     * Anything outside the bounds is read as no choice rather than clamped into
+     * one: a width that arrives out of range came from a hand-edited config or
+     * an older version, and honouring a guess at what it meant is worse than
+     * giving the panel back its own sizing.
+     */
+    private function sanitiseSidebarWidth(mixed $raw): int
+    {
+        $width = is_numeric($raw) ? (int)$raw : 0;
+
+        return $width >= self::MIN_SIDEBAR_WIDTH && $width <= self::MAX_SIDEBAR_WIDTH ? $width : 0;
     }
 
     /**

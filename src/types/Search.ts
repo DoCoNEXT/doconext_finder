@@ -270,6 +270,13 @@ export interface Preferences {
    */
   sidebarPinned: boolean
   /**
+   * How wide the details panel was dragged, in CSS pixels. 0 means it was never
+   * dragged and the panel keeps sizing itself to the window — which is not the
+   * same as a width that happens to equal the default, since that one would stop
+   * following the window.
+   */
+  sidebarWidth: number
+  /**
    * The colour the searched-for words are marked in inside a preview, as
    * `#rrggbb`. Empty means the preview app's own themed default — this app does
    * not draw the mark, so it has nothing better to put there.
