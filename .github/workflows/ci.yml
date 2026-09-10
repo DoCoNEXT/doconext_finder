@@ -49,10 +49,49 @@ jobs:
       - uses: ramsey/composer-install@26d8a556604053a9612623447203a691f406fbe6 # v4
       - run: composer cs:check
 
+  # The one list of Nextcloud versions this app supports lives in
+  # appinfo/info.xml. Reading it here rather than repeating it in a matrix
+  # means the two cannot drift: widen max-version and the extra server is
+  # analysed on the next run, with nobody having to remember.
+  supported-versions:
+    name: Supported Nextcloud versions
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      ocp-versions: ${{ steps.read.outputs.versions }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          persist-credentials: false
+      - id: read
+        run: |
+          python3 - <<'PY' >> "$GITHUB_OUTPUT"
+          import json, xml.etree.ElementTree as ET
+          nc = ET.parse('appinfo/info.xml').getroot().find('./dependencies/nextcloud')
+          if nc is None:
+              raise SystemExit('appinfo/info.xml has no <dependencies><nextcloud> element')
+          lo, hi = nc.get('min-version'), nc.get('max-version')
+          if not lo or not hi:
+              raise SystemExit('<nextcloud> needs both min-version and max-version')
+          lo, hi = int(lo), int(hi)
+          if hi < lo:
+              raise SystemExit(f'max-version {hi} is below min-version {lo}')
+          print('versions=' + json.dumps([f'dev-stable{v}' for v in range(lo, hi + 1)]))
+          PY
+
+  # An API only exists, or is only deprecated, in the version being analysed:
+  # a class added in 32 is missing on 31, a method retired in 34 is invisible
+  # against 33. Analysing one version tells you nothing about the rest of the
+  # range this app claims to run on, so run the job once per version.
   psalm:
-    name: Psalm static analysis
+    name: Psalm static analysis (${{ matrix.ocp-version }})
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    needs: supported-versions
+    strategy:
+      fail-fast: false
+      matrix:
+        ocp-version: ${{ fromJSON(needs.supported-versions.outputs.ocp-versions) }}
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
@@ -62,6 +101,9 @@ jobs:
           php-version: '8.2'
           coverage: none
       - uses: ramsey/composer-install@26d8a556604053a9612623447203a691f406fbe6 # v4
+      # composer.json pins one version so the lock file stays reproducible;
+      # this swaps in whichever version the matrix leg is analysing.
+      - run: composer require --dev --no-scripts --ignore-platform-reqs --with-dependencies nextcloud/ocp:${{ matrix.ocp-version }}
       - run: composer psalm
 
   phpunit:

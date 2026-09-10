@@ -22,4 +22,18 @@
     <extraFiles>
         <directory name="vendor"/>
     </extraFiles>
+    <!-- Nextcloud marks API it intends to remove with @deprecated, and Psalm
+         reports using it as an INFO, which passes CI silently. Promote them:
+         an app that keeps calling retired API only finds out on the server it
+         was upgraded onto. `occ app:check-code`, which used to catch this, no
+         longer exists as of Nextcloud 34, so this is the only net left. -->
+    <issueHandlers>
+        <DeprecatedClass errorLevel="error" />
+        <DeprecatedConstant errorLevel="error" />
+        <DeprecatedFunction errorLevel="error" />
+        <DeprecatedInterface errorLevel="error" />
+        <DeprecatedMethod errorLevel="error" />
+        <DeprecatedProperty errorLevel="error" />
+        <DeprecatedTrait errorLevel="error" />
+    </issueHandlers>
 </psalm>
