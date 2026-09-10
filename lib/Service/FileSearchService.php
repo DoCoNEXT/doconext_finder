@@ -9,6 +9,7 @@ use OC\Files\Search\SearchComparison;
 use OC\Files\Search\SearchOrder;
 use OC\Files\Search\SearchQuery;
 use OCA\DcnFinder\Search\FileCondition;
+use OCA\DcnFinder\Search\FileOwner;
 use OCA\DcnFinder\Search\FileQuery;
 use OCA\DcnFinder\Search\FileScope;
 use OCA\DcnFinder\Search\MetadataFields;
@@ -520,7 +521,14 @@ class FileSearchService
         // The owner is the closest thing Nextcloud keeps to a creator; with no
         // recorded editor the owner is also the only person known to have
         // written the file. See FileAuthorService for why.
-        $owner = $node->getOwner()?->getUID() ?? '';
+        //
+        // Only ask storages that keep one, though: the rest answer with whoever
+        // is asking, which would put the reader's own name in every row of a
+        // team folder. See FileOwner.
+        $owner = FileOwner::of(
+            $node->getMountPoint()->getMountType(),
+            $node->getOwner()?->getUID() ?? '',
+        );
 
         return [
             'fileid'       => $node->getId(),
