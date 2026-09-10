@@ -7,7 +7,7 @@ namespace OCA\DcnFinder\Service;
 use OCA\DcnFinder\AppInfo\AppConstants;
 use OCA\DcnFinder\Search\FileScope;
 use OCP\App\IAppManager;
-use OCP\IServerContainer;
+use Psr\Container\ContainerInterface;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -40,7 +40,7 @@ class CoreScope
 
     public function __construct(
         private IAppManager $appManager,
-        private IServerContainer $container,
+        private ContainerInterface $container,
         private LoggerInterface $logger,
     ) {
     }
