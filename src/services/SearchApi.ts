@@ -8,9 +8,9 @@
 import axios from '@nextcloud/axios'
 import { generateUrl } from '@nextcloud/router'
 import { API_BASE } from '../constants'
+import { RETIRED_FIELDS } from '../filters/fields'
 import type {
   FieldsResponse,
-  Person,
   ScopeEntity,
   ScopeFileEntity,
   ScopeVocabulary,
@@ -34,13 +34,20 @@ const url = (path: string) => generateUrl(`${API_BASE}${path}`)
  * term with the toggle on: the same search, expressed in the controls that now
  * run it. Relevance goes with it — nothing offers that ordering any more.
  *
+ * Conditions on a field this app no longer offers are dropped the same way: the
+ * server refuses them, and the filter rows should show what really runs. See
+ * RETIRED_FIELDS.
+ *
  * Applied at the door every stored search comes through, so nothing downstream
  * has to know the old shape existed.
  * @param query whatever the server had stored for this search
  */
 function restored(query: SearchState & { content?: string }): SearchState {
   const phrase = (query.content ?? '').trim()
-  const rest: SearchState & { content?: string } = { ...query }
+  const rest: SearchState & { content?: string } = {
+    ...query,
+    conditions: (query.conditions ?? []).filter((c) => !RETIRED_FIELDS.includes(c.field)),
+  }
   delete rest.content
   if (phrase === '') {
     return rest
@@ -125,34 +132,6 @@ export const SearchApi = {
       return data.entity ?? null
     } catch (error) {
       throw describe(error)
-    }
-  },
-
-  /**
-   * People matching what has been typed, for the "Created by" filter.
-   * @param term what to match on the display name
-   */
-  async users(term: string): Promise<Person[]> {
-    try {
-      const { data } = await axios.get<{ users: Person[] }>(url('/users'), { params: { q: term } })
-      return data.users ?? []
-    } catch (error) {
-      throw describe(error)
-    }
-  },
-
-  /**
-   * The name behind an account id, for a filter restored from a stored search.
-   * Falls back to the id itself, which is what the server does for an account
-   * that is gone.
-   * @param uid the account id to name
-   */
-  async userName(uid: string): Promise<string> {
-    try {
-      const { data } = await axios.get<{ users: Person[] }>(url('/users'), { params: { uid } })
-      return data.users?.[0]?.displayName || uid
-    } catch {
-      return uid
     }
   },
 

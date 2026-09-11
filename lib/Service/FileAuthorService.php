@@ -5,12 +5,9 @@ declare(strict_types=1);
 namespace OCA\DcnFinder\Service;
 
 use OCP\App\IAppManager;
-use OCP\Collaboration\Collaborators\ISearch;
 use OCP\DB\QueryBuilder\IQueryBuilder;
 use OCP\IDBConnection;
 use OCP\IUserManager;
-use OCP\IUserSession;
-use OCP\Share\IShare;
 
 /**
  * Who created and who last changed a file.
@@ -32,9 +29,6 @@ use OCP\Share\IShare;
  * Both are resolved for a whole result page at once: one query for the
  * revisions, one user lookup per distinct uid. Per-row lookups would turn a
  * 100-row page into a few hundred queries.
- *
- * It also answers the other direction — which people can be *named* in a filter
- * — because that is the same subject and the same display names.
  */
 class FileAuthorService
 {
@@ -54,72 +48,7 @@ class FileAuthorService
         private IUserManager $userManager,
         private IAppManager $appManager,
         private IDBConnection $db,
-        private ISearch $collaborators,
-        private IUserSession $userSession,
     ) {
-    }
-
-    /**
-     * People this user may name in a filter, matched on display name.
-     *
-     * Through the collaborator search — the same list the share dialog offers —
-     * so the admin's user-enumeration settings decide who is findable here too.
-     * An app that queried the user table itself would quietly overrule a server
-     * configured not to let its users browse each other.
-     *
-     * The one name it adds is the searcher's own: the collaborator search drops
-     * you from your own results — you cannot share with yourself — but "files I
-     * created" is the first thing anyone asks this filter.
-     *
-     * @return list<array{uid: string, displayName: string}>
-     */
-    public function search(string $term, int $limit = 20): array
-    {
-        $term = trim($term);
-        if ($term === '') {
-            return [];
-        }
-
-        $people = [];
-        $self = $this->userSession->getUser();
-        if ($self !== null && $this->matches($term, $self->getUID(), $self->getDisplayName())) {
-            $people[$self->getUID()] = [
-                'uid'         => $self->getUID(),
-                'displayName' => $self->getDisplayName(),
-            ];
-        }
-
-        try {
-            // The first element is the result *array* — the collaborator search
-            // has already flattened it, the way the sharees endpoint reads it.
-            [$raw] = $this->collaborators->search($term, [IShare::TYPE_USER], false, $limit, 0);
-        } catch (\Throwable) {
-            // Sharing disabled, or a plugin that threw. Whoever is asking is
-            // still an answer; a 500 in a typeahead is not.
-            return array_values($people);
-        }
-
-        // Exact matches first: typing a whole name should not put it third.
-        $rows = array_merge($raw['exact']['users'] ?? [], $raw['users'] ?? []);
-
-        foreach ($rows as $row) {
-            $uid = (string)($row['value']['shareWith'] ?? '');
-            if ($uid === '' || isset($people[$uid])) {
-                continue;
-            }
-            $people[$uid] = ['uid' => $uid, 'displayName' => (string)($row['label'] ?? '') ?: $uid];
-        }
-
-        return array_values($people);
-    }
-
-    /** Whether a term typed into the picker points at this account. */
-    private function matches(string $term, string $uid, string $displayName): bool
-    {
-        $term = mb_strtolower($term);
-
-        return str_contains(mb_strtolower($displayName), $term)
-            || str_contains(mb_strtolower($uid), $term);
     }
 
     /**

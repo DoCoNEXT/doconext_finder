@@ -13,41 +13,28 @@ use PHPUnit\Framework\TestCase;
  */
 class FileConditionTest extends TestCase
 {
-    public function testOwnerAcceptsEqualityOnly(): void
+    public function testCreatedByIsNotAFilter(): void
     {
-        $condition = FileCondition::fromArray([
-            'field'    => 'owner',
-            'operator' => 'eq',
-            'value'    => 'alice',
-        ]);
-
-        $this->assertSame('owner', $condition->field);
-        $this->assertSame('alice', $condition->value);
-    }
-
-    public function testOwnerRejectsContains(): void
-    {
-        // SearchBuilder validates "owner" as equality-only; offering anything
-        // else would surface as a 500 from the query builder.
+        // Core's `owner` field matches through the share table: once per share,
+        // and never a file its owner did not share.
         $this->expectException(\InvalidArgumentException::class);
 
         FileCondition::fromArray([
             'field'    => 'owner',
+            'operator' => 'eq',
+            'value'    => 'alice',
+        ]);
+    }
+
+    public function testFolderPathIsNotAFilter(): void
+    {
+        // The folder scope asks the same question.
+        $this->expectException(\InvalidArgumentException::class);
+
+        FileCondition::fromArray([
+            'field'    => 'path',
             'operator' => 'contains',
-            'value'    => 'ali',
-        ]);
-    }
-
-    public function testOwnerCannotBeNegated(): void
-    {
-        // It is reached through a join, so NOT compares a NULL column.
-        $this->expectException(\InvalidArgumentException::class);
-
-        FileCondition::fromArray([
-            'field'    => 'owner',
-            'operator' => 'eq',
-            'value'    => 'alice',
-            'negate'   => true,
+            'value'    => 'Legal',
         ]);
     }
 

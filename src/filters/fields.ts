@@ -22,23 +22,32 @@ import {
 } from '@lucide/vue'
 
 /** How the value box behaves for a field. */
-export type InputKind = 'text' | 'date' | 'size' | 'user' | 'none'
+export type InputKind = 'text' | 'date' | 'size' | 'none'
 
 export type Translate = (_text: string, _vars?: Record<string, unknown>) => string
+
+/**
+ * Fields this app once offered and no longer does. A search stored back then
+ * can still carry them, and the server refuses a field it does not know — so
+ * they are dropped as the search is loaded, where the filter rows then show
+ * what is really being asked.
+ *
+ * - `owner` ("Created by"): Nextcloud cannot search on who made a file. Its own
+ *   `owner` field matches through the share table, and a team folder records
+ *   no creator at all.
+ * - `path` ("Folder path"): the folder scope asks the same question.
+ */
+export const RETIRED_FIELDS: readonly string[] = ['owner', 'path']
 
 /** Which input a field needs. Free of wording, so it needs no translation. */
 const FIELD_INPUTS: Record<string, InputKind> = {
   name: 'text',
-  path: 'text',
   mimetype: 'text',
   size: 'size',
   mtime: 'date',
   creation_time: 'date',
   favorite: 'none',
   tagname: 'text',
-  // Compared against the account id, which nobody remembers — so it is picked
-  // by name and the id travels in the condition.
-  owner: 'user',
 }
 
 export function fieldInput(field: string): InputKind {
@@ -59,23 +68,18 @@ export function fieldInput(field: string): InputKind {
 export function fieldLabel(t: Translate, field: string): string {
   switch (field) {
     case 'name': return t('Name')
-    case 'path': return t('Folder path')
     case 'mimetype': return t('Media type')
     case 'size': return t('Size')
     case 'mtime': return t('Modified')
     case 'creation_time': return t('Created')
     case 'favorite': return t('Favorite')
     case 'tagname': return t('Tag')
-    // The owner is the nearest thing Nextcloud keeps to a creator; the column
-    // showing it is called the same.
-    case 'owner': return t('Created by')
     default: return field
   }
 }
 
 export function fieldHint(t: Translate, field: string): string {
   switch (field) {
-    case 'path': return t('e.g. Legal/Dossiers')
     case 'mimetype': return t('e.g. application/pdf')
     default: return ''
   }

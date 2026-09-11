@@ -17,20 +17,23 @@ use OCP\Files\Search\ISearchComparison;
  */
 final class FileCondition
 {
-    /** Field → value type, mirroring SearchBuilder::$fieldTypes for the fields we allow. */
+    /**
+     * Field → value type, mirroring SearchBuilder::$fieldTypes for the fields we allow.
+     *
+     * Two that SearchBuilder accepts are left out on purpose. `owner` looks like
+     * "created by" and is not: it matches through the share table, so a file comes
+     * back once per share and never when its owner did not share it — and a team
+     * folder records no creator at all. `path` asks what the folder scope already
+     * asks, in a box where a typo silently matches nothing.
+     */
     public const FIELDS = [
         'name'          => 'string',
-        'path'          => 'string',
         'mimetype'      => 'string',
         'size'          => 'integer',
         'mtime'         => 'integer',
         'creation_time' => 'integer',
         'favorite'      => 'boolean',
         'tagname'       => 'string',
-        // A uid, answered as that user's home storage — never as core's own
-        // `owner` field, which joins the share table. See
-        // FileSearchService::homeStorageId().
-        'owner'         => 'string',
     ];
 
     /**
@@ -41,21 +44,19 @@ final class FileCondition
      */
     public const FIELD_OPERATORS = [
         'name'          => ['eq', 'contains'],
-        'path'          => ['eq', 'contains'],
         'mimetype'      => ['eq', 'contains'],
         'size'          => ['eq', 'lt', 'lte', 'gt', 'gte'],
         'mtime'         => ['eq', 'lt', 'lte', 'gt', 'gte'],
         'creation_time' => ['eq', 'lt', 'lte', 'gt', 'gte'],
         'favorite'      => ['eq'],
         'tagname'       => ['eq', 'contains'],
-        'owner'         => ['eq'],
     ];
 
     /**
      * Fields the query builder reaches through a join rather than a filecache column.
      * `NOT` on these compares a NULL column and matches nothing, so negation is refused.
      */
-    public const JOIN_BACKED = ['favorite', 'tagname', 'owner'];
+    public const JOIN_BACKED = ['favorite', 'tagname'];
 
     /**
      * Metadata is stored as one indexed string column whatever the declared type,
