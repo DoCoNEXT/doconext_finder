@@ -210,11 +210,16 @@ const dateValue = computed({
   margin-bottom: 8px;
 
   // NcSelect reserves a gap under itself for a row of its own; here the row is
-  // the alignment line, so the gap would lift the dropdowns off it. Their width
-  // is the library's own, which is what puts them under the Type and Modified
-  // dropdowns of the row above.
-  .condition__field,
-  .condition__operator {
+  // the alignment line, so the gap would lift the dropdowns off it and leave
+  // every box beside them hanging 4px low. Their width is the library's own,
+  // which is what puts them under the Type and Modified dropdowns of the row
+  // above.
+
+  // `.nc-select` is there for weight, not meaning. The library sets this margin
+  // as `.nc-select.v-select.select`, three classes, which is all a nested scoped
+  // rule reaches too, and its chunk loads after ours, so a tie went to it.
+  .condition__field.nc-select,
+  .condition__operator.nc-select {
     margin-bottom: 0;
   }
 
@@ -222,7 +227,12 @@ const dateValue = computed({
     flex: 1 1 auto;
     min-width: 140px;
 
+    // Words standing in for a box, so as tall as one: they sit on the middle
+    // line of the dropdowns beside them instead of at the foot of the row.
     &--fixed {
+      display: flex;
+      align-items: center;
+      min-height: var(--default-clickable-area);
       color: var(--color-text-maxcontrast);
     }
   }
