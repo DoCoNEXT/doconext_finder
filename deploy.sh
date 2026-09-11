@@ -128,10 +128,27 @@ cd "$SCRIPT_DIR"
 # a copy of it: psalm, phpunit and nextcloud/ocp all disappear, and the quality
 # gates then report thousands of phantom errors about missing OCP classes. Put
 # them back on the way out, whether or not the deploy succeeded.
+#
+# A restore that fails has to say so. It runs after whatever ended the deploy,
+# so its lines are the last thing on screen, and `--quiet` swallows composer's
+# own error along with everything else: the tree was left without its dev
+# tooling under a heading that said it was being restored. The output is
+# captured instead, and shown only when the install fails.
 restore_dev_dependencies() {
   [[ -f "$SCRIPT_DIR/composer.json" ]] || return 0
   echo ">>> Restoring local dev dependencies..."
-  (cd "$SCRIPT_DIR" && composer install --quiet) || true
+  local output
+  output="$(cd "$SCRIPT_DIR" && composer install --no-interaction 2>&1)" && return 0
+  echo "$output" | tail -n 20
+  echo "Warning: could not restore the dev dependencies — psalm, phpunit and nextcloud/ocp may be missing."
+  echo "         Run 'composer install' in $SCRIPT_DIR once the cause is fixed."
+  # The cause so far: a `docker run` without --user wrote root-owned files into
+  # vendor/, which composer can neither delete nor overwrite. The same thing
+  # fails the `composer install --no-dev` in `make appstore` first.
+  if [[ -d "$SCRIPT_DIR/vendor" && -n "$(find "$SCRIPT_DIR/vendor" ! -user "$(id -u)" -print -quit)" ]]; then
+    echo "         vendor/ holds files you do not own. Take them back (no sudo needed):"
+    echo "           docker run --rm -v \"$SCRIPT_DIR/vendor:/v\" alpine chown -R $(id -u):$(id -g) /v"
+  fi
 }
 trap restore_dev_dependencies EXIT
 
