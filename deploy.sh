@@ -11,7 +11,9 @@
 # the folder name. Pass --app only to override the detected value.
 #
 # The package uploaded is the one `make appstore` builds, so this needs what
-# that needs: node (see .nvmrc — run `nvm use` first), npm and composer.
+# that needs: node (`nvm use` first), npm, and composer for an app with PHP
+# dependencies. The script is the same in every DoCoNEXT app; what differs per
+# app — how it builds, what it ships — lives in its Makefile.
 #
 # Examples:
 #   ./deploy.sh --host 1.2.3.4
@@ -25,6 +27,11 @@
 #   --container Nextcloud container name (default: nextcloud-aio-nextcloud)
 #   --update    Update existing installation (disable, remove, redeploy)
 #   --help      Show this help message
+#
+# Every successful deploy appends one line to ~/.doconext/deploys.log
+# (override with DEPLOY_LOG=...): when, host, container, app, version,
+# commit, branch, mode. Read it with:
+#   column -ts$'\t' ~/.doconext/deploys.log
 # ============================================================
 set -e
 
@@ -69,6 +76,17 @@ if [[ -z "$APP" ]]; then
 fi
 
 # ============================================================
+# What is being deployed. The package is built from the working tree, not from
+# a commit: uncommitted and untracked files ship too, so a bare commit id would
+# name code that is not what runs on the host. "-dirty" says so.
+# ============================================================
+GIT_COMMIT="$(git -C "$SCRIPT_DIR" rev-parse --short HEAD 2>/dev/null || echo unknown)"
+GIT_BRANCH="$(git -C "$SCRIPT_DIR" rev-parse --abbrev-ref HEAD 2>/dev/null || echo unknown)"
+[[ -n "$(git -C "$SCRIPT_DIR" status --porcelain 2>/dev/null)" ]] && GIT_COMMIT="$GIT_COMMIT-dirty"
+APP_VERSION="$(sed -n 's:.*<version>\(.*\)</version>.*:\1:p' "$SCRIPT_DIR/appinfo/info.xml" 2>/dev/null | head -1)"
+DEPLOY_LOG="${DEPLOY_LOG:-$HOME/.doconext/deploys.log}"
+
+# ============================================================
 # Validate required arguments
 # ============================================================
 MISSING=()
@@ -90,6 +108,8 @@ echo " App:       $APP"
 echo " VPS user:  $VPS_USER"
 echo " VPS host:  $VPS_HOST"
 echo " Container: $CONTAINER"
+echo " Version:   $APP_VERSION"
+echo " Commit:    $GIT_COMMIT ($GIT_BRANCH)"
 echo " Mode:      $([ "$UPDATE" = true ] && echo 'UPDATE' || echo 'INSTALL')"
 echo "============================================================"
 echo ""
@@ -109,6 +129,7 @@ cd "$SCRIPT_DIR"
 # gates then report thousands of phantom errors about missing OCP classes. Put
 # them back on the way out, whether or not the deploy succeeded.
 restore_dev_dependencies() {
+  [[ -f "$SCRIPT_DIR/composer.json" ]] || return 0
   echo ">>> Restoring local dev dependencies..."
   (cd "$SCRIPT_DIR" && composer install --quiet) || true
 }
@@ -174,6 +195,19 @@ ssh ${VPS_USER}@${VPS_HOST} "
   rm /tmp/$APP.tar.gz
   docker exec --user root $CONTAINER rm /tmp/$APP.tar.gz
 "
+
+# ============================================================
+# STEP 4: Record the deploy (runs locally)
+# Only reached when every step above succeeded, so the log names what runs on
+# the host rather than what was attempted.
+# ============================================================
+mkdir -p "$(dirname "$DEPLOY_LOG")"
+[[ -s "$DEPLOY_LOG" ]] || printf 'when\thost\tcontainer\tapp\tversion\tcommit\tbranch\tmode\n' > "$DEPLOY_LOG"
+printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
+  "$(date -Iseconds)" "$VPS_HOST" "$CONTAINER" "$APP" "$APP_VERSION" \
+  "$GIT_COMMIT" "$GIT_BRANCH" "$([ "$UPDATE" = true ] && echo update || echo install)" \
+  >> "$DEPLOY_LOG"
+echo ">>> Recorded in $DEPLOY_LOG"
 
 echo ""
 if [ "$UPDATE" = true ]; then
