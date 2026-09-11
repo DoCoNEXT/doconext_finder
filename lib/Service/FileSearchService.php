@@ -13,6 +13,7 @@ use OCA\DcnFinder\Search\FileOwner;
 use OCA\DcnFinder\Search\FileQuery;
 use OCA\DcnFinder\Search\FileScope;
 use OCA\DcnFinder\Search\MetadataFields;
+use OCP\Files\Config\IMountProviderCollection;
 use OCP\Files\FileInfo;
 use OCP\Files\Folder;
 use OCP\Files\IRootFolder;
@@ -55,6 +56,7 @@ class FileSearchService
         private FileAuthorService $authors,
         private CoreScope $coreScope,
         private ContentSearchService $contentSearch,
+        private IMountProviderCollection $mountProviders,
     ) {
     }
 
@@ -501,17 +503,48 @@ class FileSearchService
                 : $comparison;
         }
 
-        $comparison = new SearchComparison(
-            $condition->comparison(),
-            $condition->field,
-            $condition->value,
-        );
+        // "Created by" is asked as a storage, never as core's own `owner` field —
+        // see homeStorageId() for why.
+        [$type, $field, $value] = $condition->field === 'owner'
+            ? [ISearchComparison::COMPARE_EQUAL, 'storage', $this->homeStorageId((string)$condition->value)]
+            : [$condition->comparison(), $condition->field, $condition->value];
+
+        $comparison = new SearchComparison($type, $field, $value);
 
         // SearchBuilder only supports a comparison directly inside "not" — never a
         // nested binary operator — so negation is applied per condition, not per group.
         return $condition->negate
             ? new SearchBinaryOperator(ISearchBinaryOperator::OPERATOR_NOT, [$comparison])
             : $comparison;
+    }
+
+    /**
+     * The storage that answers "Created by <uid>": that user's home.
+     *
+     * Core's own `owner` field looks like the answer and is not. SearchBuilder
+     * turns it into `uid_owner`, a column of the *share* table, and joins that
+     * table in on `fileid = file_source`. So it matches only files the person has
+     * shared — alice's 13 files answered 2 — and returns each file once per share:
+     * a Deck attachment, shared once for every card it hangs on, came back nine
+     * times, and since selection follows the file id, clicking one row lit up all
+     * nine.
+     *
+     * The storage column needs no join, and it is what the Created by column
+     * already reports: a home mount's owner is its user, and a share of a file in
+     * that home reports the same user. Through a share it still matches, because
+     * the row keeps the storage it lives on. What it does not reach is a file
+     * someone shared out of a team folder — which the column only names for the
+     * recipients anyway.
+     */
+    private function homeStorageId(string $uid): int
+    {
+        $user = $this->userManager->get($uid);
+
+        // Storage ids start at 1: an unknown person matches nothing rather than
+        // dropping the clause, which would widen the search to everyone.
+        return $user === null
+            ? -1
+            : (int)$this->mountProviders->getHomeMountForUser($user)->getNumericStorageId();
     }
 
     /**

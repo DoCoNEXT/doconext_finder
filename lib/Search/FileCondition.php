@@ -27,8 +27,9 @@ final class FileCondition
         'creation_time' => 'integer',
         'favorite'      => 'boolean',
         'tagname'       => 'string',
-        // Mapped to the storage's uid_owner by SearchBuilder, and equality-only
-        // there — it is a join column, not a filecache one.
+        // A uid, answered as that user's home storage — never as core's own
+        // `owner` field, which joins the share table. See
+        // FileSearchService::homeStorageId().
         'owner'         => 'string',
     ];
 
