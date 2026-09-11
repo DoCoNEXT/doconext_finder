@@ -12,7 +12,7 @@
 version = 1
 SPDX-PackageName = "doconext_finder"
 SPDX-PackageSupplier = "DoCoNEXT <support@doconext.com>"
-SPDX-PackageDownloadLocation = "https://github.com/bart-doconext/doconext_finder"
+SPDX-PackageDownloadLocation = "https://github.com/DoCoNEXT/doconext_finder"
 
 # Everything this app writes itself.
 [[annotations]]
