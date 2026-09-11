@@ -21,8 +21,9 @@
               :placeholder="placeholder" />
 
     <!-- Entities are far too many for a dropdown, so this one asks the server as
-         you type. filterable=false hands the filtering to the backend instead of
-         letting vue-select narrow a list it only partly has. -->
+         you type — and, before anything is typed, offers what you starred and
+         what changed last. filterable=false hands the filtering to the backend
+         instead of letting vue-select narrow a list it only partly has. -->
     <NcSelect v-model="entity"
               class="scope__select"
               label="label"
@@ -32,6 +33,7 @@
               :disabled="disabled"
               :input-label="entityLabel"
               :placeholder="disabled ? placeholder : t('Type to search')"
+              @open="onOpen"
               @search="onSearch" />
   </div>
 </template>
@@ -131,7 +133,7 @@ watch(realm, () => {
     type.value = null
   }
   entity.value = null
-  entityOptions.value = []
+  forgetEntities()
   publish()
 }, { flush: 'sync' })
 
@@ -140,7 +142,7 @@ watch(type, () => {
     return
   }
   entity.value = null
-  entityOptions.value = []
+  forgetEntities()
   publish()
 }, { flush: 'sync' })
 
@@ -199,6 +201,7 @@ function adopt() {
   realm.value = null
   type.value = null
   entity.value = null
+  forgetEntities()
 
   if (scope?.level === 'realm') {
     realm.value = realms.value.find((candidate) => candidate.id === scope.id)
@@ -218,36 +221,84 @@ function adopt() {
 let debounce: ReturnType<typeof setTimeout> | undefined
 
 /**
- * @param term what has been typed into the entity field
- * @param loading vue-select's own spinner toggle
+ * What the entity list currently holds: nothing yet, the suggestions shown
+ * before anything is typed, or the matches for a typed term.
  */
-function onSearch(term: string, loading: (state: boolean) => void) {
+let listed: 'nothing' | 'suggestions' | 'matches' = 'nothing'
+
+/** Answers arrive out of order; only the latest question may fill the list. */
+let fetchSeq = 0
+
+/**
+ * Empties the entity list, including an answer still on its way — one asked
+ * under the previous type would otherwise land in the list for the new one.
+ */
+function forgetEntities() {
+  clearTimeout(debounce)
+  fetchSeq++
+  searching.value = false
+  entityOptions.value = []
+  listed = 'nothing'
+}
+
+/**
+ * Fetched on first open rather than on mount: most searches never touch this
+ * field, and an unopened list costs nothing to leave unasked.
+ */
+function onOpen() {
+  if (listed === 'nothing') {
+    fetchEntities('')
+  }
+}
+
+/**
+ * @param term what has been typed into the entity field
+ */
+function onSearch(term: string) {
   clearTimeout(debounce)
   if (term.trim() === '') {
-    entityOptions.value = []
+    // Clearing a term goes back to the suggestions rather than to nothing. The
+    // empty search vue-select emits when it closes an untouched box has nothing
+    // to restore.
+    if (listed === 'matches') {
+      fetchEntities('')
+    }
     return
   }
 
   // A keystroke is not a question. Waiting a beat turns a word typed at speed
   // into one request instead of eight.
-  debounce = setTimeout(async () => {
-    searching.value = true
-    loading(true)
-    try {
-      const found = await SearchApi.scopeEntities(term, type.value?.id)
-      entityOptions.value = found.map((hit) => ({
-        ...hit,
-        // Two entities may share a name; their code and what they hang under is
-        // what tells them apart, so it belongs on the line, not in a tooltip.
-        label: hit.context ? `${hit.name} · ${hit.context}` : hit.name,
-      }))
-    } catch {
-      entityOptions.value = []
-    } finally {
-      searching.value = false
-      loading(false)
+  debounce = setTimeout(() => fetchEntities(term), 250)
+}
+
+/**
+ * @param term what to match, or '' for the suggestions
+ */
+async function fetchEntities(term: string) {
+  const seq = ++fetchSeq
+  listed = term === '' ? 'suggestions' : 'matches'
+  searching.value = true
+  try {
+    const found = await SearchApi.scopeEntities(term, type.value?.id)
+    if (seq !== fetchSeq) {
+      return
     }
-  }, 250)
+    entityOptions.value = found.map((hit) => ({
+      ...hit,
+      // Two entities may share a name; their code and what they hang under is
+      // what tells them apart, so it belongs on the line, not in a tooltip.
+      label: hit.context ? `${hit.name} · ${hit.context}` : hit.name,
+    }))
+  } catch {
+    if (seq === fetchSeq) {
+      entityOptions.value = []
+      listed = 'nothing' // so the next open asks again
+    }
+  } finally {
+    if (seq === fetchSeq) {
+      searching.value = false
+    }
+  }
 }
 </script>
 

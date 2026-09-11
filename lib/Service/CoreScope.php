@@ -87,14 +87,28 @@ class CoreScope
     /**
      * Entities are too many for a dropdown, so this feeds a typeahead.
      *
+     * An empty term is still a question: before anything is typed, the field
+     * offers the user's starred entities and then the ones changed most recently,
+     * as Core's own pickers do. A Core too old to answer it offers nothing until
+     * something is typed, which is how this field always behaved.
+     *
      * @return list<array{id: int, name: string, context: string}>
      */
     public function entities(string $term, ?int $entityTypeId = null): array
     {
         $term = trim($term);
         $core = $this->core();
-        if ($term === '' || $core === null) {
+        if ($core === null) {
             return [];
+        }
+
+        if ($term === '') {
+            return method_exists($core, 'suggestedEntities')
+                ? $this->guard(
+                    static fn () => $core->suggestedEntities($entityTypeId, self::MAX_SUGGESTIONS),
+                    [],
+                )
+                : [];
         }
 
         return $this->guard(

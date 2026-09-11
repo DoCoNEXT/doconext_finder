@@ -124,6 +124,9 @@ class SearchController extends ApiController
     /**
      * Typeahead over entities. There are far too many for a dropdown, which is
      * the whole reason this level is a search box and not a third select.
+     *
+     * An empty `q` answers with suggestions — starred, then recently changed —
+     * so the field has something to offer before anything is typed.
      */
     #[NoAdminRequired]
     #[FrontpageRoute(verb: 'GET', url: '/api/scope/entities')]

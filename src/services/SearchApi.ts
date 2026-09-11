@@ -95,8 +95,9 @@ export const SearchApi = {
   },
 
   /**
-   * Typeahead over entities, optionally narrowed to one type.
-   * @param term what the user has typed so far
+   * Typeahead over entities, optionally narrowed to one type. An empty term
+   * returns suggestions instead: starred entities, then recently changed ones.
+   * @param term what the user has typed so far, or '' for suggestions
    * @param entityTypeId restrict to this type, when one is chosen
    */
   async scopeEntities(term: string, entityTypeId?: number): Promise<ScopeEntity[]> {
