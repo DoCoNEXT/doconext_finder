@@ -1,6 +1,10 @@
 <template>
   <div v-if="available" class="scope">
-    <NcSelect v-model="realm"
+    <!-- A choice of one is no choice: with a single workspace every type below
+         already belongs to it. Still shown when a restored search is scoped to
+         a workspace, since a scope nobody can see is one nobody can clear. -->
+    <NcSelect v-if="realms.length > 1 || store.query.scope?.level === 'realm'"
+              v-model="realm"
               class="scope__select"
               label="name"
               :options="realms"
