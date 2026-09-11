@@ -40,6 +40,13 @@ class FileAuthorService
 {
     private const VERSIONS_APP_ID = 'files_versions';
 
+    /**
+     * Where revisions are recorded. Team folders keep their own table, with the
+     * same columns; reading only the first left Modified by empty for every file
+     * in a team folder.
+     */
+    private const VERSION_TABLES = ['files_versions', 'group_folders_versions'];
+
     /** @var array<string,string> uid → display name, for the lifetime of the request. */
     private array $displayNames = [];
 
@@ -131,9 +138,9 @@ class FileAuthorService
     /**
      * The uid that wrote each file's current content, for the ids it knows.
      *
-     * Reads the Versions app's own table directly rather than through its mapper:
-     * the mapper answers one file at a time, and Finder must keep working with
-     * the app disabled — which a class dependency would prevent.
+     * Reads the revision tables directly rather than through the Versions app's
+     * mapper: the mapper answers one file at a time, and Finder must keep working
+     * with the app disabled — which a class dependency would prevent.
      *
      * @param list<int> $fileIds
      * @return array<int,string> fileId → uid, absent where nothing is recorded
@@ -144,42 +151,45 @@ class FileAuthorService
             return [];
         }
 
-        try {
-            $editors = [];
-            $newest = [];
+        $editors = [];
+        $newest = [];
 
-            // Chunked because a page size is the user's to choose and some
-            // databases cap the number of bound parameters.
-            foreach (array_chunk($fileIds, 500) as $chunk) {
-                $qb = $this->db->getQueryBuilder();
-                $qb->select('file_id', 'timestamp', 'metadata')
-                    ->from('files_versions')
-                    ->where($qb->expr()->in('file_id', $qb->createNamedParameter($chunk, IQueryBuilder::PARAM_INT_ARRAY)));
+        foreach (self::VERSION_TABLES as $table) {
+            try {
+                // Chunked because a page size is the user's to choose and some
+                // databases cap the number of bound parameters.
+                foreach (array_chunk($fileIds, 500) as $chunk) {
+                    $qb = $this->db->getQueryBuilder();
+                    $qb->select('file_id', 'timestamp', 'metadata')
+                        ->from($table)
+                        ->where($qb->expr()->in('file_id', $qb->createNamedParameter($chunk, IQueryBuilder::PARAM_INT_ARRAY)));
 
-                $result = $qb->executeQuery();
-                while ($row = $result->fetch()) {
-                    $fileId = (int)$row['file_id'];
-                    $timestamp = (int)$row['timestamp'];
-                    // Only the newest revision describes the content on disk now.
-                    if (isset($newest[$fileId]) && $newest[$fileId] >= $timestamp) {
-                        continue;
+                    $result = $qb->executeQuery();
+                    while ($row = $result->fetch()) {
+                        $fileId = (int)$row['file_id'];
+                        $timestamp = (int)$row['timestamp'];
+                        // Only the newest revision describes the content on disk now.
+                        if (isset($newest[$fileId]) && $newest[$fileId] >= $timestamp) {
+                            continue;
+                        }
+                        $metadata = json_decode((string)($row['metadata'] ?? ''), true);
+                        $author = is_array($metadata) ? (string)($metadata['author'] ?? '') : '';
+                        $newest[$fileId] = $timestamp;
+                        if ($author !== '') {
+                            $editors[$fileId] = $author;
+                        } else {
+                            unset($editors[$fileId]);
+                        }
                     }
-                    $metadata = json_decode((string)($row['metadata'] ?? ''), true);
-                    $author = is_array($metadata) ? (string)($metadata['author'] ?? '') : '';
-                    $newest[$fileId] = $timestamp;
-                    if ($author !== '') {
-                        $editors[$fileId] = $author;
-                    } else {
-                        unset($editors[$fileId]);
-                    }
+                    $result->closeCursor();
                 }
-                $result->closeCursor();
+            } catch (\Throwable) {
+                // A missing or changed table — no team folders app, say — costs
+                // its own files the column, never the other table's or the search.
+                continue;
             }
-
-            return $editors;
-        } catch (\Throwable) {
-            // A missing or changed table must cost the columns, not the search.
-            return [];
         }
+
+        return $editors;
     }
 }
