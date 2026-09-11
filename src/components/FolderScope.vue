@@ -1,29 +1,28 @@
 <template>
-  <div class="folder-scope">
-    <span class="folder-scope__label">{{ t('Folder') }}</span>
-
-    <div class="folder-scope__row">
-      <NcButton class="folder-scope__pick"
-                variant="secondary"
-                :disabled="disabled"
-                :title="disabled ? t('Clear the workspace scope to search a folder instead') : t('Search inside one folder')"
-                @click="browse">
-        <template #icon>
-          <FolderOpen :size="20" />
-        </template>
-        <span class="folder-scope__name">{{ chosen?.label ?? t('Anywhere') }}</span>
-      </NcButton>
-
-      <NcButton v-if="chosen"
-                variant="tertiary"
-                :aria-label="t('Search everywhere again')"
-                :title="t('Search everywhere again')"
-                @click="clear">
-        <template #icon>
-          <X :size="20" />
-        </template>
-      </NcButton>
-    </div>
+  <div class="folder-scope"
+       :title="disabled ? t('Clear the workspace scope to search a folder instead') : t('Search inside one folder')">
+    <!--
+      Drawn as a field, not a button: it holds a value — where the search looks —
+      and a button among the selects read as something to do rather than
+      something set. Read-only because the value comes from the picker, which is
+      how NcSelect draws its own box too, so the two share a border and a label.
+    -->
+    <NcTextField :model-value="chosen?.label ?? t('Anywhere')"
+                 class="folder-scope__field"
+                 :label="t('Folder')"
+                 readonly
+                 aria-haspopup="dialog"
+                 :disabled="disabled"
+                 :show-trailing-button="chosen !== null"
+                 :trailing-button-label="t('Search everywhere again')"
+                 @click="browse"
+                 @keydown.enter.prevent="browse"
+                 @keydown.space.prevent="browse"
+                 @trailing-button-click="clear">
+      <template #icon>
+        <FolderOpen :size="20" />
+      </template>
+    </NcTextField>
   </div>
 </template>
 
@@ -40,8 +39,8 @@
  * because it is the one scope that asks nothing of any other app.
  */
 import { computed } from 'vue'
-import { NcButton } from '@nextcloud/vue'
-import { FolderOpen, X } from '@lucide/vue'
+import { NcTextField } from '@nextcloud/vue'
+import { FolderOpen } from '@lucide/vue'
 import { getFilePickerBuilder } from '@nextcloud/dialogs'
 import { useI18n } from '../composables/useI18n'
 import { useSearchStore } from '../stores/searchStore'
@@ -126,57 +125,27 @@ function clear() {
 
 <style scoped lang="scss">
 /*
- * Three measurements taken from a rendered page decide this block, because the
- * field has to sit flush with the NcSelects beside it and the row aligns on the
- * bottom — so every one of them shows up as a visible step if it is off.
- *
- * 1. NcSelect writes its label inside its own box as `display: block;
- *    margin-bottom: 2px` at the inherited size. A smaller label looked right on
- *    its own and pushed everything below it out of line.
- * 2. NcSelect carries a 4px bottom margin, and flex aligns margin boxes, so
- *    without the same margin this control's border sat 4px lower than theirs.
- * 3. Its control is not the clickable area but the clickable area *plus* its own
- *    border: 36px against an NcButton's 34.
+ * A grid item, so the grid decides the width; the name inside ellipsizes on its
+ * own, as any input's value does. The bottom margin is NcSelect's: the grid
+ * aligns the fields on their margin boxes, so without it this border sat 4px
+ * below theirs (measured).
  */
 .folder-scope {
-  margin-bottom: 4px;
-  /*
-   * Sizes itself rather than borrowing the row's .finder__preset, which sets a
-   * 170px minimum at the same specificity and simply won on source order.
-   *
-   * The 260px is NcSelect's own minimum: it beats the 220px basis every field in
-   * these rows declares, so every select renders 260 wide. A narrower folder
-   * field left the two rows starting their second column at different places.
-   */
-  flex: 0 1 220px;
-  min-width: 260px;
-}
-
-.folder-scope__label {
-  display: block;
-  margin-bottom: 2px;
-}
-
-.folder-scope__row {
-  display: flex;
-  align-items: center;
-  gap: 2px;
-}
-
-.folder-scope__pick,
-.folder-scope__row :deep(.button-vue) {
-  min-height: calc(var(--default-clickable-area) + 2 * var(--border-width-input));
-}
-
-.folder-scope__pick {
-  flex: 1 1 auto;
   min-width: 0;
+  margin-bottom: 4px;
 }
 
-/* A deep path or a long folder name must not stretch the filter row. */
-.folder-scope__name {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+/* A click opens the picker; the text cursor of an input would promise typing. */
+.folder-scope__field :deep(input:not(:disabled)) {
+  cursor: pointer;
+}
+
+/*
+ * The picker hands focus back to the field when it closes, and the browser then
+ * marks the whole name as selected — which made a value that cannot be typed
+ * over look like it was about to be.
+ */
+.folder-scope__field :deep(input::selection) {
+  background: transparent;
 }
 </style>

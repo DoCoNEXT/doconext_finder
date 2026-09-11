@@ -248,29 +248,25 @@ function onSearch(term: string, loading: (state: boolean) => void) {
 </script>
 
 <style scoped lang="scss">
+/*
+ * No row of its own: the fields join the grid of the view they sit in, so they
+ * share its columns instead of matching them by having the same width.
+ */
 .scope {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  gap: 8px;
-  margin-bottom: 16px;
+  display: contents;
 }
 
 /*
- * Every field in both filter rows is the same width, so the two rows read as one
- * grid. The entity field used to be wider for its long names — a little room
- * bought at the cost of the alignment.
+ * A line of their own all the same, since these are DoCoNEXT scopes and the
+ * fields before them are not.
  *
- * That trade was not needed: the dropdown is exactly as wide as the field, but
- * its options wrap onto a second line rather than truncate, so a name like
+ * The entity names are long, but they need no wider field: the dropdown's
+ * options wrap onto a second line rather than truncate, so a name like
  * "Bezwaarprocedure omgevingsvergunning · DOS00042 · Voorbeeldbedrijf B.V." is
  * still readable in full at 260px (measured). Only the collapsed field, once a
  * choice is made, ellipsizes.
- *
- * NcSelect's own 260px minimum decides the real width; see FolderScope.vue.
  */
-.scope__select {
-  flex: 0 1 220px;
-  min-width: 170px;
+.scope__select:first-child {
+  grid-column-start: 1;
 }
 </style>

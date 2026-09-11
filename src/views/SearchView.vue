@@ -40,48 +40,111 @@
       </NcButton>
     </div>
 
-    <!-- Folder sits with the other two filters that need nothing but Nextcloud;
-         the DoCoNEXT fields get their own line below. -->
-    <div class="finder__presets">
-      <FolderScope />
+    <!--
+      Not a filter, so not folded away with them: it does not narrow what
+      matches, it widens it, and it changes what the words in the box mean — so
+      it sits right under the box, on a line of its own. Tucked in beside the
+      filters, or at the far end of their line, it went unnoticed, and hardly
+      anyone would find out the files can be searched inside at all. Only
+      offered when this server has an index to look inside.
+    -->
+    <NcCheckboxRadioSwitch v-if="HAS_CONTENT_SEARCH"
+                           v-model="searchContent"
+                           type="switch"
+                           class="finder__contents"
+                           :title="t('Also match files whose text mentions the term, not only their names')">
+      {{ t('Search file contents too') }}
+    </NcCheckboxRadioSwitch>
 
-      <!--
-        Not a filter, so not shaped like one: it does not narrow what matches,
-        it widens it. Sits at the head of the row all the same, because it is
-        the one control here that changes what the words in the box mean. Only
-        offered when this server has an index to look inside.
-      -->
-
-      <NcSelect v-model="typeOption"
-                class="finder__preset"
-                label="label"
-                :options="typeOptions"
-                :clearable="false"
-                :input-label="t('Type')" />
-
-      <NcSelect v-model="timeOption"
-                class="finder__preset"
-                label="label"
-                :options="timeOptions"
-                :clearable="false"
-                :input-label="t('Modified')" />
-
-      <NcCheckboxRadioSwitch v-if="HAS_CONTENT_SEARCH"
-                             v-model="searchContent"
-                             type="switch"
-                             class="finder__contents"
-                             :title="t('Also match files whose text mentions the term, not only their names')">
-        {{ t('Search file contents too') }}
-      </NcCheckboxRadioSwitch>
-
+    <!--
+      The filters fold away under one line, and start folded: most searches are a
+      term and nothing else, and three rows of controls pushed the results down
+      the page for every one of them. Folded is not hidden, though — the line
+      says which filters are still narrowing the search, since a filter that
+      acts where nobody can see it is the kind nobody thinks to undo.
+    -->
+    <div class="finder__toggle">
+      <NcButton variant="tertiary"
+                :aria-expanded="filtersOpen"
+                aria-controls="finder-filters"
+                @click="filtersOpen = !filtersOpen">
+        <template #icon>
+          <component :is="filtersOpen ? ChevronDown : ChevronRight" :size="20" />
+        </template>
+        {{ t('Filters') }}
+      </NcButton>
+      <span v-if="!filtersOpen && activeFilters"
+            class="muted finder__active"
+            :title="activeFilters">{{ activeFilters }}</span>
     </div>
 
-    <ScopeSelector />
+    <!--
+      v-show, not v-if: the workspace fields load their vocabulary when they
+      mount and keep the levels above a chosen entity only in themselves, so
+      folding them away must not tear them down.
+    -->
+    <div v-show="filtersOpen" id="finder-filters" class="finder__panel">
+      <!--
+        One grid for every field, so the columns line up because they are the
+        same columns rather than because every field happens to be as wide.
+        The workspace fields join it from their own component and start a line
+        of their own.
+      -->
+      <div class="finder__grid">
+        <NcSelect v-model="typeOption"
+                  label="label"
+                  :options="typeOptions"
+                  :clearable="false"
+                  :input-label="t('Type')" />
+
+        <NcSelect v-model="timeOption"
+                  label="label"
+                  :options="timeOptions"
+                  :clearable="false"
+                  :input-label="t('Modified')" />
+
+        <FolderScope />
+
+        <ScopeSelector />
+      </div>
+
+      <!--
+        Conditions without a fold of their own: a second fold inside the first
+        looked like its sibling rather than its child. "All or any" only means
+        something once there are two to combine.
+      -->
+      <div v-if="store.query.conditions.length > 1" class="finder__match">
+        <span>{{ t('Match:') }}</span>
+        <NcCheckboxRadioSwitch v-model="matchMode" type="radio" value="all" name="match">
+          {{ t('all conditions') }}
+        </NcCheckboxRadioSwitch>
+        <NcCheckboxRadioSwitch v-model="matchMode" type="radio" value="any" name="match">
+          {{ t('any condition') }}
+        </NcCheckboxRadioSwitch>
+      </div>
+
+      <template v-if="store.schema">
+        <ConditionRow v-for="(condition, index) in store.query.conditions"
+                      :key="index"
+                      :condition="condition"
+                      :schema="store.schema"
+                      @update:condition="store.query.conditions.splice(index, 1, $event)"
+                      @remove="store.query.conditions.splice(index, 1)" />
+
+        <NcButton variant="tertiary" @click="addCondition">
+          <template #icon>
+            <Plus :size="20" />
+          </template>
+          {{ t('Add condition') }}
+        </NcButton>
+      </template>
+      <NcLoadingIcon v-else :size="20" />
+    </div>
 
     <!--
       What the question was understood to mean, and a way to disagree with it.
       Each chip shows only while the query still carries the filter it names, so
-      clearing one here, changing it in the filters below, or starting a new
+      clearing one here, changing it in the filters above, or starting a new
       search all take it off the row without anything having to remember to.
     -->
     <div v-if="scopeChips.length" class="finder__chips">
@@ -103,34 +166,6 @@
       </ul>
     </NcNoteCard>
     <p v-if="aiMessage" class="muted finder__dropped">{{ aiMessage }}</p>
-
-    <details class="finder__filters" :open="store.query.conditions.length > 0">
-      <summary>{{ filterSummary }}</summary>
-
-      <div class="finder__match">
-        <span>{{ t('Match:') }}</span>
-        <NcCheckboxRadioSwitch v-model="matchMode" type="radio" value="all" name="match">
-          {{ t('all conditions') }}
-        </NcCheckboxRadioSwitch>
-        <NcCheckboxRadioSwitch v-model="matchMode" type="radio" value="any" name="match">
-          {{ t('any condition') }}
-        </NcCheckboxRadioSwitch>
-      </div>
-
-      <template v-if="store.schema">
-        <ConditionRow v-for="(condition, index) in store.query.conditions"
-                      :key="index"
-                      :condition="condition"
-                      :schema="store.schema"
-                      @update:condition="store.query.conditions.splice(index, 1, $event)"
-                      @remove="store.query.conditions.splice(index, 1)" />
-
-        <NcButton @click="addCondition">
-          {{ t('Add condition') }}
-        </NcButton>
-      </template>
-      <NcLoadingIcon v-else :size="20" />
-    </details>
 
     <NcNoteCard v-if="message" :type="messageType">{{ message }}</NcNoteCard>
 
@@ -201,7 +236,7 @@ import {
   NcNoteCard,
   NcSelect,
 } from '@nextcloud/vue'
-import { Save, Search, X } from '@lucide/vue'
+import { ChevronDown, ChevronRight, Plus, Save, Search, X } from '@lucide/vue'
 import { HAS_CONTENT_SEARCH, HAS_ENTITY_SCOPE } from '../constants'
 import { useI18n } from '../composables/useI18n'
 import { useSearchStore } from '../stores/searchStore'
@@ -211,6 +246,7 @@ import { useSaveSearch } from '../composables/useSaveSearch'
 import { useDistiller } from '../composables/useDistiller'
 import { CoreAiApi } from '../services/CoreAiApi'
 import { anyTime, anyType, fileTypePresets, modifiedPresets } from '../filters/presets'
+import { describeQuery } from '../filters/describe'
 import ConditionRow from '../components/ConditionRow.vue'
 import FolderScope from '../components/FolderScope.vue'
 import ScopeSelector from '../components/ScopeSelector.vue'
@@ -347,10 +383,18 @@ const matchMode = computed<'all' | 'any'>({
   set: (next) => { store.query.matchAny = next === 'any' },
 })
 
-const filterSummary = computed(() =>
-  store.query.conditions.length
-    ? t('Advanced filters ({count})', { count: store.query.conditions.length })
-    : t('Advanced filters'))
+/**
+ * Whether the filters are unfolded. Starts folded on every visit and is not a
+ * preference: it says how much room the controls take, not how anyone searches.
+ * The page is kept alive, so it does stay as it was left while switching pages.
+ */
+const filtersOpen = ref(false)
+
+/**
+ * The filters in force, for the folded line. Neither the term nor the contents
+ * switch is one of them: both stay on screen whether the filters are folded or not.
+ */
+const activeFilters = computed(() => describeQuery(t, { ...store.query, searchContent: false }))
 
 const rangeLabel = computed(() => {
   const first = store.offset + 1
@@ -517,6 +561,27 @@ async function save() {
     min-width: 0;
   }
 
+  &__toggle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    margin-bottom: 8px;
+
+    :deep(.button-vue) {
+      flex: 0 0 auto;
+    }
+  }
+
+  // One line, however many filters there are: the full list is in the title,
+  // and one click away in the controls themselves.
+  &__active {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
   &__ranked {
     margin: 0 0 4px;
     font-size: 90%;
@@ -539,48 +604,26 @@ async function save() {
     padding-inline-start: 20px;
   }
 
-  &__presets {
-    display: flex;
+  // The tracks are NcSelect's own width, and not a little wider: the condition
+  // rows below keep the library's width for their dropdowns, and wider columns
+  // left their Field and Condition boxes short of the ones above them.
+  &__grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, 260px);
     align-items: end;
-    gap: 8px;
-    flex-wrap: wrap;
-    margin-bottom: 16px;
+    gap: 12px 8px;
+    margin-bottom: 12px;
   }
 
-  &__preset {
-    flex: 0 1 220px;
-    min-width: 170px;
-  }
-
-  /*
-   * Lines up with the boxes beside it, not with their labels: the row aligns on
-   * the bottom, every NcSelect carries a 4px bottom margin, and a flex row
-   * aligns margin boxes — so without the same margin this control's baseline
-   * sits 4px below theirs. The height is the select's real one, the clickable
-   * area plus its own border, for the same reason FolderScope copies it.
-   */
+  // As wide as what it says: a switch spanning the page would flip from a click
+  // far to the right of its label.
   &__contents {
-    flex: 0 0 auto;
-    display: flex;
-    align-items: center;
+    width: fit-content;
     margin-bottom: 4px;
-    min-height: calc(var(--default-clickable-area) + 2 * var(--border-width-input));
   }
 
-  &__filters {
+  &__panel {
     margin-bottom: 16px;
-
-    summary {
-      cursor: pointer;
-      padding: 4px 0;
-      color: var(--color-text-maxcontrast);
-      /*
-       * A summary is a block, so it spans the row and swallows clicks far to the
-       * right of its own words — the panel would open from a click in empty
-       * space. Shrink it to what it actually says.
-       */
-      width: fit-content;
-    }
   }
 
   &__match {
