@@ -11,6 +11,7 @@ import { API_BASE } from '../constants'
 import { RETIRED_FIELDS } from '../filters/fields'
 import type {
   FieldsResponse,
+  Principal,
   ScopeEntity,
   ScopeFileEntity,
   ScopeVocabulary,
@@ -130,6 +131,27 @@ export const SearchApi = {
         { params: { fileId } },
       )
       return data.entity ?? null
+    } catch (error) {
+      throw describe(error)
+    }
+  },
+
+  /**
+   * People a principal metadata field can be filtered on, matched on name.
+   *
+   * Finder asks its own server, which asks DoCoNEXT Core: the field's own rules
+   * about who may be picked live there. An empty list is a normal answer — no
+   * Core, or a field that names nobody — and the row falls back to a plain box.
+   * @param field the field being filtered, e.g. meta:dcn_core_behandelaar
+   * @param term what has been typed
+   */
+  async principals(field: string, term: string): Promise<Principal[]> {
+    try {
+      const { data } = await axios.get<{ principals: Principal[] }>(
+        url('/principals'),
+        { params: { field, q: term } },
+      )
+      return data.principals ?? []
     } catch (error) {
       throw describe(error)
     }

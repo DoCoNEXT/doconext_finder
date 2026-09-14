@@ -20,6 +20,22 @@
                       type="date"
                       :placeholder="t('Pick a date')" />
 
+    <!--
+      A field that names people holds a bare id — `alice` — which nobody types
+      from memory. The box searches on names and puts the id in the condition.
+      filterable=false hands the narrowing to the server, which already did it:
+      vue-select would otherwise filter a list it only partly has.
+    -->
+    <NcSelect v-else-if="input === 'principal'"
+              v-model="principalValue"
+              class="condition__value condition__person"
+              label="displayName"
+              :options="principalOptions"
+              :filterable="false"
+              :loading="searchingPrincipals"
+              :placeholder="t('Type a name')"
+              @search="onPrincipalSearch" />
+
     <NcTextField v-else-if="input === 'size'"
                  v-model="sizeValue"
                  class="condition__value"
@@ -57,7 +73,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import {
   NcButton,
   NcCheckboxRadioSwitch,
@@ -77,8 +93,10 @@ import {
   toMegabytes,
   toUnix,
 } from '../filters/fields'
+import type { InputKind } from '../filters/fields'
 import { isMetadataField, metadataKeyOf } from '../filters/metadata'
-import type { Condition, FieldsResponse, Operator } from '../types/Search'
+import { SearchApi } from '../services/SearchApi'
+import type { Condition, FieldsResponse, Operator, Principal } from '../types/Search'
 
 const { t } = useI18n()
 
@@ -118,15 +136,35 @@ const operatorOptions = computed<Option[]>(() =>
  * @param field
  */
 function operatorsFor(field: string): Operator[] {
-  return isMetadataField(field)
-    ? props.schema.metadataOperators
-    : props.schema.operators[field] ?? []
+  if (!isMetadataField(field)) {
+    return props.schema.operators[field] ?? []
+  }
+
+  // The picker hands over a whole id, so "contains" could only ever match one
+  // by accident — `ann` sitting inside `joanne`.
+  return principalOf(field) ? ['eq'] : props.schema.metadataOperators
+}
+
+/**
+ * What a metadata field holds where it names people — which kind, and whether
+ * it may name several — and null everywhere else. The server says so; nothing
+ * about a stored `alice` reveals it.
+ * @param field
+ */
+function principalOf(field: string) {
+  return props.schema.metadata.find((f) => f.field === field)?.principal ?? null
 }
 
 // Metadata is stored as one indexed string column whatever its declared type,
-// so it always edits as text.
-const input = computed(() =>
-  (isMetadataField(props.condition.field) ? 'text' : fieldInput(props.condition.field)))
+// so it edits as text — except where it names people, who are picked rather
+// than typed.
+const input = computed<InputKind>(() => {
+  if (!isMetadataField(props.condition.field)) {
+    return fieldInput(props.condition.field)
+  }
+
+  return principalOf(props.condition.field) ? 'principal' : 'text'
+})
 const hint = computed(() => fieldHint(t, props.condition.field))
 
 /**
@@ -182,6 +220,52 @@ const sizeValue = computed({
   set: (next: string) => patch({ value: toBytes(next) }),
 })
 
+const principalOptions = ref<Principal[]>([])
+const searchingPrincipals = ref(false)
+
+const principalValue = computed({
+  get: (): Principal | null => {
+    const id = String(props.condition.value ?? '')
+    if (id === '') {
+      return null
+    }
+
+    // A stored search carries the name it was picked under; without one the id
+    // is all there is, and showing it beats showing nothing.
+    return principalOptions.value.find((person) => person.id === id)
+      ?? { type: '', id, displayName: props.condition.label ?? id }
+  },
+  set: (next: Principal | null) => patch({ value: next?.id ?? '', label: next?.displayName }),
+})
+
+let principalDebounce: ReturnType<typeof setTimeout> | undefined
+
+/**
+ * @param term what has been typed into the person field
+ * @param loading vue-select's own spinner toggle
+ */
+function onPrincipalSearch(term: string, loading: (state: boolean) => void) {
+  clearTimeout(principalDebounce)
+  if (term.trim() === '') {
+    principalOptions.value = []
+    return
+  }
+
+  // A keystroke is not a question; the same beat the entity picker waits.
+  principalDebounce = setTimeout(async () => {
+    searchingPrincipals.value = true
+    loading(true)
+    try {
+      principalOptions.value = await SearchApi.principals(props.condition.field, term)
+    } catch {
+      principalOptions.value = []
+    } finally {
+      searchingPrincipals.value = false
+      loading(false)
+    }
+  }, 250)
+}
+
 const dateValue = computed({
   get: () => {
     const iso = toDateInput(props.condition.value as number)
@@ -219,7 +303,8 @@ const dateValue = computed({
   // as `.nc-select.v-select.select`, three classes, which is all a nested scoped
   // rule reaches too, and its chunk loads after ours, so a tie went to it.
   .condition__field.nc-select,
-  .condition__operator.nc-select {
+  .condition__operator.nc-select,
+  .condition__person.nc-select {
     margin-bottom: 0;
   }
 

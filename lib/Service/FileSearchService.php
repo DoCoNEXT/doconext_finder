@@ -512,6 +512,23 @@ class FileSearchService
                 );
             }
 
+            // A field that may name several people is one string holding all of
+            // them, so "is" has to find an id inside that list rather than equal
+            // it. See namesPrincipal().
+            $principal = $this->metadataFields->principalField($key);
+            if ($principal !== null && $principal['multi'] && $condition->operator === 'eq') {
+                if ($condition->negate) {
+                    // It would become NOT(OR(...)), and SearchBuilder takes only a
+                    // plain comparison inside "not". Say so rather than fail deep
+                    // in the query builder.
+                    throw new \InvalidArgumentException(
+                        '"' . $key . '" can name several people, and "is not" cannot be asked of such a field'
+                    );
+                }
+
+                return $this->namesPrincipal($key, (string)$condition->value);
+            }
+
             $comparison = $this->compare(
                 $condition->comparison(),
                 $key,
@@ -535,6 +552,38 @@ class FileSearchService
         return $condition->negate
             ? $this->combine(ISearchBinaryOperator::OPERATOR_NOT, [$comparison])
             : $comparison;
+    }
+
+    /**
+     * "This field names <id>", where the field may name several people.
+     *
+     * Core writes those as one comma-separated string — `alice, bob` — because
+     * the index column is too narrow for the objects they come from. So the id
+     * has to be found *within* the value, and a plain "contains" would let `ann`
+     * match `joanne`. These are the four places an id can sit in such a list:
+     * alone, first, last, or between two others, each anchored on the separator
+     * Core writes.
+     */
+    private function namesPrincipal(string $key, string $id): ISearchOperator
+    {
+        // The id is a pattern from here on: a literal % or _ in it would
+        // otherwise match anything.
+        $quoted = addcslashes($id, '%_\\');
+
+        $patterns = [
+            [ISearchComparison::COMPARE_EQUAL, $id],
+            [ISearchComparison::COMPARE_LIKE, $quoted . ', %'],
+            [ISearchComparison::COMPARE_LIKE, '%, ' . $quoted],
+            [ISearchComparison::COMPARE_LIKE, '%, ' . $quoted . ', %'],
+        ];
+
+        return $this->combine(
+            ISearchBinaryOperator::OPERATOR_OR,
+            array_map(
+                fn (array $pattern) => $this->compare($pattern[0], $key, $pattern[1], IMetadataQuery::EXTRA),
+                $patterns,
+            ),
+        );
     }
 
     /**

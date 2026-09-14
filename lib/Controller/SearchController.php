@@ -66,6 +66,41 @@ class SearchController extends ApiController
     }
 
     /**
+     * Typeahead for a metadata field that names people.
+     *
+     * Core stores those as bare ids — `alice`, and comma-separated where a field
+     * names several — so the box that fills one cannot offer what it has never
+     * been told. Core knows the names, and it knows the field's own rules about
+     * who may be picked: one kind of principal or any, guests in or out, certain
+     * groups only. So the field travels there and the answer comes back whole.
+     *
+     * A field that names nobody, or a server without Core, answers with an empty
+     * list rather than an error: the interface offers a plain box there.
+     */
+    #[NoAdminRequired]
+    #[FrontpageRoute(verb: 'GET', url: '/api/principals')]
+    public function principals(): DataResponse
+    {
+        if ($this->userSession->getUser() === null) {
+            return new DataResponse(['error' => 'not authenticated'], Http::STATUS_UNAUTHORIZED);
+        }
+
+        $field = (string)$this->request->getParam('field', '');
+        $key = MetadataFields::isMetadata($field) ? MetadataFields::key($field) : $field;
+
+        if ($this->metadataFields->principalField($key) === null) {
+            return new DataResponse(['principals' => []]);
+        }
+
+        return new DataResponse([
+            'principals' => $this->coreScope->principalSuggestions(
+                $key,
+                (string)$this->request->getParam('q', ''),
+            ),
+        ]);
+    }
+
+    /**
      * DoCoNEXT Core's vocabulary for narrowing a search: the workspaces this user
      * may see and the entity types within them.
      *

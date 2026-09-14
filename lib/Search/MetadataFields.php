@@ -37,8 +37,8 @@ class MetadataFields
     /** What has already been asked, name or no name. @var list<string> */
     private array $askedAbout = [];
 
-    /** The principal-holding keys and their kind, asked once per request. @var array<string, ?string>|null */
-    private ?array $principalKeys = null;
+    /** The principal-holding keys and what they hold, asked once per request. @var array<string, array{type: ?string, multi: bool}>|null */
+    private ?array $principalFields = null;
 
     public function __construct(
         private IFilesMetadataManager $metadataManager,
@@ -47,12 +47,17 @@ class MetadataFields
     }
 
     /**
-     * @return list<array{key: string, field: string, label: string, type: string, filterable: bool}>
+     * A key that holds people carries what it holds, so the interface can offer
+     * a picker there instead of a box for typing an id nobody knows by heart.
+     * Null on every other key, and on all of them without Core.
+     *
+     * @return list<array{key: string, field: string, label: string, type: string, filterable: bool, principal: array{type: ?string, multi: bool}|null}>
      */
     public function all(): array
     {
         $known = $this->metadataManager->getKnownMetadata();
         $indexed = $known->getIndexes();
+        $principals = $this->principalFields();
 
         $fields = [];
         foreach ($known->getKeys() as $key) {
@@ -62,6 +67,7 @@ class MetadataFields
                 'label'      => self::label($key),
                 'type'       => $known->getType($key),
                 'filterable' => in_array($key, $indexed, true),
+                'principal'  => $principals[$key] ?? null,
             ];
         }
 
@@ -138,8 +144,8 @@ class MetadataFields
      */
     private function readable(string $key, string $value): string
     {
-        $keys = $this->principalKeys();
-        if (!array_key_exists($key, $keys)) {
+        $field = $this->principalFields()[$key] ?? null;
+        if ($field === null) {
             return $value;
         }
 
@@ -148,7 +154,7 @@ class MetadataFields
         // Where the field holds one kind of principal, say which: `admin` is an
         // account on most servers and a group on many, and only the field knows
         // which of the two its value meant.
-        $kind  = $keys[$key];
+        $kind  = $field['type'];
         $asked = array_map(static fn (string $id): string => $kind === null ? $id : $kind . ':' . $id, $ids);
         $names = $this->principalNames($asked);
 
@@ -159,10 +165,21 @@ class MetadataFields
         ));
     }
 
-    /** @return array<string, ?string> key => the kind it holds, or null for more than one */
-    private function principalKeys(): array
+    /**
+     * What a key holds where it holds people, or null where it does not — the
+     * answer every caller here starts from, asked of Core once per request.
+     *
+     * @return array{type: ?string, multi: bool}|null
+     */
+    public function principalField(string $key): ?array
     {
-        return $this->principalKeys ??= $this->core->principalMetadataKeys();
+        return $this->principalFields()[$key] ?? null;
+    }
+
+    /** @return array<string, array{type: ?string, multi: bool}> */
+    private function principalFields(): array
+    {
+        return $this->principalFields ??= $this->core->principalFields();
     }
 
     /**

@@ -22,7 +22,7 @@ import {
 } from '@lucide/vue'
 
 /** How the value box behaves for a field. */
-export type InputKind = 'text' | 'date' | 'size' | 'none'
+export type InputKind = 'text' | 'date' | 'size' | 'principal' | 'none'
 
 export type Translate = (_text: string, _vars?: Record<string, unknown>) => string
 

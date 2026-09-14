@@ -128,6 +128,27 @@ export interface MetadataField {
   type: string
   /** Only indexed keys can be filtered or sorted on. */
   filterable: boolean
+  /**
+   * What the field holds where it names people: the one kind of principal it
+   * accepts — `user` or `group`, null where it takes any — and whether it can
+   * name several at once. Null on every other field, and on all of them without
+   * DoCoNEXT Core, which is the only app that knows.
+   */
+  principal: { type: string | null, multi: boolean } | null
+}
+
+/**
+ * Someone a principal field names, as the picker offers them.
+ *
+ * A file stores the bare `id`; the name is looked up for showing, and travels
+ * with a stored search as the condition's label so a restored filter still
+ * reads as a person rather than as an account id.
+ */
+export interface Principal {
+  /** 'user', 'group', or 'circle' — a Nextcloud Team. */
+  type: string
+  id: string
+  displayName: string
 }
 
 export interface FieldsResponse {

@@ -32,7 +32,12 @@ class PrincipalColumnNamesTest extends TestCase
     private function fields(array $principalKeys, array $names): MetadataFields
     {
         $core = $this->createMock(CoreScope::class);
-        $core->method('principalMetadataKeys')->willReturn($principalKeys);
+        // The bridge answers with what a key holds; these tests care only about
+        // the kind, so the rest is filled in here rather than in every case.
+        $core->method('principalFields')->willReturn(array_map(
+            static fn (?string $kind): array => ['type' => $kind, 'multi' => false],
+            $principalKeys,
+        ));
         $core->method('principalNames')->willReturnCallback(
             function (array $ids) use ($names): array {
                 $this->asked[] = $ids;

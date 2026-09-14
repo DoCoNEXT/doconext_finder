@@ -186,21 +186,42 @@ class CoreScope
      */
     /**
      * The metadata keys whose values name people rather than say something:
-     * `dcn_core_behandelaar` and its like, each with the one kind of principal
-     * it holds where Core's field says so. Empty without Core, which leaves
-     * every value shown exactly as it is stored.
+     * `dcn_core_behandelaar` and its like, each with what it holds — the one
+     * kind of principal it accepts where Core's field says so, and whether it
+     * can name several at once. Empty without Core, which leaves every value
+     * shown exactly as it is stored.
      *
      * The kind is worth carrying: a user and a group may share an id, and
      * knowing which was meant is the difference between showing the account
-     * `admin` and the group of that name.
+     * `admin` and the group of that name. Holding several is worth carrying
+     * because such a field stores them comma-separated in one string, which is
+     * a different search from a single one.
      *
-     * @return array<string, ?string> key => 'user' | 'group' | null
+     * A Core that predates the richer answer still says which keys hold people.
+     * Those fields keep their names and their picker, and count as single —
+     * which is what every principal field on such a server was searched as.
+     *
+     * @return array<string, array{type: ?string, multi: bool}>
      */
-    public function principalMetadataKeys(): array
+    public function principalFields(): array
     {
         $core = $this->corePrincipals();
+        if ($core === null) {
+            return [];
+        }
 
-        return $core === null ? [] : $this->guard(static fn () => $core->principalMetadataKeys(), []);
+        if (method_exists($core, 'principalMetadataFields')) {
+            return $this->guard(static fn () => $core->principalMetadataFields(), []);
+        }
+
+        return $this->guard(static function () use ($core): array {
+            $fields = [];
+            foreach ($core->principalMetadataKeys() as $key => $type) {
+                $fields[(string) $key] = ['type' => $type, 'multi' => false];
+            }
+
+            return $fields;
+        }, []);
     }
 
     /**
@@ -228,6 +249,42 @@ class CoreScope
             }
 
             return $names;
+        }, []);
+    }
+
+    /**
+     * People a principal field can be filtered on, for a typeahead.
+     *
+     * The field's key travels rather than a principal type, because the field's
+     * own settings decide who may be offered — one kind or any of them, guests
+     * in or out, certain groups only — and those settings are Core's to know.
+     * Finder asks about a field; Core answers who fits it.
+     *
+     * An empty term offers nothing. Unlike an entity field, a principal field
+     * has no short list worth showing before a name is typed: everyone on the
+     * server would qualify.
+     *
+     * @return list<array{type: string, id: string, displayName: string}>
+     */
+    public function principalSuggestions(string $metadataKey, string $term): array
+    {
+        $term = trim($term);
+        $core = $this->corePrincipals();
+        if ($term === '' || $core === null || !method_exists($core, 'suggestionsFor')) {
+            return [];
+        }
+
+        return $this->guard(static function () use ($core, $metadataKey, $term): array {
+            $found = [];
+            foreach ($core->suggestionsFor($metadataKey, $term, self::MAX_SUGGESTIONS) as $principal) {
+                $found[] = [
+                    'type'        => $principal->type,
+                    'id'          => $principal->id,
+                    'displayName' => $principal->displayName,
+                ];
+            }
+
+            return $found;
         }, []);
     }
 
