@@ -129,25 +129,26 @@ class FileSearchService
         }
 
         $operator = $this->buildOperator($query, $ranked['ids'] ?? []);
-        $order    = $this->order($query);
+        $orders   = $this->order($query);
 
         if ($ranked !== null && $query->sort === FileQuery::SORT_RELEVANCE) {
             // Relevance is the index's order, not a filecache column, so the page
             // cannot be cut in SQL. Collecting everything first is safe precisely
             // because the fileid clause already bounds the query to one window.
-            [$nodes, $hasMore] = $this->pageByRelevance($searchRoots, $operator, $order, $query, $user, $ranked['ranks']);
+            [$nodes, $hasMore] = $this->pageByRelevance($searchRoots, $operator, $orders, $query, $user, $ranked['ranks']);
         } elseif (count($searchRoots) === 1) {
             // One extra row tells us whether another page exists without a count query.
             $nodes = $searchRoots[0]->search(
-                $this->searchQuery($operator, $query->limit + 1, $query->offset, $order, $user)
+                $this->searchQuery($operator, $query->limit + 1, $query->offset, $orders, $user)
             );
 
             $hasMore = count($nodes) > $query->limit;
             if ($hasMore) {
                 $nodes = array_slice($nodes, 0, $query->limit);
             }
+
         } else {
-            [$nodes, $hasMore] = $this->searchAcrossRoots($searchRoots, $operator, $order, $query, $user);
+            [$nodes, $hasMore] = $this->searchAcrossRoots($searchRoots, $operator, $orders, $query, $user);
         }
 
         // One lookup for the page rather than one per row: the tag store returns
@@ -229,7 +230,7 @@ class FileSearchService
     private function searchAcrossRoots(
         array $roots,
         ISearchOperator $operator,
-        ISearchOrder $order,
+        array $orders,
         FileQuery $query,
         ?IUser $user,
     ): array {
@@ -237,7 +238,7 @@ class FileSearchService
 
         $found = [];
         foreach ($roots as $root) {
-            foreach ($root->search($this->searchQuery($operator, $reach, 0, $order, $user)) as $node) {
+            foreach ($root->search($this->searchQuery($operator, $reach, 0, $orders, $user)) as $node) {
                 // Nested roots overlap: a sub-dossier inside its parent's folder
                 // is reached twice, and the same file must not be listed twice.
                 $found[$node->getId()] = $node;
@@ -266,10 +267,18 @@ class FileSearchService
         ISearchOperator $operator,
         int $limit,
         int $offset,
-        ISearchOrder $order,
+        array $orders,
         ?IUser $user,
     ): ISearchQuery {
-        return new SearchQuery($operator, $limit, $offset, [$order], $user);
+        return new SearchQuery($operator, $limit, $offset, $orders, $user);
+    }
+
+    /**
+     * The one place this app instantiates \OC\Files\Search\SearchOrder.
+     */
+    private function orderBy(string $direction, string $field, string $extra = ''): ISearchOrder
+    {
+        return new SearchOrder($direction, $field, $extra);
     }
 
     /**
@@ -307,14 +316,14 @@ class FileSearchService
     private function pageByRelevance(
         array $roots,
         ISearchOperator $operator,
-        ISearchOrder $order,
+        array $orders,
         FileQuery $query,
         ?IUser $user,
         array $ranks,
     ): array {
         $found = [];
         foreach ($roots as $root) {
-            foreach ($root->search($this->searchQuery($operator, ContentSearchService::WINDOW, 0, $order, $user)) as $node) {
+            foreach ($root->search($this->searchQuery($operator, ContentSearchService::WINDOW, 0, $orders, $user)) as $node) {
                 // Nested roots overlap; the same file must not be listed twice.
                 $found[$node->getId()] = $node;
             }
@@ -475,7 +484,7 @@ class FileSearchService
      * unknown or unindexed key falls back to modification time rather than
      * failing the search over a column the user cannot see anyway.
      */
-    private function order(FileQuery $query): ISearchOrder
+    private function order(FileQuery $query): array
     {
         $direction = $query->descending ? ISearchOrder::DIRECTION_DESCENDING : ISearchOrder::DIRECTION_ASCENDING;
 
@@ -483,18 +492,38 @@ class FileSearchService
         // after they come back. The database still needs a valid, stable order
         // to cut its own window by.
         if ($query->sort === FileQuery::SORT_RELEVANCE) {
-            return new SearchOrder($direction, 'mtime');
+            return $this->ordered($this->orderBy($direction, 'mtime'));
         }
 
         if (MetadataFields::isMetadata($query->sort)) {
             $key = MetadataFields::key($query->sort);
 
-            return $this->metadataFields->isFilterable($key)
-                ? new SearchOrder($direction, $key, IMetadataQuery::EXTRA)
-                : new SearchOrder($direction, 'mtime');
+            return $this->ordered($this->metadataFields->isFilterable($key)
+                ? $this->orderBy($direction, $key, IMetadataQuery::EXTRA)
+                : $this->orderBy($direction, 'mtime'));
         }
 
-        return new SearchOrder($direction, $query->sort);
+        return $this->ordered($this->orderBy($direction, $query->sort));
+    }
+
+    /**
+     * The chosen order, and then the file id — which settles every tie.
+     *
+     * Without it a page is only as determined as its sort column. Rows that
+     * compare equal may come back in any order SQL likes, and it need not be
+     * the same order twice: a file can then sit on two consecutive pages while
+     * another sits on none. That is no edge case here — on the dev instance
+     * 1503 of 2055 files share a name with another, one of them 110 times, and
+     * files created in one go share an mtime to the second.
+     *
+     * Core sorts the merged pages in PHP by the same list, and its comparator
+     * knows `fileid` too, so the tie is settled the same way on both paths.
+     *
+     * @return list<ISearchOrder>
+     */
+    private function ordered(ISearchOrder $order): array
+    {
+        return [$order, $this->orderBy(ISearchOrder::DIRECTION_ASCENDING, 'fileid')];
     }
 
     private function toComparison(FileCondition $condition): ISearchOperator
