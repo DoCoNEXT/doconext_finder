@@ -9,7 +9,7 @@ import { defineStore } from 'pinia'
 import { SearchApi } from '../services/SearchApi'
 import { useHistoryStore } from './historyStore'
 import { usePreferencesStore } from './preferencesStore'
-import { anyTime, anyType, fileTypePresets, modifiedAfter, modifiedPresets } from '../filters/presets'
+import { anyTime, anyType, canonicalModifiedPreset, fileTypePresets, modifiedPresets, modifiedRange } from '../filters/presets'
 import type { Translate } from '../filters/presets'
 import type { Condition, FieldsResponse, FileResult, SearchState } from '../types/Search'
 
@@ -132,7 +132,10 @@ export const useSearchStore = defineStore('search', {
       const type = this.query.customType?.id === this.query.typePreset
         ? this.query.customType
         : fileTypePresets(t).find((p) => p.id === this.query.typePreset) ?? anyType(t)
-      const time = modifiedPresets(t).find((p) => p.id === this.query.modifiedPreset) ?? anyTime(t)
+      const time = modifiedPresets(t).find(
+        (p) => p.id === canonicalModifiedPreset(this.query.modifiedPreset),
+      ) ?? anyTime(t)
+      const period = modifiedRange(time)
 
       const term = this.query.term.trim()
 
@@ -146,7 +149,8 @@ export const useSearchStore = defineStore('search', {
         // further than this app, for the reason the scope's does not either.
         conditions: this.query.conditions.filter(usable).map(sendable),
         mimetypes: type.mimetypes,
-        modifiedAfter: modifiedAfter(time) ?? undefined,
+        modifiedAfter: period.after ?? undefined,
+        modifiedBefore: period.before ?? undefined,
         // Only the level and the id travel; the label is ours to display, and
         // sending it back would invite the server to trust a client's wording.
         scope: this.query.scope
