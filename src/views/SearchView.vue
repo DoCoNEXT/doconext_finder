@@ -245,7 +245,7 @@ import { useHistoryStore } from '../stores/historyStore'
 import { useSaveSearch } from '../composables/useSaveSearch'
 import { useDistiller } from '../composables/useDistiller'
 import { CoreAiApi } from '../services/CoreAiApi'
-import { anyTime, anyType, fileTypePresets, modifiedPresets } from '../filters/presets'
+import { anyTime, anyType, canonicalModifiedPreset, fileTypePresets, modifiedPresets } from '../filters/presets'
 import { describeQuery } from '../filters/describe'
 import ConditionRow from '../components/ConditionRow.vue'
 import FolderScope from '../components/FolderScope.vue'
@@ -374,7 +374,7 @@ const typeOption = computed<FileTypePreset>({
 })
 
 const timeOption = computed<ModifiedPreset>({
-  get: () => timeOptions.find((o) => o.id === store.query.modifiedPreset) ?? anyTime(t),
+  get: () => timeOptions.find((o) => o.id === canonicalModifiedPreset(store.query.modifiedPreset)) ?? anyTime(t),
   set: (next) => { store.query.modifiedPreset = next?.id ?? 'any' },
 })
 

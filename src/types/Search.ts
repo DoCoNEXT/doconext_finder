@@ -159,6 +159,12 @@ export interface SearchRequest {
   mimetypes?: string[]
   /** Unix seconds; only files modified after this. */
   modifiedAfter?: number
+  /**
+   * Unix seconds; only files modified before this. Sent only by a preset that
+   * names a period that has ended ("Last year"), where an open-ended cutoff
+   * would reach forward into today.
+   */
+  modifiedBefore?: number
   /** Where the search starts. Not a condition — see FileScope on the server. */
   scope?: { level: ScopeLevel, id: number }
   matchAny?: boolean

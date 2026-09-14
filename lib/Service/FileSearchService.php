@@ -423,12 +423,16 @@ class FileSearchService
                 : new SearchBinaryOperator(ISearchBinaryOperator::OPERATOR_OR, $mimes);
         }
 
-        if ($query->modifiedAfter !== null) {
-            $parts[] = new SearchComparison(
-                ISearchComparison::COMPARE_GREATER_THAN,
-                'mtime',
-                $query->modifiedAfter,
-            );
+        // The two ends of the date filter's window, each optional: most presets
+        // are open-ended, and only a period that has ended carries an upper bound.
+        $window = [
+            [ISearchComparison::COMPARE_GREATER_THAN, $query->modifiedAfter],
+            [ISearchComparison::COMPARE_LESS_THAN, $query->modifiedBefore],
+        ];
+        foreach ($window as [$operator, $bound]) {
+            if ($bound !== null) {
+                $parts[] = new SearchComparison($operator, 'mtime', $bound);
+            }
         }
 
         $conditions = array_map(fn (FileCondition $c) => $this->toComparison($c), $query->conditions);

@@ -45,6 +45,7 @@ final class FileQuery
         public readonly array $conditions,
         public readonly array $mimetypes,
         public readonly ?int $modifiedAfter,
+        public readonly ?int $modifiedBefore,
         public readonly ?FileScope $scope,
         public readonly bool $matchAny,
         public readonly int $limit,
@@ -100,6 +101,15 @@ final class FileQuery
             $modifiedAfter = null;
         }
 
+        // The upper bound of a date preset that names a period which has ended.
+        // It only ever arrives alongside a lower one, but is validated on its
+        // own: a bound that would leave no window at all is no filter, it is a
+        // guaranteed empty result set, and dropping it says so.
+        $modifiedBefore = isset($body['modifiedBefore']) ? (int)$body['modifiedBefore'] : null;
+        if ($modifiedBefore !== null && ($modifiedBefore <= 0 || ($modifiedAfter !== null && $modifiedBefore <= $modifiedAfter))) {
+            $modifiedBefore = null;
+        }
+
         // A scope narrows *where* rather than *what*, so it counts as a filter:
         // "everything in this dossier" is a search a user may reasonably run
         // without typing a term.
@@ -107,7 +117,7 @@ final class FileQuery
             ? FileScope::fromArray($body['scope'])
             : null;
 
-        if ($term === '' && $content === '' && $conditions === [] && $mimetypes === [] && $modifiedAfter === null && $scope === null) {
+        if ($term === '' && $content === '' && $conditions === [] && $mimetypes === [] && $modifiedAfter === null && $modifiedBefore === null && $scope === null) {
             throw new \InvalidArgumentException('provide a search term or at least one filter');
         }
 
@@ -130,6 +140,7 @@ final class FileQuery
             conditions: $conditions,
             mimetypes: $mimetypes,
             modifiedAfter: $modifiedAfter,
+            modifiedBefore: $modifiedBefore,
             scope: $scope,
             matchAny: (bool)($body['matchAny'] ?? false),
             limit: $limit,

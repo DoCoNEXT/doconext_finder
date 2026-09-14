@@ -5,7 +5,7 @@
  * the user picked ("Last 7 days") instead of the timestamp it resolves to.
  */
 import { fieldLabel, operatorLabel, toDateInput, toMegabytes } from './fields'
-import { fileTypePresets, modifiedPresets } from './presets'
+import { canonicalModifiedPreset, fileTypePresets, modifiedPresets } from './presets'
 import type { Translate } from './presets'
 import type { Condition, SearchState } from '../types/Search'
 
@@ -33,7 +33,7 @@ export function describeQuery(t: Translate, query: SearchState): string {
     parts.push(type.label)
   }
 
-  const time = modifiedPresets(t).find((p) => p.id === query.modifiedPreset)
+  const time = modifiedPresets(t).find((p) => p.id === canonicalModifiedPreset(query.modifiedPreset))
   if (time && time.id !== 'any') {
     parts.push(time.label)
   }

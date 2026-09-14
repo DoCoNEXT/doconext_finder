@@ -128,53 +128,146 @@ export function fileTypePresets(t: Translate): FileTypePreset[] {
   return [anyType(t), ...configured]
 }
 
+/**
+ * The window a preset stands for, in Unix seconds. Both ends are optional: most
+ * presets are open-ended ("since last Tuesday"), and only a closed period — a
+ * calendar year that has finished — needs an upper bound too.
+ */
+export interface ModifiedRange {
+  after: number | null
+  before: number | null
+}
+
 export interface ModifiedPreset {
   id: string
   label: string
   /**
-   * Seconds back from now, null for "any time", or 'midnight' for a preset
-   * that means a calendar day rather than a rolling window.
+   * Resolved against the clock at *search* time, never at list-building time:
+   * "Last 7 days" must mean seven days before this run, which is exactly why
+   * stored searches keep preset ids instead of the timestamps behind them.
    */
-  seconds: number | null | 'midnight'
+  range: () => ModifiedRange
 }
 
 const DAY = 86400
 
-export function anyTime(t: Translate): ModifiedPreset {
-  return { id: 'any', label: t('Any time'), seconds: null }
+const now = (): number => Math.floor(Date.now() / 1000)
+
+/**
+ * The viewer's own midnight: the server stores UTC seconds, but "today" is a
+ * question about the calendar the person asking is looking at. Same for a year
+ * boundary, which is why these go through a local Date rather than arithmetic
+ * on epoch seconds.
+ */
+function startOfToday(): number {
+  const midnight = new Date()
+  midnight.setHours(0, 0, 0, 0)
+
+  return Math.floor(midnight.getTime() / 1000)
 }
 
+function startOfYear(year: number): number {
+  return Math.floor(new Date(year, 0, 1, 0, 0, 0, 0).getTime() / 1000)
+}
+
+/**
+ * `monthsBack` counts backwards from the current month; the Date constructor
+ * takes a month of -1 and lands in December of the year before, which is why
+ * no year arithmetic is needed here.
+ * @param monthsBack
+ */
+function startOfMonth(monthsBack: number): number {
+  const today = new Date()
+
+  return Math.floor(new Date(today.getFullYear(), today.getMonth() - monthsBack, 1, 0, 0, 0, 0).getTime() / 1000)
+}
+
+/** A window reaching back from this moment, with no upper bound. */
+function since(seconds: number): ModifiedRange {
+  return { after: now() - seconds, before: null }
+}
+
+export function anyTime(t: Translate): ModifiedPreset {
+  return { id: 'any', label: t('Any time'), range: () => ({ after: null, before: null }) }
+}
+
+/**
+ * The wording is Nextcloud's own, so a date filter means the same thing wherever
+ * in the server someone meets it: every name here that the unified search dialog
+ * or the Files list filter also offers stands for exactly the period it does
+ * there. The two month presets are this app's own addition — the two Nextcloud
+ * screens have no equivalent.
+ *
+ * Every label is a fixed string, naming no year and no month. That keeps the
+ * list independent of when it was built: only {@link ModifiedPreset.range}
+ * reads the clock, so a page left open across New Year can never label a period
+ * as one year while searching another.
+ * @param t
+ */
 export function modifiedPresets(t: Translate): ModifiedPreset[] {
   return [
     anyTime(t),
     // Since midnight, not the last 24 hours: at eleven in the morning a rolling
     // day still reaches back into yesterday evening, and a list headed "Today"
     // showing yesterday's files reads as a bug — which is how this was found.
-    // The other presets are honestly named as rolling windows and stay that way.
-    { id: 'today', label: t('Today'), seconds: 'midnight' },
-    { id: 'week', label: t('Last 7 days'), seconds: 7 * DAY },
-    { id: 'month', label: t('Last 30 days'), seconds: 30 * DAY },
-    { id: 'year', label: t('Last 12 months'), seconds: 365 * DAY },
+    // The day counts below are honestly named as rolling windows and stay that
+    // way; the month and year presets are calendar periods, as their names
+    // promise.
+    { id: 'today', label: t('Today'), range: () => ({ after: startOfToday(), before: null }) },
+    { id: 'week', label: t('Last 7 days'), range: () => since(7 * DAY) },
+    { id: 'month', label: t('Last 30 days'), range: () => since(30 * DAY) },
+    // Calendar months, unlike the day counts above them: "Last 30 days" on the
+    // 5th of the month is mostly last month's files, which is precisely the
+    // question these two answer instead.
+    { id: 'this-month', label: t('This month'), range: () => ({ after: startOfMonth(0), before: null }) },
+    {
+      id: 'last-month',
+      label: t('Last month'),
+      range: () => ({ after: startOfMonth(1), before: startOfMonth(0) }),
+    },
+    {
+      id: 'this-year',
+      label: t('This year'),
+      range: () => ({ after: startOfYear(new Date().getFullYear()), before: null }),
+    },
+    {
+      // Closed at both ends, like "Last month": a finished year ends where the
+      // current one begins, so files touched this morning stay out of it.
+      id: 'last-year',
+      label: t('Last year'),
+      range: () => {
+        const current = new Date().getFullYear()
+
+        return { after: startOfYear(current - 1), before: startOfYear(current) }
+      },
+    },
   ]
 }
 
 /**
- * Resolves a preset to an absolute cutoff in Unix seconds, or null.
+ * Preset ids this app has since renamed.
+ *
+ * `year` was a rolling twelve months before the presets took Nextcloud's
+ * wording, and the nearest thing it can still mean is the calendar year to
+ * date. It is mapped rather than dropped because an id no preset answers to
+ * falls back to "Any time" — which would quietly widen every stored search that
+ * had a date filter at all, the one failure a date filter must not have.
+ */
+const RENAMED_PRESETS: Record<string, string> = { year: 'this-year' }
+
+/**
+ * The preset id a stored search means today. Call this on anything read back
+ * from storage before looking it up.
+ * @param id
+ */
+export function canonicalModifiedPreset(id: string): string {
+  return RENAMED_PRESETS[id] ?? id
+}
+
+/**
+ * Resolves a preset to absolute Unix seconds, open at either end.
  * @param preset
  */
-export function modifiedAfter(preset: ModifiedPreset): number | null {
-  if (preset.seconds === null) {
-    return null
-  }
-
-  if (preset.seconds === 'midnight') {
-    // The viewer's own midnight: the server stores UTC seconds, but "today" is
-    // a question about the calendar the person asking is looking at.
-    const midnight = new Date()
-    midnight.setHours(0, 0, 0, 0)
-
-    return Math.floor(midnight.getTime() / 1000)
-  }
-
-  return Math.floor(Date.now() / 1000) - preset.seconds
+export function modifiedRange(preset: ModifiedPreset): ModifiedRange {
+  return preset.range()
 }
