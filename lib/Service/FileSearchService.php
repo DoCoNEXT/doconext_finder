@@ -273,6 +273,25 @@ class FileSearchService
     }
 
     /**
+     * The one place this app instantiates \OC\Files\Search\SearchComparison,
+     * for the reason {@see searchQuery()} gives.
+     */
+    private function compare(string $type, string $field, mixed $value, string $extra = ''): ISearchComparison
+    {
+        return new SearchComparison($type, $field, $value, $extra);
+    }
+
+    /**
+     * And the one place it instantiates \OC\Files\Search\SearchBinaryOperator.
+     *
+     * @param list<ISearchOperator> $operands
+     */
+    private function combine(string $type, array $operands): ISearchOperator
+    {
+        return new SearchBinaryOperator($type, $operands);
+    }
+
+    /**
      * Pages a content search by the index's own ranking.
      *
      * Every root is read whole rather than cut to a page, which is affordable
@@ -387,7 +406,7 @@ class FileSearchService
         $text = [];
 
         if ($query->term !== '') {
-            $text[] = new SearchComparison(
+            $text[] = $this->compare(
                 ISearchComparison::COMPARE_LIKE,
                 'name',
                 '%' . addcslashes($query->term, '%_\\') . '%',
@@ -398,20 +417,20 @@ class FileSearchService
         // only one that accepts `in` — which is what lets the index's answer be
         // an ordinary clause here instead of a second pass in PHP.
         if ($contentIds !== []) {
-            $text[] = new SearchComparison(ISearchComparison::COMPARE_IN, 'fileid', $contentIds);
+            $text[] = $this->compare(ISearchComparison::COMPARE_IN, 'fileid', $contentIds);
         }
 
         if (count($text) === 1) {
             $parts[] = $text[0];
         } elseif (count($text) > 1) {
-            $parts[] = new SearchBinaryOperator(ISearchBinaryOperator::OPERATOR_OR, $text);
+            $parts[] = $this->combine(ISearchBinaryOperator::OPERATOR_OR, $text);
         }
 
         // Preset filters AND with everything, so "match any" on the advanced conditions
         // never widens the chosen type or date range.
         if ($query->mimetypes !== []) {
             $mimes = array_map(
-                static fn (string $m) => new SearchComparison(
+                fn (string $m) => $this->compare(
                     str_ends_with($m, '/%') ? ISearchComparison::COMPARE_LIKE : ISearchComparison::COMPARE_EQUAL,
                     'mimetype',
                     $m,
@@ -420,7 +439,7 @@ class FileSearchService
             );
             $parts[] = count($mimes) === 1
                 ? $mimes[0]
-                : new SearchBinaryOperator(ISearchBinaryOperator::OPERATOR_OR, $mimes);
+                : $this->combine(ISearchBinaryOperator::OPERATOR_OR, $mimes);
         }
 
         // The two ends of the date filter's window, each optional: most presets
@@ -431,7 +450,7 @@ class FileSearchService
         ];
         foreach ($window as [$operator, $bound]) {
             if ($bound !== null) {
-                $parts[] = new SearchComparison($operator, 'mtime', $bound);
+                $parts[] = $this->compare($operator, 'mtime', $bound);
             }
         }
 
@@ -440,7 +459,7 @@ class FileSearchService
         if (count($conditions) === 1) {
             $parts[] = $conditions[0];
         } elseif (count($conditions) > 1) {
-            $parts[] = new SearchBinaryOperator(
+            $parts[] = $this->combine(
                 $query->matchAny ? ISearchBinaryOperator::OPERATOR_OR : ISearchBinaryOperator::OPERATOR_AND,
                 $conditions,
             );
@@ -448,7 +467,7 @@ class FileSearchService
 
         return count($parts) === 1
             ? $parts[0]
-            : new SearchBinaryOperator(ISearchBinaryOperator::OPERATOR_AND, $parts);
+            : $this->combine(ISearchBinaryOperator::OPERATOR_AND, $parts);
     }
 
     /**
@@ -493,7 +512,7 @@ class FileSearchService
                 );
             }
 
-            $comparison = new SearchComparison(
+            $comparison = $this->compare(
                 $condition->comparison(),
                 $key,
                 $condition->value,
@@ -501,11 +520,11 @@ class FileSearchService
             );
 
             return $condition->negate
-                ? new SearchBinaryOperator(ISearchBinaryOperator::OPERATOR_NOT, [$comparison])
+                ? $this->combine(ISearchBinaryOperator::OPERATOR_NOT, [$comparison])
                 : $comparison;
         }
 
-        $comparison = new SearchComparison(
+        $comparison = $this->compare(
             $condition->comparison(),
             $condition->field,
             $condition->value,
@@ -514,7 +533,7 @@ class FileSearchService
         // SearchBuilder only supports a comparison directly inside "not" — never a
         // nested binary operator — so negation is applied per condition, not per group.
         return $condition->negate
-            ? new SearchBinaryOperator(ISearchBinaryOperator::OPERATOR_NOT, [$comparison])
+            ? $this->combine(ISearchBinaryOperator::OPERATOR_NOT, [$comparison])
             : $comparison;
     }
 
