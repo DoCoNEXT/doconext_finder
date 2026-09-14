@@ -138,15 +138,26 @@ class FileSearchService
             [$nodes, $hasMore] = $this->pageByRelevance($searchRoots, $operator, $orders, $query, $user, $ranked['ranks']);
         } elseif (count($searchRoots) === 1) {
             // One extra row tells us whether another page exists without a count query.
+            $rooted = $this->withoutRoot($operator, $searchRoots[0]);
             $nodes = $searchRoots[0]->search(
-                $this->searchQuery($operator, $query->limit + 1, $query->offset, $orders, $user)
+                $this->searchQuery($rooted, $query->limit + 1, $query->offset, $orders, $user)
             );
 
             $hasMore = count($nodes) > $query->limit;
             if ($hasMore) {
                 $nodes = array_slice($nodes, 0, $query->limit);
+            } elseif (count($nodes) === $query->limit) {
+                // The extra row was asked for and did not arrive, which is
+                // what the last page looks like — but also what a page looks
+                // like when Folder::search dropped a row after the database had
+                // already counted it, and {@see withoutRoot} only settles the
+                // one such row we know by name. A page that is exactly full is
+                // therefore worth one more question rather than a guess that
+                // hides everything after it.
+                $hasMore = $searchRoots[0]->search(
+                    $this->searchQuery($rooted, 1, $query->offset + $query->limit, $orders, $user)
+                ) !== [];
             }
-
         } else {
             [$nodes, $hasMore] = $this->searchAcrossRoots($searchRoots, $operator, $orders, $query, $user);
         }
@@ -238,7 +249,8 @@ class FileSearchService
 
         $found = [];
         foreach ($roots as $root) {
-            foreach ($root->search($this->searchQuery($operator, $reach, 0, $orders, $user)) as $node) {
+            $rooted = $this->withoutRoot($operator, $root);
+            foreach ($root->search($this->searchQuery($rooted, $reach, 0, $orders, $user)) as $node) {
                 // Nested roots overlap: a sub-dossier inside its parent's folder
                 // is reached twice, and the same file must not be listed twice.
                 $found[$node->getId()] = $node;
@@ -271,6 +283,30 @@ class FileSearchService
         ?IUser $user,
     ): ISearchQuery {
         return new SearchQuery($operator, $limit, $offset, $orders, $user);
+    }
+
+    /**
+     * The same query, with the folder being searched kept out of it.
+     *
+     * Folder::search() removes that folder from its answer — you asked what is
+     * *in* it — but only after the database has applied the limit. The page then
+     * comes back one row short of what was asked for, which reads as "no more
+     * rows", and the next page starts one row before this one ended, so a file
+     * appears on both. Measured: the first page said "end" with four pages still
+     * to come, and one file came back twice.
+     *
+     * Excluding it up front makes the rows the database counts the rows the
+     * caller gets. A single comparison inside "not" is all SearchBuilder takes,
+     * and that is exactly what this is.
+     */
+    private function withoutRoot(ISearchOperator $operator, Folder $root): ISearchOperator
+    {
+        return $this->combine(ISearchBinaryOperator::OPERATOR_AND, [
+            $operator,
+            $this->combine(ISearchBinaryOperator::OPERATOR_NOT, [
+                $this->compare(ISearchComparison::COMPARE_EQUAL, 'fileid', $root->getId()),
+            ]),
+        ]);
     }
 
     /**
@@ -323,7 +359,8 @@ class FileSearchService
     ): array {
         $found = [];
         foreach ($roots as $root) {
-            foreach ($root->search($this->searchQuery($operator, ContentSearchService::WINDOW, 0, $orders, $user)) as $node) {
+            $rooted = $this->withoutRoot($operator, $root);
+            foreach ($root->search($this->searchQuery($rooted, ContentSearchService::WINDOW, 0, $orders, $user)) as $node) {
                 // Nested roots overlap; the same file must not be listed twice.
                 $found[$node->getId()] = $node;
             }
