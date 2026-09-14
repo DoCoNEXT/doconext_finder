@@ -148,15 +148,13 @@
 
   <!--
     The panel's leading edge, as a control. A sibling of the panel rather than a
-    child of it: NcAppSidebar has no slot at its own root, and the one place this
-    has to sit is the seam between the panel and the results — which a fixed
-    element finds through the same width the panel is drawn at, wherever it
-    happens to live in the tree.
+    child of it: NcAppSidebar has no slot at its own root. See
+    styles/sidebar-resize.scss for what this element's parent has to be.
 
     `separator` with a value and limits is the ARIA window splitter, so the
     keyboard gets the control the pointer has rather than a div it cannot reach.
   -->
-  <div class="grip"
+  <div class="dcn-sidebar-grip"
        role="separator"
        aria-orientation="vertical"
        tabindex="0"
@@ -165,7 +163,7 @@
        :aria-valuemin="resize.minWidth"
        :aria-valuemax="resize.maxWidth"
        :title="t('Drag to resize the panel. Double-click to fit it to the window again.')"
-       :class="{ 'grip--active': resize.resizing.value }"
+       :class="{ 'dcn-sidebar-grip--active': resize.resizing.value }"
        @pointerdown="resize.startResize"
        @pointermove="resize.resizeTo"
        @pointerup="resize.endResize"
@@ -448,97 +446,23 @@ const previewUrl = computed(() => {
 </style>
 
 <!--
-  The panel width, set outside the scoped block on purpose: the library's own
-  rule carries its scope attribute, so an equally specific rule of ours would
-  win or lose on stylesheet order. The id settles it. The grip is here too
-  because it is fixed to the viewport — a scoped rule would style it fine, but
-  it belongs with the width it moves.
+  Set outside the scoped block on purpose: every selector the shared stylesheet
+  carries is global — NcAppSidebar's own root, and a class that lands on <html>
+  — so a scope attribute would stop all of them matching.
 -->
 <style lang="scss">
-// Where the panel starts, before anybody drags it. The library caps it at
-// 500px, which is a fair width for a column of key/value rows and a poor one
-// for a document — a preview rendered in it gets a few words per line and
-// reads as a sliver. This app leads with the preview, so it opens wider.
-// A default, not a decision: useSidebarResize.ts overrides this property inline
-// on <html> once a width has been dragged, and removing it again hands the
-// panel back to this rule, window-relative as it started.
+// The handle and the width it moves, shared with the other DoCoNEXT apps, so it
+// lives in a stylesheet of its own rather than in this component.
+@use '../styles/sidebar-resize.scss';
+
+// Where the panel opens. The library caps it at 500px, which is a fair width for
+// a column of key/value rows and a poor one for a document — a preview rendered
+// in it gets a few words per line and reads as a sliver. This app leads with the
+// preview, so it opens wider than the other apps do.
+
+// An opening width, not a decision: it is what the panel falls back to until
+// somebody drags it, and what a double-click on the handle returns it to.
 :root {
-  --dcn-sidebar-width: clamp(300px, 32vw, 700px);
-}
-
-// Under the library's own phone breakpoint the panel covers the window instead
-// of sitting beside the results, and a width — ours or a dragged one — would
-// leave a strip of unreachable page next to it.
-@media only screen and (min-width: 513px) {
-  #app-sidebar-vue {
-    --app-sidebar-width: var(--dcn-sidebar-width);
-  }
-}
-
-// A drag reads as a drag, not as an attempt to select the file names it passes
-// over. Set on <html> for the length of the gesture, since the pointer is
-// captured by the grip and the selection would otherwise be made in whatever it
-// travels across.
-.dcn-sidebar-resizing,
-.dcn-sidebar-resizing * {
-  user-select: none;
-  cursor: col-resize !important;
-}
-
-// Positioned over the seam rather than placed in the flow: the panel is the
-// library's to lay out, and an element inserted beside it would change the
-// layout it computes. Absolute against #content-vue — this component's own parent, and the box the
-// panel fills top to bottom — so `inset-block: 0` is exactly the panel's height
-// with nothing to measure. Fixed positioning happens to land in the same place,
-// because #content-vue carries `backdrop-filter: blur(25px)` and a backdrop
-// filter makes an element a containing block for fixed descendants just as
-// `filter` does. That is an accident of the library's theming, though: it cost
-// an hour of a grip sitting 50px too low, because `top: var(--header-height)`
-// was then measured from a box already below the header.
-.grip {
-  position: absolute;
-  z-index: 1501; // one above .app-sidebar, or the panel's own edge takes the press
-  inset-block: 0;
-  inset-inline-end: var(--app-sidebar-width, var(--dcn-sidebar-width));
-  // Wider than it looks: a 2px seam is a target nobody hits. The negative margin
-  // centres the grab area on the seam instead of putting it beside it.
-  inline-size: 9px;
-  margin-inline-end: -4px;
-  cursor: col-resize;
-  background: transparent;
-
-  // What lights up is a line down the seam, not the whole grab area: the target
-  // is nine pixels wide because a two-pixel one cannot be hit, but a nine-pixel
-  // bar of colour reads as a panel of its own rather than as the edge it moves.
-  &::after {
-    content: '';
-    position: absolute;
-    inset-block: 0;
-    // Centred without a transform, which would have to know the writing
-    // direction to point the right way.
-    inset-inline-start: calc(50% - 1px);
-    inline-size: 2px;
-    background: transparent;
-    transition: background-color var(--animation-quick);
-  }
-
-  &:hover::after,
-  &:focus-visible::after,
-  &--active::after {
-    background: var(--color-primary-element);
-  }
-
-  // The line is the focus ring too: an outline around a nine-pixel column is a
-  // blue sliver that says nothing about what has focus.
-  &:focus-visible {
-    outline: none;
-  }
-
-  // Below the breakpoint the panel covers the window, so there is no seam to
-  // drag — and a strip of col-resize down the middle of a phone screen is only
-  // in the way.
-  @media only screen and (max-width: 512px) {
-    display: none;
-  }
+  --dcn-sidebar-width-initial: clamp(300px, 32vw, 700px);
 }
 </style>

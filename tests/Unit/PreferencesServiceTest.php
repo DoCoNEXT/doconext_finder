@@ -48,27 +48,4 @@ class PreferencesServiceTest extends TestCase
         $this->assertSame('', $this->serviceReading([])->get('alice')['highlightColor']);
     }
 
-    public function testDraggedSidebarWidthIsKeptWithinItsBounds(): void
-    {
-        foreach ([300, 512, 1200] as $width) {
-            $this->assertSame($width, $this->serviceReading(['sidebarWidth' => $width])->get('alice')['sidebarWidth']);
-        }
-
-        // A string is what a JSON body round-trips a number as often enough.
-        $this->assertSame(512, $this->serviceReading(['sidebarWidth' => '512'])->get('alice')['sidebarWidth']);
-    }
-
-    public function testUnusableSidebarWidthGivesThePanelItsOwnSizingBack(): void
-    {
-        // Refused rather than clamped: a width outside the bounds says the value
-        // did not come from a drag, so guessing at what it meant is worse than
-        // letting the panel size itself to the window again.
-        foreach ([299, 1201, -100, 0, null, 'wide', ['512']] as $raw) {
-            $preferences = $this->serviceReading(['sidebarWidth' => $raw])->get('alice');
-
-            $this->assertSame(0, $preferences['sidebarWidth'], var_export($raw, true) . ' should be refused');
-        }
-
-        $this->assertSame(0, $this->serviceReading([])->get('alice')['sidebarWidth']);
-    }
 }

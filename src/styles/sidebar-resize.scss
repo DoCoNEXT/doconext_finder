@@ -1,0 +1,95 @@
+// The resizable details panel: the width it opens at, and the handle that moves
+// it. See composables/useSidebarResize.ts for the behaviour.
+
+// Global on purpose, not scoped: `#app-sidebar-vue` is NcAppSidebar's own root,
+// and the drag writes its property onto <html>. Import it once from the shell
+// component (`@use './styles/sidebar-resize';`) or from an entry point.
+
+// **Where the handle goes.** Render `.dcn-sidebar-grip` as a sibling of
+// NcAppSidebar, inside an element that is positioned (`relative`, `absolute` or
+// `fixed`) and spans the panel top to bottom — the flex row the panel sits in.
+// Then `inset-block: 0` is exactly the panel's height with nothing to measure.
+// Do not reach for `position: fixed` and the header height instead: NcContent's
+// `#content-vue` carries `backdrop-filter: blur(25px)`, and a backdrop filter
+// makes an element a containing block for fixed descendants just as `filter`
+// does, so a viewport inset is silently measured from a box that already starts
+// below the header.
+
+// Where the panel opens, before anybody drags it.
+
+// `--dcn-sidebar-width` is the dragged width and is set inline on <html> by the
+// composable — nothing here may declare it, or the two would race on stylesheet
+// order. An app that wants to open wider than NcAppSidebar's own default sets
+// `--dcn-sidebar-width-initial` on `:root` in its own stylesheet: a name with a
+// single declaration, so there is nothing to lose a cascade fight with.
+$width: var(--dcn-sidebar-width, var(--dcn-sidebar-width-initial, clamp(300px, 27vw, 500px)));
+
+// Under the library's own phone breakpoint the panel covers the window instead
+// of sitting beside the page, and a width — an app's or a dragged one — would
+// leave a strip of unreachable page next to it.
+@media only screen and (min-width: 513px) {
+  #app-sidebar-vue {
+    --app-sidebar-width: #{$width};
+  }
+}
+
+// A drag reads as a drag, not as an attempt to select whatever it passes over.
+// Set on <html> for the length of the gesture, since the pointer is captured by
+// the handle and the selection would otherwise be made in the page beneath it.
+.dcn-sidebar-resizing,
+.dcn-sidebar-resizing * {
+  user-select: none;
+  cursor: col-resize !important;
+}
+
+// Positioned over the seam rather than placed in the flow: the panel is the
+// library's to lay out, and an element inserted beside it would change the
+// layout it computes.
+.dcn-sidebar-grip {
+  position: absolute;
+  // One above .app-sidebar's own 1500, or the panel's edge takes the press. A
+  // drawer or overlay that deliberately sits above the panel stays above this.
+  z-index: 1501;
+  inset-block: 0;
+  inset-inline-end: #{$width};
+  // Wider than it looks: a 2px seam is a target nobody hits. The negative margin
+  // centres the grab area on the seam instead of putting it beside it.
+  inline-size: 9px;
+  margin-inline-end: -4px;
+  cursor: col-resize;
+  background: transparent;
+
+  // What lights up is a line down the seam, not the whole grab area: the target
+  // is nine pixels wide because a two-pixel one cannot be hit, but a nine-pixel
+  // bar of colour reads as a panel of its own rather than as the edge it moves.
+  &::after {
+    content: '';
+    position: absolute;
+    inset-block: 0;
+    // Centred without a transform, which would have to know the writing
+    // direction to point the right way.
+    inset-inline-start: calc(50% - 1px);
+    inline-size: 2px;
+    background: transparent;
+    transition: background-color var(--animation-quick);
+  }
+
+  &:hover::after,
+  &:focus-visible::after,
+  &--active::after {
+    background: var(--color-primary-element);
+  }
+
+  // The line is the focus ring too: an outline around a nine-pixel column is a
+  // blue sliver that says nothing about what has focus.
+  &:focus-visible {
+    outline: none;
+  }
+
+  // Below the breakpoint the panel covers the window, so there is no seam to
+  // drag — and a strip of col-resize down the middle of a phone screen is only
+  // in the way.
+  @media only screen and (max-width: 512px) {
+    display: none;
+  }
+}
