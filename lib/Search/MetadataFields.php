@@ -4,10 +4,9 @@ declare(strict_types=1);
 
 namespace OCA\DcnFinder\Search;
 
+use OCA\DcnFinder\Service\CoreScope;
 use OCP\FilesMetadata\IFilesMetadataManager;
 use OCP\FilesMetadata\Model\IMetadataValueWrapper;
-use OCP\IGroupManager;
-use OCP\IUserManager;
 
 /**
  * The file metadata this server knows about.
@@ -16,6 +15,12 @@ use OCP\IUserManager;
  * Finder ships to the app store on its own and must not depend on Core being
  * installed. When Core *is* installed its `dcn_core_*` keys simply appear here,
  * along with anything any other app registered.
+ *
+ * One thing the registry cannot say is what a value *means*, and one kind of
+ * value is unreadable without that: a principal is stored as a bare id. Which
+ * keys hold one, and who each id is, is asked through {@see CoreScope} — the
+ * single seam that knows Core may be there. Without Core the ids show as
+ * stored, which is what the registry alone can offer.
  *
  * Only **indexed** keys can be filtered or sorted on — an unindexed value is
  * stored but has no row in the index table to compare against. Unindexed keys
@@ -29,10 +34,12 @@ class MetadataFields
     /** Resolved principal ids, so a page of results asks about each one once. */
     private array $principals = [];
 
+    /** The principal-holding keys, asked once per request. @var list<string>|null */
+    private ?array $principalKeys = null;
+
     public function __construct(
         private IFilesMetadataManager $metadataManager,
-        private IUserManager $userManager,
-        private IGroupManager $groupManager,
+        private CoreScope $core,
     ) {
     }
 
@@ -108,7 +115,7 @@ class MetadataFields
             };
 
             if ($value !== '') {
-                $values[$key] = $this->readable($value);
+                $values[$key] = $this->readable($key, $value);
             }
         }
 
@@ -116,49 +123,53 @@ class MetadataFields
     }
 
     /**
-     * Turns an account or group reference into the name that account or group
-     * actually goes by: `group:legal-staff` reads as "Legal staff".
+     * Turns the people a value names into the names they go by: `alice` reads
+     * as "Alice Jansen".
      *
-     * A shape, not an app: any app storing a `user:` or `group:` reference gets
-     * the same treatment, and anything else — or a reference to something that
-     * no longer exists — is left exactly as it was stored. A comma-separated
-     * list is resolved item by item, which is how a multi-valued field arrives.
-     *
-     * DoCoNEXT Core reduces its principal fields to bare ids before storing
-     * them, because the search index column is too narrow for the JSON they
-     * arrive as; that is what makes them show up here as `group:legal-staff`
-     * rather than as a person.
+     * Which keys hold people is asked, not detected. A stored principal is a
+     * bare id — the search index column is too narrow for the object it comes
+     * from — and nothing about `alice` says it is an account rather than a
+     * word, so there is no shape here to recognise. A comma-separated list is
+     * resolved item by item, which is how a multi-valued field arrives, and an
+     * id nobody answers to is shown as stored.
      */
-    private function readable(string $value): string
+    private function readable(string $key, string $value): string
     {
-        if (!str_contains($value, 'user:') && !str_contains($value, 'group:')) {
+        if (!in_array($key, $this->principalKeys(), true)) {
             return $value;
         }
 
-        $parts = array_map(
-            fn (string $part) => $this->principalName(trim($part)),
-            explode(',', $value),
-        );
+        $ids   = array_values(array_filter(array_map('trim', explode(',', $value)), static fn (string $id) => $id !== ''));
+        $names = $this->principalNames($ids);
 
-        return implode(', ', $parts);
+        return implode(', ', array_map(static fn (string $id): string => $names[$id] ?? $id, $ids));
     }
 
-    private function principalName(string $reference): string
+    /** @return list<string> */
+    private function principalKeys(): array
     {
-        if (array_key_exists($reference, $this->principals)) {
-            return $this->principals[$reference];
+        return $this->principalKeys ??= $this->core->principalMetadataKeys();
+    }
+
+    /**
+     * Names for a value's ids, asking Core only about the ones this request has
+     * not seen. An id Core cannot place is remembered as itself, so a page of
+     * results does not ask about the same missing account per row.
+     *
+     * @param list<string> $ids
+     * @return array<string, string>
+     */
+    private function principalNames(array $ids): array
+    {
+        $missing = array_values(array_diff($ids, array_keys($this->principals)));
+        if ($missing !== []) {
+            $resolved = $this->core->principalNames($missing);
+            foreach ($missing as $id) {
+                $this->principals[$id] = $resolved[$id] ?? $id;
+            }
         }
 
-        [$type, $id] = array_pad(explode(':', $reference, 2), 2, '');
-
-        $name = match ($type) {
-            'user'  => $this->userManager->get($id)?->getDisplayName(),
-            'group' => $this->groupManager->get($id)?->getDisplayName(),
-            default => null,
-        };
-
-        // An id nobody answers to is still the truest thing we can show.
-        return $this->principals[$reference] = $name ?? $reference;
+        return $this->principals;
     }
 
     /**

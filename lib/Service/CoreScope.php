@@ -22,11 +22,16 @@ use Psr\Log\LoggerInterface;
  * - **Workspace, entity type, entity** — DoCoNEXT Core's vocabulary, offered
  *   only when Core is there, cascading from one to the next.
  *
+ * It answers one more question of Core's, unrelated to scoping but sharing the
+ * same seam: **what a principal id means.** Core stores the people a file names
+ * as bare ids, so a column showing one needs a name from somewhere, and only
+ * Core can say which keys hold them at all.
+ *
  * This is the only place in Finder that knows Core exists. Core absent,
  * disabled, an older version without the public service, or simply throwing all
- * mean the same thing: no types, no entities, and a scope that resolves to
- * nothing rather than silently widening to the whole account. The folder level
- * keeps working throughout.
+ * mean the same thing: no types, no entities, no names — a scope that resolves
+ * to nothing rather than silently widening to the whole account, and an id
+ * shown as it was stored. The folder level keeps working throughout.
  */
 class CoreScope
 {
@@ -34,6 +39,9 @@ class CoreScope
 
     /** Core's public, semver-stable surface. Referenced by name so it may be absent. */
     private const CORE_VOCABULARY = 'OCA\\DcnCore\\Public\\Search\\ScopeVocabularyService';
+
+    /** Core's public principal lookup, absent on older versions of Core. */
+    private const CORE_PRINCIPALS = 'OCA\\DcnCore\\Public\\Principals\\PrincipalNameService';
 
     /** A typeahead is a menu, not a result set. */
     private const MAX_SUGGESTIONS = 25;
@@ -176,19 +184,75 @@ class CoreScope
      * not installed, not enabled for this user, an older version without the
      * class, a container that refuses to build it — collapses to the same null.
      */
+    /**
+     * The metadata keys whose values name people rather than say something:
+     * `dcn_core_behandelaar` and its like. Empty without Core, which leaves
+     * every value shown exactly as it is stored.
+     *
+     * @return list<string>
+     */
+    public function principalMetadataKeys(): array
+    {
+        $core = $this->corePrincipals();
+
+        return $core === null ? [] : $this->guard(static fn () => $core->principalMetadataKeys(), []);
+    }
+
+    /**
+     * Names for stored principal ids, keyed by the id asked about. An id Core
+     * cannot place is simply absent from the answer, and the caller shows the
+     * id — which is the truest thing left about a deleted account.
+     *
+     * @param list<string> $ids
+     * @return array<string, string> id => display name
+     */
+    public function principalNames(array $ids): array
+    {
+        $core = $this->corePrincipals();
+        if ($core === null || $ids === []) {
+            return [];
+        }
+
+        return $this->guard(static function () use ($core, $ids): array {
+            $names = [];
+            foreach ($core->namesFor($ids) as $id => $principal) {
+                if ($principal->isKnown()) {
+                    $names[(string) $id] = $principal->displayName;
+                }
+            }
+
+            return $names;
+        }, []);
+    }
+
     private function core(): ?object
+    {
+        return $this->coreService(self::CORE_VOCABULARY);
+    }
+
+    private function corePrincipals(): ?object
+    {
+        return $this->coreService(self::CORE_PRINCIPALS);
+    }
+
+    /**
+     * One of Core's public services, or null when this server has no Core, has
+     * it switched off, or runs a version that predates the service.
+     */
+    private function coreService(string $class): ?object
     {
         if (!$this->appManager->isEnabledForUser(self::CORE_APP_ID)) {
             return null;
         }
-        if (!class_exists(self::CORE_VOCABULARY)) {
+        if (!class_exists($class)) {
             return null;
         }
 
         try {
-            return $this->container->get(self::CORE_VOCABULARY);
+            return $this->container->get($class);
         } catch (\Throwable $e) {
-            $this->logger->warning(AppConstants::LOG_PREFIX . ' Core scope vocabulary could not be resolved', [
+            $this->logger->warning(AppConstants::LOG_PREFIX . ' A Core service could not be resolved', [
+                'service'   => $class,
                 'exception' => $e,
                 'app'       => AppConstants::APP_ID,
             ]);
