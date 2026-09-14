@@ -14,7 +14,7 @@
     "test:watch": "vitest",
     "lint": "eslint src",
     "typecheck": "vue-tsc --noEmit",
-    "stylelint": "stylelint src/**/*.vue src/**/*.scss src/**/*.css",
+    "stylelint": "stylelint \"src/**/*.vue\" \"src/**/*.scss\" \"src/**/*.css\"",
     "prebuild": "node scripts/check-version.mjs"
   },
   "browserslist": [

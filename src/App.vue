@@ -233,16 +233,16 @@ function openSettings() {
 <style scoped lang="scss">
 // The rail itself: shared with the other DoCoNEXT apps, so it lives in a
 // stylesheet of its own rather than in this component.
-@use './styles/navigation-rail';
+@use './styles/navigation-rail.scss';
 
 // The pages lay themselves out as full-height columns so their controls can stay
 // put while the results scroll; that only works if their parent hands down its
 // height rather than growing with the content.
-//
+
 // That parent is <main class="app-content"> itself: NcAppContent only wraps the
 // default slot in .app-content-wrapper when it also has a `list` slot, and this
 // app has none — so the rule that used to name the wrapper matched nothing.
-//
+
 // Below the mobile breakpoint the library's own toggle floats over the top
 // inline-start corner of the content, and without clearance it sits on the first
 // row of controls; it ends one clickable area below its own offset, so the
