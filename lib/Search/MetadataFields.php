@@ -31,10 +31,13 @@ class MetadataFields
     /** Marks a field as metadata in the API, e.g. `meta:dcn_core_ecli`. */
     public const PREFIX = 'meta:';
 
-    /** Resolved principal ids, so a page of results asks about each one once. */
+    /** Names Core gave back, keyed by what was asked. @var array<string, string> */
     private array $principals = [];
 
-    /** The principal-holding keys, asked once per request. @var list<string>|null */
+    /** What has already been asked, name or no name. @var list<string> */
+    private array $askedAbout = [];
+
+    /** The principal-holding keys and their kind, asked once per request. @var array<string, ?string>|null */
     private ?array $principalKeys = null;
 
     public function __construct(
@@ -135,38 +138,49 @@ class MetadataFields
      */
     private function readable(string $key, string $value): string
     {
-        if (!in_array($key, $this->principalKeys(), true)) {
+        $keys = $this->principalKeys();
+        if (!array_key_exists($key, $keys)) {
             return $value;
         }
 
-        $ids   = array_values(array_filter(array_map('trim', explode(',', $value)), static fn (string $id) => $id !== ''));
-        $names = $this->principalNames($ids);
+        $ids = array_values(array_filter(array_map('trim', explode(',', $value)), static fn (string $id) => $id !== ''));
 
-        return implode(', ', array_map(static fn (string $id): string => $names[$id] ?? $id, $ids));
+        // Where the field holds one kind of principal, say which: `admin` is an
+        // account on most servers and a group on many, and only the field knows
+        // which of the two its value meant.
+        $kind  = $keys[$key];
+        $asked = array_map(static fn (string $id): string => $kind === null ? $id : $kind . ':' . $id, $ids);
+        $names = $this->principalNames($asked);
+
+        return implode(', ', array_map(
+            static fn (string $ask, string $id): string => $names[$ask] ?? $id,
+            $asked,
+            $ids,
+        ));
     }
 
-    /** @return list<string> */
+    /** @return array<string, ?string> key => the kind it holds, or null for more than one */
     private function principalKeys(): array
     {
         return $this->principalKeys ??= $this->core->principalMetadataKeys();
     }
 
     /**
-     * Names for a value's ids, asking Core only about the ones this request has
-     * not seen. An id Core cannot place is remembered as itself, so a page of
-     * results does not ask about the same missing account per row.
+     * Names for what a value asks about, going to Core only for the entries
+     * this request has not seen. One Core cannot place is remembered as asked,
+     * so a page of results does not ask about the same missing account per row.
      *
-     * @param list<string> $ids
+     * @param list<string> $asked ids, or `type:id`
      * @return array<string, string>
      */
-    private function principalNames(array $ids): array
+    private function principalNames(array $asked): array
     {
-        $missing = array_values(array_diff($ids, array_keys($this->principals)));
+        $missing = array_values(array_diff($asked, $this->askedAbout));
         if ($missing !== []) {
-            $resolved = $this->core->principalNames($missing);
-            foreach ($missing as $id) {
-                $this->principals[$id] = $resolved[$id] ?? $id;
-            }
+            // Remembered as asked rather than as answered, so an id nobody
+            // answers to is not asked about again on the next row.
+            $this->askedAbout = array_merge($this->askedAbout, $missing);
+            $this->principals += $this->core->principalNames($missing);
         }
 
         return $this->principals;

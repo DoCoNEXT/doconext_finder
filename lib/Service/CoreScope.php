@@ -186,10 +186,15 @@ class CoreScope
      */
     /**
      * The metadata keys whose values name people rather than say something:
-     * `dcn_core_behandelaar` and its like. Empty without Core, which leaves
+     * `dcn_core_behandelaar` and its like, each with the one kind of principal
+     * it holds where Core's field says so. Empty without Core, which leaves
      * every value shown exactly as it is stored.
      *
-     * @return list<string>
+     * The kind is worth carrying: a user and a group may share an id, and
+     * knowing which was meant is the difference between showing the account
+     * `admin` and the group of that name.
+     *
+     * @return array<string, ?string> key => 'user' | 'group' | null
      */
     public function principalMetadataKeys(): array
     {
@@ -199,12 +204,13 @@ class CoreScope
     }
 
     /**
-     * Names for stored principal ids, keyed by the id asked about. An id Core
-     * cannot place is simply absent from the answer, and the caller shows the
-     * id — which is the truest thing left about a deleted account.
+     * Names for stored principals, keyed by what was asked about: a bare id, or
+     * `user:alice` where the key's own kind is known. An id Core cannot place is
+     * simply absent from the answer, and the caller shows the id — which is the
+     * truest thing left about a deleted account.
      *
-     * @param list<string> $ids
-     * @return array<string, string> id => display name
+     * @param list<string> $ids ids, or `type:id` for a key of a known kind
+     * @return array<string, string> what was asked => display name
      */
     public function principalNames(array $ids): array
     {
