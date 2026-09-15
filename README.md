@@ -24,9 +24,11 @@ unused — removing it is the next cleanup.
 ## Why its own app
 
 Finder is published to the Nextcloud app store; Core is not. That makes Finder
-the free, open half of the product and means it must carry **no** dependency on
-Core — no `<dependencies>` entry, no `\OCA\DcnCore\` classes, no shared tables.
-Where the two meet, they meet in the browser, over Core's own HTTP routes.
+the free, open half of the product, and it has to run on a server that has never
+heard of Core: no `<dependencies>` entry, no compile-time coupling, no shared
+tables. Where the two meet, they meet on the server — Finder resolves Core's
+public, semver-stable services by name when Core is installed, and answers as if
+there were no Core when it is not. The browser only ever talks to Finder.
 
 See `docs/nextcloud-app-migration.md` in the `doconext-finder` (desktop) repo
 for the full rationale.

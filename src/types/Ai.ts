@@ -54,9 +54,8 @@ export interface DistilPoll {
   understood?: DistilledFileScope
 }
 
-/** Whether Core's AI is configured, reachable, and has a RAG backend. */
+/** Whether the distiller is configured and reachable. */
 export interface AiStatus {
   enabled: boolean
   available: boolean
-  contextChat: boolean
 }
