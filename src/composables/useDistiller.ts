@@ -7,7 +7,7 @@
  * server can and cannot honour, and `dropped` for what it could not.
  */
 import { onBeforeUnmount, ref } from 'vue'
-import { CoreAiApi } from '../services/CoreAiApi'
+import { AiApi } from '../services/AiApi'
 import { applyDistilled } from '../filters/distilled'
 import { HAS_CONTENT_SEARCH } from '../constants'
 import type { Translate } from '../filters/presets'
@@ -84,7 +84,7 @@ export function useDistiller() {
     running.value = true
 
     try {
-      const taskId = await CoreAiApi.distil(question, realmId)
+      const taskId = await AiApi.distil(question, realmId)
       const deadline = Date.now() + TIMEOUT_MS
 
       for (;;) {
@@ -96,7 +96,7 @@ export function useDistiller() {
           return null
         }
 
-        const poll = await CoreAiApi.poll(taskId, realmId)
+        const poll = await AiApi.poll(taskId, realmId)
 
         if (poll.status === 'ready' && poll.understood) {
           const applied = applyDistilled(t, poll.understood, base, schema, HAS_CONTENT_SEARCH)

@@ -27,9 +27,10 @@ use Psr\Log\LoggerInterface;
  * as bare ids, so a column showing one needs a name from somewhere, and only
  * Core can say which keys hold them at all.
  *
- * This is the only place in Finder that knows Core exists. Core absent,
- * disabled, an older version without the public service, or simply throwing all
- * mean the same thing: no types, no entities, no names — a scope that resolves
+ * Together with {@see CoreDistiller}, which hands Core a plain-language
+ * question, this is where the app binds a Core service; nothing else does.
+ * Core absent, disabled, an older version without the public service, or simply
+ * throwing all mean the same thing: no types, no entities, no names — a scope that resolves
  * to nothing rather than silently widening to the whole account, and an id
  * shown as it was stored. The folder level keeps working throughout.
  */

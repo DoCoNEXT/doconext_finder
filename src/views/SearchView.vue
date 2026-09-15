@@ -244,7 +244,7 @@ import { useSelectionStore } from '../stores/selectionStore'
 import { useHistoryStore } from '../stores/historyStore'
 import { useSaveSearch } from '../composables/useSaveSearch'
 import { useDistiller } from '../composables/useDistiller'
-import { CoreAiApi } from '../services/CoreAiApi'
+import { AiApi } from '../services/AiApi'
 import { anyTime, anyType, canonicalModifiedPreset, fileTypePresets, modifiedPresets } from '../filters/presets'
 import { describeQuery } from '../filters/describe'
 import ConditionRow from '../components/ConditionRow.vue'
@@ -287,7 +287,7 @@ const aiReady = ref(false)
 
 onMounted(async () => {
   if (HAS_ENTITY_SCOPE) {
-    aiReady.value = (await CoreAiApi.status()).available
+    aiReady.value = (await AiApi.status()).available
   }
 })
 
