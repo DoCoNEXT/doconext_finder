@@ -20,6 +20,13 @@ use OCP\IRequest;
  * answered by the same session that asked it, with no second surface to keep
  * in step.
  *
+ * Its own controller rather than three more routes on SearchController, which
+ * already proxies Core for the same page, because the two answer failure the
+ * other way round: a scope or principal lookup that fails falls back to a
+ * usable screen, while a question that was refused has to arrive as a refusal
+ * — 401, 403, 404, 400 — or the person asking is told nothing happened. One
+ * class, one contract.
+ *
  * Routing: #[FrontpageRoute] → /apps/doconext_finder/… (NOT #[ApiRoute], which
  * is OCS). Declaration order is route registration order; the literal paths
  * below stay above the parametric one.
