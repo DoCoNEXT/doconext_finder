@@ -1,11 +1,20 @@
 <?xml version="1.0"?>
+<!--
+  findUnusedBaselineEntry is off because one baseline serves several Nextcloud
+  APIs. The CI matrix analyses every version info.xml claims, and an issue can
+  legitimately exist on one and not the next: three MissingDependency entries
+  that 33 and 34 need are absent on 35. With it on, the newest leg fails on
+  entries the older legs still require, which says nothing about the code.
+  The baseline therefore no longer shrinks by itself — prune it by hand when a
+  leg reports something you know you fixed.
+-->
 <psalm
     errorLevel="4"
     resolveFromConfigFile="true"
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
     xmlns="https://getpsalm.org/schema/config"
     xsi:schemaLocation="https://getpsalm.org/schema/config vendor/vimeo/psalm/config.xsd"
-    findUnusedBaselineEntry="true"
+    findUnusedBaselineEntry="false"
     errorBaseline="tests/psalm-baseline.xml"
     phpVersion="8.2"
 >

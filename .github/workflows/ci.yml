@@ -59,6 +59,7 @@ jobs:
     timeout-minutes: 5
     outputs:
       ocp-versions: ${{ steps.read.outputs.versions }}
+      next-version: ${{ steps.read.outputs.next }}
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
@@ -77,6 +78,8 @@ jobs:
           if hi < lo:
               raise SystemExit(f'max-version {hi} is below min-version {lo}')
           print('versions=' + json.dumps([f'dev-stable{v}' for v in range(lo, hi + 1)]))
+          # The major after the one we claim, for the informational leg.
+          print(f'next=dev-stable{hi + 1}')
           PY
 
   # An API only exists, or is only deprecated, in the version being analysed:
@@ -104,6 +107,42 @@ jobs:
       # composer.json pins one version so the lock file stays reproducible;
       # this swaps in whichever version the matrix leg is analysing.
       - run: composer require --dev --no-scripts --ignore-platform-reqs --with-dependencies nextcloud/ocp:${{ matrix.ocp-version }}
+      - run: composer psalm
+
+  # info.xml claims the versions the matrix above analyses. Nextcloud 35 is
+  # already cut on nextcloud-deps/ocp, so this leg reads the app against an API
+  # we do not claim yet: a class that moved or a signature that tightened shows
+  # up here instead of on the day we bump max-version.
+  #
+  # Informational on purpose. stable35 is still moving, and a red leg here must
+  # not block work that has nothing to do with it. It turns into a gate when we
+  # add 35 to info.xml — at which point the matrix above covers it and this job
+  # moves on to whatever major comes next.
+  psalm-next:
+    name: Psalm — next Nextcloud (informational)
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    needs: supported-versions
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          persist-credentials: false
+      - uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # 2.37.2
+        with:
+          php-version: '8.2'
+          coverage: none
+      - uses: ramsey/composer-install@26d8a556604053a9612623447203a691f406fbe6 # v4
+      # The branch may not exist yet — ocp only cuts it when the release is
+      # branched — so fall back to master, which is always the next major.
+      - name: Install the API of the major after the one info.xml claims
+        run: |
+          composer require --dev --no-scripts --ignore-platform-reqs --with-dependencies \
+            'nextcloud/ocp:${{ needs.supported-versions.outputs.next-version }}' \
+          || composer require --dev --no-scripts --ignore-platform-reqs --with-dependencies \
+            'nextcloud/ocp:dev-master'
+      - name: Ignore baseline entries that 35 already resolves
+        run: sed -i 's/findUnusedBaselineEntry="true"/findUnusedBaselineEntry="false"/' psalm.xml
       - run: composer psalm
 
   phpunit:
