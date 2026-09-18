@@ -163,24 +163,41 @@ jobs:
       - uses: ramsey/composer-install@26d8a556604053a9612623447203a691f406fbe6 # v4
       - run: composer test:unit
 
-  # info.xml claims Nextcloud 31 to 34. The lockfile pins the 33 API stubs;
-  # this run swaps in the 34 stubs so a class or signature that moved between
-  # the two fails here, not on a customer's upgrade.
-  phpunit-nc34:
-    name: PHPUnit (Nextcloud 34 API)
+  # The phpunit job above covers PHP versions against the locked stubs. This
+  # one covers Nextcloud versions: once per version info.xml claims, taken from
+  # the same supported-versions output psalm uses, so a max-version bump widens
+  # it on its own.
+  #
+  # PHP 8.3, not 8.2. Nextcloud 35's API stubs use typed class constants
+  # (`public const string …`), which is 8.3 syntax: on 8.2 the suite dies on a
+  # ParseError before a single test runs. 8.3 is the one version every claimed
+  # release accepts — 33 and 34 take 8.2 to 8.5, 35 takes 8.3 to 8.5. Psalm
+  # gets away with 8.2 only because it parses with its own parser and never
+  # loads the stubs.
+  phpunit-nextcloud:
+    name: PHPUnit (${{ matrix.ocp-version }})
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    needs: supported-versions
+    strategy:
+      fail-fast: false
+      matrix:
+        ocp-version: ${{ fromJSON(needs.supported-versions.outputs.ocp-versions) }}
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
           persist-credentials: false
       - uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # 2.37.2
         with:
-          php-version: '8.2'
+          php-version: '8.3'
           coverage: none
       - uses: ramsey/composer-install@26d8a556604053a9612623447203a691f406fbe6 # v4
-      - run: composer require --dev --no-scripts --no-progress -W 'nextcloud/ocp:dev-stable34'
+      - run: composer require --dev --no-scripts --no-progress --ignore-platform-reqs -W nextcloud/ocp:${{ matrix.ocp-version }}
       - run: composer test:unit
+
+  # info.xml claims Nextcloud 31 to 34. The lockfile pins the 33 API stubs;
+  # this run swaps in the 34 stubs so a class or signature that moved between
+  # the two fails here, not on a customer's upgrade.
 
   frontend:
     name: Frontend lint & build
