@@ -5,7 +5,7 @@
 # You do NOT need to SSH into the VPS manually.
 #
 # Usage:
-#   ./deploy.sh --host <vps_host> [--user <vps_user>] [--app <app_id>] [--update]
+#   ./deploy.sh --host <vps_host> [--user <vps_user>] [--app <app_id>] [--update] [--clear-cache]
 #
 # The app ID is auto-detected from appinfo/info.xml (<id>), falling back to
 # the folder name. Pass --app only to override the detected value.
@@ -18,6 +18,7 @@
 # Examples:
 #   ./deploy.sh --host 1.2.3.4
 #   ./deploy.sh --host 1.2.3.4 --update
+#   ./deploy.sh --host 1.2.3.4 --update --clear-cache
 #   ./deploy.sh --host 1.2.3.4 --user deployer --app other_app
 #
 # Options:
@@ -26,6 +27,9 @@
 #   --host      VPS IP address or hostname
 #   --container Nextcloud container name (default: nextcloud-aio-nextcloud)
 #   --update    Update existing installation (disable, remove, redeploy)
+#   --clear-cache  Reload PHP-FPM afterwards, so new or changed routes work at
+#               once instead of 404ing for up to an hour. Cuts off requests
+#               running at that moment, instance-wide — see STEP 3.
 #   --help      Show this help message
 #
 # Every successful deploy appends one line to ~/.doconext/deploys.log
@@ -43,6 +47,7 @@ VPS_USER="root"
 VPS_HOST=""
 CONTAINER="nextcloud-aio-nextcloud"
 UPDATE=false
+CLEAR_CACHE=false
 
 # ============================================================
 # Parse arguments
@@ -54,6 +59,7 @@ while [[ "$#" -gt 0 ]]; do
     --host)      VPS_HOST="$2";  shift ;;
     --container) CONTAINER="$2"; shift ;;
     --update)    UPDATE=true ;;
+    --clear-cache) CLEAR_CACHE=true ;;
     --help)
       sed -n '/^# Usage:/,/^# ====/p' "$0" | sed 's/^# \?//'
       exit 0
@@ -111,6 +117,7 @@ echo " Container: $CONTAINER"
 echo " Version:   $APP_VERSION"
 echo " Commit:    $GIT_COMMIT ($GIT_BRANCH)"
 echo " Mode:      $([ "$UPDATE" = true ] && echo 'UPDATE' || echo 'INSTALL')"
+echo " Cache:     $([ "$CLEAR_CACHE" = true ] && echo 'reload PHP-FPM' || echo 'left alone')"
 echo "============================================================"
 echo ""
 
@@ -206,6 +213,26 @@ ssh ${VPS_USER}@${VPS_HOST} "
   if [ '$UPDATE' = true ]; then
     echo '-> Running database migrations...'
     docker exec --user www-data $CONTAINER php occ upgrade
+  fi
+
+  # With --clear-cache: reload PHP-FPM so it drops its opcache and APCu. Until opcache rechecks a
+  # file (revalidate_freq, 60s on AIO) FPM keeps running the old compiled
+  # controllers, and the first request rebuilds Nextcloud's route cache from
+  # their attributes: new routes then 404 for the cache's hour. occ cannot clear
+  # it — the CLI's caches are its own. USR2 makes the FPM master re-execute, and
+  # the memory both caches live in goes with it. It is not graceful on AIO:
+  # with process_control_timeout = 0 a request running at that moment is cut
+  # off (the client sees a 502), instance-wide. A container restart does the
+  # same to more requests, for longer.
+  if [ '$CLEAR_CACHE' = true ]; then
+    echo '-> Reloading PHP-FPM (clears opcache and route cache)...'
+    if ! docker exec --user root $CONTAINER pkill -USR2 -f 'php-fpm: master'; then
+      echo 'WARNING: could not reload PHP-FPM. New routes may 404 for up to an hour;'
+      echo '         restarting the $CONTAINER container clears that now.'
+    fi
+  else
+    echo '-> PHP-FPM not reloaded: new or changed routes may 404 for up to an hour.'
+    echo '   Deploy with --clear-cache, or restart the $CONTAINER container, to avoid that.'
   fi
 
   echo '-> Cleaning up temp files on VPS...'
