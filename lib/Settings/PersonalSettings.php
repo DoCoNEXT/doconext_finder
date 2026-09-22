@@ -17,6 +17,7 @@ class PersonalSettings implements ISettings
     ) {
     }
 
+    #[\Override]
     public function getForm(): TemplateResponse
     {
         Util::addScript(AppConstants::APP_ID, AppConstants::APP_ID . '-personal-settings');
@@ -26,11 +27,13 @@ class PersonalSettings implements ISettings
         return new TemplateResponse(AppConstants::APP_ID, 'personal/settings');
     }
 
+    #[\Override]
     public function getSection(): string
     {
         return AppConstants::APP_ID;
     }
 
+    #[\Override]
     public function getPriority(): int
     {
         return 50;

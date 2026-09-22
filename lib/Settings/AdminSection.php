@@ -18,11 +18,13 @@ class AdminSection implements IIconSection
     ) {
     }
 
+    #[\Override]
     public function getID(): string
     {
         return AppConstants::APP_ID;
     }
 
+    #[\Override]
     public function getName(): string
     {
         $name = $this->appConfig->getValueString(AppConstants::APP_ID, AppConstants::DISPLAY_NAME_KEY, '');
@@ -30,11 +32,13 @@ class AdminSection implements IIconSection
         return $name !== '' ? $name : AppConstants::DEFAULT_DISPLAY_NAME;
     }
 
+    #[\Override]
     public function getPriority(): int
     {
         return 75;
     }
 
+    #[\Override]
     public function getIcon(): string
     {
         // Settings sidebar icons are recolored via filter → use the BLACK-filled
