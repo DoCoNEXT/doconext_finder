@@ -50,7 +50,8 @@
 		"sort-packages": true,
 		"platform": {
 			"php": "8.2"
-		}
+		},
+		"prepend-autoloader": false
 	},
 	"extra": {
 		"bamarni-bin": {
