@@ -17,6 +17,7 @@ class AdminSettings implements ISettings
     ) {
     }
 
+    #[\Override]
     public function getForm(): TemplateResponse
     {
         Util::addScript(AppConstants::APP_ID, AppConstants::APP_ID . '-admin-settings');
@@ -26,11 +27,13 @@ class AdminSettings implements ISettings
         return new TemplateResponse(AppConstants::APP_ID, 'admin/settings');
     }
 
+    #[\Override]
     public function getSection(): string
     {
         return AppConstants::APP_ID;
     }
 
+    #[\Override]
     public function getPriority(): int
     {
         return 50;

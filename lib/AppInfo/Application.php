@@ -41,6 +41,7 @@ class Application extends App implements IBootstrap
         }
     }
 
+    #[\Override]
     public function register(IRegistrationContext $context): void
     {
         // The app's own table is not cleaned up by Nextcloud when an account is
@@ -48,6 +49,7 @@ class Application extends App implements IBootstrap
         $context->registerEventListener(UserDeletedEvent::class, UserDeletedListener::class);
     }
 
+    #[\Override]
     public function boot(IBootContext $context): void
     {
         // Top-menu entry, labelled with the admin-configured display name

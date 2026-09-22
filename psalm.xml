@@ -8,6 +8,22 @@
   The baseline therefore no longer shrinks by itself — prune it by hand when a
   leg reports something you know you fixed.
 -->
+<!--
+  findUnusedCode is off. Its analysis runs on reachability — code counts as
+  used when something Psalm sees calling it reaches it — and in a Nextcloud
+  app almost every entry point is invisible to it: controllers are found by
+  route attribute, listeners called by the event dispatcher, commands and
+  jobs through info.xml, and the container builds every service. Whatever
+  only such an entry point uses looks dead. Measured in Core: of 48 findings
+  Psalm called certain, 31 were live code. It needs those entry points
+  declared with @psalm-api before it is worth turning on.
+
+  ensureOverrideAttribute is on. #[\Override] makes a method that no longer
+  overrides anything fail loudly: without it, a parent method Nextcloud
+  renames or removes turns ours into a new method nobody calls, and the
+  behaviour just stops. PHP 8.2 ignores the attribute; the engine enforces it
+  from 8.3.
+-->
 <psalm
     errorLevel="4"
     resolveFromConfigFile="true"
@@ -17,6 +33,8 @@
     findUnusedBaselineEntry="false"
     errorBaseline="tests/psalm-baseline.xml"
     phpVersion="8.2"
+    findUnusedCode="false"
+    ensureOverrideAttribute="true"
 >
     <projectFiles>
         <directory name="lib" />
