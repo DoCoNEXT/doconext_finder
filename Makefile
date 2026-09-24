@@ -57,7 +57,7 @@ rsync_exclude = \
 	--exclude=/src \
 	--exclude='*.map'
 
-.PHONY: appstore clean sign build-prod l10n-from-po l10n-pot
+.PHONY: appstore clean sign build-prod l10n-from-po l10n-pot l10n-js
 
 build-prod:
 	npm ci
@@ -105,6 +105,7 @@ clean:
 # that is behind the JSON would silently ship an app with half its translated
 # strings fallen back to English.
 #
+#   make l10n-js        regenerate l10n/<lang>.js from the hand-edited .json
 #   make l10n-pot       extract source strings → translationfiles/templates/$(app_name).pot
 #                       and msgmerge them into each translationfiles/<lang>/*.po
 #   make l10n-from-po   REPLACE l10n/<lang>.{js,json} from translationfiles/<lang>/*.po
@@ -164,3 +165,6 @@ l10n-from-po: translationtool.phar
 	@echo "This REPLACES l10n/<lang>.json and .js with the contents of translationfiles/<lang>/*.po."
 	@echo "Check 'git diff --stat l10n/' afterwards: a shrinking file means the .po was behind."
 	php translationtool.phar convert-po-files
+
+l10n-js:
+	@python3 scripts/l10n-json-to-js.py
