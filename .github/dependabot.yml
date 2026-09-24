@@ -5,16 +5,22 @@
 # Once an ecosystem has open-pull-requests-limit PRs open, Dependabot opens
 # nothing more for it — silently. That is how the loop stalled in doconext_core
 # in July 2026: eighteen npm PRs nobody merged, and no new ones since. Minor
-# and patch bumps are therefore grouped into one PR per ecosystem per week,
+# and patch bumps are therefore grouped into one PR per ecosystem per month,
 # and the limit is low enough that a full ceiling is noticed, not ignored.
+#
+# The schedule is monthly because in a private repository every run costs
+# Actions minutes: the update job itself, and a full CI run for every PR it
+# opens or rebases. Security updates do not wait for it — they follow the
+# advisory, not this schedule, as long as Dependabot security updates are
+# switched on in the repository settings.
 version: 2
 updates:
   # PHP (Composer) packages.
   - package-ecosystem: composer
     directory: "/"
     schedule:
-      interval: weekly
-    open-pull-requests-limit: 5
+      interval: monthly
+    open-pull-requests-limit: 3
     groups:
       composer-minor-patch:
         update-types: ["minor", "patch"]
@@ -28,8 +34,8 @@ updates:
   - package-ecosystem: npm
     directory: "/"
     schedule:
-      interval: weekly
-    open-pull-requests-limit: 5
+      interval: monthly
+    open-pull-requests-limit: 3
     groups:
       # The platform libraries move together; a partial bump breaks peer deps.
       nextcloud:
@@ -57,8 +63,8 @@ updates:
   - package-ecosystem: github-actions
     directory: "/"
     schedule:
-      interval: weekly
-    open-pull-requests-limit: 5
+      interval: monthly
+    open-pull-requests-limit: 3
     groups:
       actions:
         patterns:
