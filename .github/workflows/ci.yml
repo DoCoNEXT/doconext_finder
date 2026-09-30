@@ -194,6 +194,24 @@ jobs:
       - uses: ramsey/composer-install@26d8a556604053a9612623447203a691f406fbe6 # v4
       - run: composer require --dev --no-scripts --no-progress --ignore-platform-reqs -W nextcloud/ocp:${{ matrix.ocp-version }}
       - run: composer test:unit
+      # The stubs carry OCP only. The core-private search classes this app
+      # constructs (lib/Search/CoreSearch.php) come from the server branch of
+      # the same version — just that directory, not a Nextcloud install.
+      - id: server-ref
+        env:
+          OCP_VERSION: ${{ matrix.ocp-version }}
+        run: echo "ref=${OCP_VERSION#dev-}" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          repository: nextcloud/server
+          ref: ${{ steps.server-ref.outputs.ref }}
+          path: nextcloud-server
+          sparse-checkout: lib/private/Files/Search
+          submodules: false
+          persist-credentials: false
+      - run: composer test:platform
+        env:
+          NEXTCLOUD_SERVER_DIR: ${{ github.workspace }}/nextcloud-server
 
   # info.xml claims Nextcloud 31 to 34. The lockfile pins the 33 API stubs;
   # this run swaps in the 34 stubs so a class or signature that moved between

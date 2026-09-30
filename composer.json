@@ -31,6 +31,7 @@
 		"cs:fix": "php-cs-fixer fix",
 		"psalm": "psalm --threads=1 --no-cache",
 		"test:unit": "phpunit -c tests/phpunit.xml --testsuite unit --colors=always --fail-on-warning --fail-on-risky",
+		"test:platform": "phpunit -c tests/phpunit.xml --testsuite platform --colors=always --fail-on-warning --fail-on-risky",
 		"rector": "rector && composer cs:fix"
 	},
 	"require": {

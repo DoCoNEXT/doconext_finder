@@ -4,10 +4,7 @@ declare(strict_types=1);
 
 namespace OCA\DcnFinder\Service;
 
-use OC\Files\Search\SearchBinaryOperator;
-use OC\Files\Search\SearchComparison;
-use OC\Files\Search\SearchOrder;
-use OC\Files\Search\SearchQuery;
+use OCA\DcnFinder\Search\CoreSearch;
 use OCA\DcnFinder\Search\FileCondition;
 use OCA\DcnFinder\Search\FileOwner;
 use OCA\DcnFinder\Search\FileQuery;
@@ -22,7 +19,6 @@ use OCP\Files\Search\ISearchBinaryOperator;
 use OCP\Files\Search\ISearchComparison;
 use OCP\Files\Search\ISearchOperator;
 use OCP\Files\Search\ISearchOrder;
-use OCP\Files\Search\ISearchQuery;
 use OCP\FilesMetadata\IFilesMetadataManager;
 use OCP\FilesMetadata\IMetadataQuery;
 use OCP\ITagManager;
@@ -140,7 +136,7 @@ class FileSearchService
             // One extra row tells us whether another page exists without a count query.
             $rooted = $this->withoutRoot($operator, $searchRoots[0]);
             $nodes = $searchRoots[0]->search(
-                $this->searchQuery($rooted, $query->limit + 1, $query->offset, $orders, $user)
+                CoreSearch::query($rooted, $query->limit + 1, $query->offset, $orders, $user)
             );
 
             $hasMore = count($nodes) > $query->limit;
@@ -155,7 +151,7 @@ class FileSearchService
                 // therefore worth one more question rather than a guess that
                 // hides everything after it.
                 $hasMore = $searchRoots[0]->search(
-                    $this->searchQuery($rooted, 1, $query->offset + $query->limit, $orders, $user)
+                    CoreSearch::query($rooted, 1, $query->offset + $query->limit, $orders, $user)
                 ) !== [];
             }
         } else {
@@ -250,7 +246,7 @@ class FileSearchService
         $found = [];
         foreach ($roots as $root) {
             $rooted = $this->withoutRoot($operator, $root);
-            foreach ($root->search($this->searchQuery($rooted, $reach, 0, $orders, $user)) as $node) {
+            foreach ($root->search(CoreSearch::query($rooted, $reach, 0, $orders, $user)) as $node) {
                 // Nested roots overlap: a sub-dossier inside its parent's folder
                 // is reached twice, and the same file must not be listed twice.
                 $found[$node->getId()] = $node;
@@ -264,25 +260,6 @@ class FileSearchService
             array_slice($nodes, $query->offset, $query->limit),
             count($nodes) > $query->offset + $query->limit,
         ];
-    }
-
-    /**
-     * The one place this app instantiates \OC\Files\Search\SearchQuery.
-     *
-     * That class is core-private: there is no public builder for a search query,
-     * only the interface {@see ISearchQuery} that Folder::search() accepts. Psalm
-     * cannot see `OC\` at all — `nextcloud/ocp` ships only OCP — so every use is
-     * a baselined UndefinedClass. Keeping it to a single site keeps that
-     * accepted exception one line long instead of one per call.
-     */
-    private function searchQuery(
-        ISearchOperator $operator,
-        int $limit,
-        int $offset,
-        array $orders,
-        ?IUser $user,
-    ): ISearchQuery {
-        return new SearchQuery($operator, $limit, $offset, $orders, $user);
     }
 
     /**
@@ -301,39 +278,12 @@ class FileSearchService
      */
     private function withoutRoot(ISearchOperator $operator, Folder $root): ISearchOperator
     {
-        return $this->combine(ISearchBinaryOperator::OPERATOR_AND, [
+        return CoreSearch::combine(ISearchBinaryOperator::OPERATOR_AND, [
             $operator,
-            $this->combine(ISearchBinaryOperator::OPERATOR_NOT, [
-                $this->compare(ISearchComparison::COMPARE_EQUAL, 'fileid', $root->getId()),
+            CoreSearch::combine(ISearchBinaryOperator::OPERATOR_NOT, [
+                CoreSearch::compare(ISearchComparison::COMPARE_EQUAL, 'fileid', $root->getId()),
             ]),
         ]);
-    }
-
-    /**
-     * The one place this app instantiates \OC\Files\Search\SearchOrder.
-     */
-    private function orderBy(string $direction, string $field, string $extra = ''): ISearchOrder
-    {
-        return new SearchOrder($direction, $field, $extra);
-    }
-
-    /**
-     * The one place this app instantiates \OC\Files\Search\SearchComparison,
-     * for the reason {@see searchQuery()} gives.
-     */
-    private function compare(string $type, string $field, mixed $value, string $extra = ''): ISearchComparison
-    {
-        return new SearchComparison($type, $field, $value, $extra);
-    }
-
-    /**
-     * And the one place it instantiates \OC\Files\Search\SearchBinaryOperator.
-     *
-     * @param list<ISearchOperator> $operands
-     */
-    private function combine(string $type, array $operands): ISearchOperator
-    {
-        return new SearchBinaryOperator($type, $operands);
     }
 
     /**
@@ -360,7 +310,7 @@ class FileSearchService
         $found = [];
         foreach ($roots as $root) {
             $rooted = $this->withoutRoot($operator, $root);
-            foreach ($root->search($this->searchQuery($rooted, ContentSearchService::WINDOW, 0, $orders, $user)) as $node) {
+            foreach ($root->search(CoreSearch::query($rooted, ContentSearchService::WINDOW, 0, $orders, $user)) as $node) {
                 // Nested roots overlap; the same file must not be listed twice.
                 $found[$node->getId()] = $node;
             }
@@ -452,7 +402,7 @@ class FileSearchService
         $text = [];
 
         if ($query->term !== '') {
-            $text[] = $this->compare(
+            $text[] = CoreSearch::compare(
                 ISearchComparison::COMPARE_LIKE,
                 'name',
                 '%' . addcslashes($query->term, '%_\\') . '%',
@@ -463,20 +413,20 @@ class FileSearchService
         // only one that accepts `in` — which is what lets the index's answer be
         // an ordinary clause here instead of a second pass in PHP.
         if ($contentIds !== []) {
-            $text[] = $this->compare(ISearchComparison::COMPARE_IN, 'fileid', $contentIds);
+            $text[] = CoreSearch::compare(ISearchComparison::COMPARE_IN, 'fileid', $contentIds);
         }
 
         if (count($text) === 1) {
             $parts[] = $text[0];
         } elseif (count($text) > 1) {
-            $parts[] = $this->combine(ISearchBinaryOperator::OPERATOR_OR, $text);
+            $parts[] = CoreSearch::combine(ISearchBinaryOperator::OPERATOR_OR, $text);
         }
 
         // Preset filters AND with everything, so "match any" on the advanced conditions
         // never widens the chosen type or date range.
         if ($query->mimetypes !== []) {
             $mimes = array_map(
-                fn (string $m) => $this->compare(
+                fn (string $m) => CoreSearch::compare(
                     str_ends_with($m, '/%') ? ISearchComparison::COMPARE_LIKE : ISearchComparison::COMPARE_EQUAL,
                     'mimetype',
                     $m,
@@ -485,7 +435,7 @@ class FileSearchService
             );
             $parts[] = count($mimes) === 1
                 ? $mimes[0]
-                : $this->combine(ISearchBinaryOperator::OPERATOR_OR, $mimes);
+                : CoreSearch::combine(ISearchBinaryOperator::OPERATOR_OR, $mimes);
         }
 
         // The two ends of the date filter's window, each optional: most presets
@@ -496,7 +446,7 @@ class FileSearchService
         ];
         foreach ($window as [$operator, $bound]) {
             if ($bound !== null) {
-                $parts[] = $this->compare($operator, 'mtime', $bound);
+                $parts[] = CoreSearch::compare($operator, 'mtime', $bound);
             }
         }
 
@@ -505,7 +455,7 @@ class FileSearchService
         if (count($conditions) === 1) {
             $parts[] = $conditions[0];
         } elseif (count($conditions) > 1) {
-            $parts[] = $this->combine(
+            $parts[] = CoreSearch::combine(
                 $query->matchAny ? ISearchBinaryOperator::OPERATOR_OR : ISearchBinaryOperator::OPERATOR_AND,
                 $conditions,
             );
@@ -513,7 +463,7 @@ class FileSearchService
 
         return count($parts) === 1
             ? $parts[0]
-            : $this->combine(ISearchBinaryOperator::OPERATOR_AND, $parts);
+            : CoreSearch::combine(ISearchBinaryOperator::OPERATOR_AND, $parts);
     }
 
     /**
@@ -529,18 +479,18 @@ class FileSearchService
         // after they come back. The database still needs a valid, stable order
         // to cut its own window by.
         if ($query->sort === FileQuery::SORT_RELEVANCE) {
-            return $this->ordered($this->orderBy($direction, 'mtime'));
+            return $this->ordered(CoreSearch::orderBy($direction, 'mtime'));
         }
 
         if (MetadataFields::isMetadata($query->sort)) {
             $key = MetadataFields::key($query->sort);
 
             return $this->ordered($this->metadataFields->isFilterable($key)
-                ? $this->orderBy($direction, $key, IMetadataQuery::EXTRA)
-                : $this->orderBy($direction, 'mtime'));
+                ? CoreSearch::orderBy($direction, $key, IMetadataQuery::EXTRA)
+                : CoreSearch::orderBy($direction, 'mtime'));
         }
 
-        return $this->ordered($this->orderBy($direction, $query->sort));
+        return $this->ordered(CoreSearch::orderBy($direction, $query->sort));
     }
 
     /**
@@ -560,7 +510,7 @@ class FileSearchService
      */
     private function ordered(ISearchOrder $order): array
     {
-        return [$order, $this->orderBy(ISearchOrder::DIRECTION_ASCENDING, 'fileid')];
+        return [$order, CoreSearch::orderBy(ISearchOrder::DIRECTION_ASCENDING, 'fileid')];
     }
 
     private function toComparison(FileCondition $condition): ISearchOperator
@@ -595,7 +545,7 @@ class FileSearchService
                 return $this->namesPrincipal($key, (string)$condition->value);
             }
 
-            $comparison = $this->compare(
+            $comparison = CoreSearch::compare(
                 $condition->comparison(),
                 $key,
                 $condition->value,
@@ -603,11 +553,11 @@ class FileSearchService
             );
 
             return $condition->negate
-                ? $this->combine(ISearchBinaryOperator::OPERATOR_NOT, [$comparison])
+                ? CoreSearch::combine(ISearchBinaryOperator::OPERATOR_NOT, [$comparison])
                 : $comparison;
         }
 
-        $comparison = $this->compare(
+        $comparison = CoreSearch::compare(
             $condition->comparison(),
             $condition->field,
             $condition->value,
@@ -616,7 +566,7 @@ class FileSearchService
         // SearchBuilder only supports a comparison directly inside "not" — never a
         // nested binary operator — so negation is applied per condition, not per group.
         return $condition->negate
-            ? $this->combine(ISearchBinaryOperator::OPERATOR_NOT, [$comparison])
+            ? CoreSearch::combine(ISearchBinaryOperator::OPERATOR_NOT, [$comparison])
             : $comparison;
     }
 
@@ -643,10 +593,10 @@ class FileSearchService
             [ISearchComparison::COMPARE_LIKE, '%, ' . $quoted . ', %'],
         ];
 
-        return $this->combine(
+        return CoreSearch::combine(
             ISearchBinaryOperator::OPERATOR_OR,
             array_map(
-                fn (array $pattern) => $this->compare($pattern[0], $key, $pattern[1], IMetadataQuery::EXTRA),
+                fn (array $pattern) => CoreSearch::compare($pattern[0], $key, $pattern[1], IMetadataQuery::EXTRA),
                 $patterns,
             ),
         );

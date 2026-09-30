@@ -100,6 +100,8 @@ composer psalm         # static analysis; tests/psalm-baseline.xml holds the
                        # known-and-accepted findings — never grow it to silence
                        # a new one, fix the code instead
 composer test:unit     # PHPUnit (CI: 8.2–8.5, plus a run against the NC34 stubs)
+composer test:platform # the core-private search classes against a server checkout
+                       # (NEXTCLOUD_SERVER_DIR; defaults to the server this app sits in)
 npm run lint / stylelint / build / test
 make appstore          # the release tarball, and what CI checks the shape of
 ```
