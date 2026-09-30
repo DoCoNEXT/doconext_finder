@@ -6,6 +6,7 @@ namespace OCA\DcnFinder\Tests\Platform;
 
 use DateTime;
 use OCA\DcnFinder\Search\CoreSearch;
+use OCA\DcnFinder\Search\ResultOrder;
 use OCP\Files\FileInfo;
 use OCP\Files\Search\ISearchBinaryOperator;
 use OCP\Files\Search\ISearchComparison;
@@ -134,14 +135,14 @@ class CoreSearchTest extends TestCase
     }
 
     /**
-     * The columns core's own comparator must know.
+     * The fields FileSearchService trusts core to sort a merged page by.
      *
      * When a folder spans several storages — a home with team folders in it —
      * Folder::search() gets its rows per storage and sorts the merged page again
      * in PHP with sortFileInfo(). A field that comparator does not know compares
      * as equal, and the page silently comes back in another order than the SQL
-     * cut it by. These are the sorts that depend on it, fileid being the
-     * tie-break FileSearchService::ordered() adds to every order.
+     * cut it by. {@see ResultOrder::CORE_SORTED_FIELDS} lists the fields Finder
+     * leaves to core; every other order is re-sorted by Finder itself.
      *
      * @return array<string, array{string, string, int|string, int|string}>
      */
@@ -153,6 +154,11 @@ class CoreSearchTest extends TestCase
             'size' => ['size', 'getSize', 10, 20],
             'mtime' => ['mtime', 'getMtime', 1_700_000_000, 1_800_000_000],
         ];
+    }
+
+    public function testEveryFieldLeftToCoreIsChecked(): void
+    {
+        $this->assertEqualsCanonicalizing(ResultOrder::CORE_SORTED_FIELDS, array_keys(self::sortedFields()));
     }
 
     #[DataProvider('sortedFields')]

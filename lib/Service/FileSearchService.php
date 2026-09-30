@@ -10,6 +10,7 @@ use OCA\DcnFinder\Search\FileOwner;
 use OCA\DcnFinder\Search\FileQuery;
 use OCA\DcnFinder\Search\FileScope;
 use OCA\DcnFinder\Search\MetadataFields;
+use OCA\DcnFinder\Search\ResultOrder;
 use OCP\Files\FileInfo;
 use OCP\Files\Folder;
 use OCP\Files\IRootFolder;
@@ -21,6 +22,7 @@ use OCP\Files\Search\ISearchOperator;
 use OCP\Files\Search\ISearchOrder;
 use OCP\FilesMetadata\IFilesMetadataManager;
 use OCP\FilesMetadata\IMetadataQuery;
+use OCP\IDBConnection;
 use OCP\ITagManager;
 use OCP\IUser;
 use OCP\IUserManager;
@@ -51,6 +53,7 @@ class FileSearchService
         private FileAuthorService $authors,
         private CoreScope $coreScope,
         private ContentSearchService $contentSearch,
+        private IDBConnection $db,
     ) {
     }
 
@@ -138,6 +141,14 @@ class FileSearchService
             $nodes = $searchRoots[0]->search(
                 CoreSearch::query($rooted, $query->limit + 1, $query->offset, $orders, $user)
             );
+            // The database cut the right rows, but a folder spanning several
+            // storages (a home with team folders in it) gets them back per
+            // storage, and Folder::search() re-sorts them with a comparator
+            // that does not know `creation_time` or metadata keys: measured,
+            // "newest first" came back oldest first.
+            if (!ResultOrder::coreSortsBy($orders)) {
+                usort($nodes, $this->comparator($orders));
+            }
 
             $hasMore = count($nodes) > $query->limit;
             if ($hasMore) {
@@ -254,7 +265,7 @@ class FileSearchService
         }
 
         $nodes = array_values($found);
-        usort($nodes, $this->comparator($query));
+        usort($nodes, $this->comparator($orders));
 
         return [
             array_slice($nodes, $query->offset, $query->limit),
@@ -339,36 +350,27 @@ class FileSearchService
     }
 
     /**
-     * Orders the merged rows.
+     * Orders rows the database already ordered, the way it ordered them.
      *
      * Deliberately the same comparison the database made, not a nicer one: each
      * root was cut to its first N rows *by the database's ordering*, so a merge
      * that ordered differently would promote rows past the cut and drop rows
      * that belonged. Sorting `name` case-insensitively here did exactly that —
      * a file could appear on two consecutive pages, which is how this was found.
-     * Nextcloud's own cross-mount merge in Folder::search() compares the same
-     * plain way, for the same reason.
+     * {@see ResultOrder} derives the comparison from the orders the query was
+     * built with, file id tie-break included.
      *
-     * The file id breaks ties so that two pages of the same result set cut at
-     * the same place; without it, equally-named files reshuffle between them.
-     *
-     * Sorting on a metadata key falls back to modification time: those values
-     * are fetched per page, after the merge, so there is nothing to sort on yet.
-     * {@see order()} makes the same substitution for unindexed keys.
+     * @param list<ISearchOrder> $orders
+     * @return callable(Node, Node): int
      */
-    private function comparator(FileQuery $query): callable
+    private function comparator(array $orders): callable
     {
-        $direction = $query->descending ? -1 : 1;
+        $provider = $this->db->getDatabaseProvider();
 
-        $key = match ($query->sort) {
-            'name'          => static fn (Node $n) => $n->getName(),
-            'size'          => static fn (Node $n) => $n->getSize(),
-            'creation_time' => static fn (Node $n) => $n->getCreationTime(),
-            default         => static fn (Node $n) => $n->getMTime(),
-        };
-
-        return static fn (Node $a, Node $b) => ($direction * ($key($a) <=> $key($b)))
-            ?: ($a->getId() <=> $b->getId());
+        return ResultOrder::comparator(
+            $orders,
+            $provider === IDBConnection::PLATFORM_MYSQL || $provider === IDBConnection::PLATFORM_SQLITE,
+        );
     }
 
     /**
@@ -503,8 +505,8 @@ class FileSearchService
      * 1503 of 2055 files share a name with another, one of them 110 times, and
      * files created in one go share an mtime to the second.
      *
-     * Core sorts the merged pages in PHP by the same list, and its comparator
-     * knows `fileid` too, so the tie is settled the same way on both paths.
+     * The rows are sorted again in PHP by this same list ({@see comparator()}),
+     * so the tie is settled the same way there as in SQL.
      *
      * @return list<ISearchOrder>
      */
