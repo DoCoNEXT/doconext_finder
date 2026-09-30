@@ -28,6 +28,9 @@ final class AppConstants
     /** Company name, as it appears in the app id. */
     public const COMPANY_NAME = 'doconext';
 
+    /** Company name as people read it: the admin-menu prefix. */
+    public const COMPANY_DISPLAY_NAME = 'DoCoNEXT';
+
     /** Company abbreviation, for the identifiers with a length budget. */
     public const COMPANY_NAME_ABBREV = 'dcn';
 

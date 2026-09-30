@@ -9,7 +9,11 @@ use OCP\IAppConfig;
 use OCP\IURLGenerator;
 use OCP\Settings\IIconSection;
 
-/** Section under Settings → Administration, labelled with the display name. */
+/**
+ * Section under Settings → Administration, labelled "DoCoNEXT <display name>"
+ * so the DoCoNEXT apps read as one family there, as Core's "DoCoNEXT Core"
+ * does. The top menu keeps the bare display name.
+ */
 class AdminSection implements IIconSection
 {
     public function __construct(
@@ -29,7 +33,11 @@ class AdminSection implements IIconSection
     {
         $name = $this->appConfig->getValueString(AppConstants::APP_ID, AppConstants::DISPLAY_NAME_KEY, '');
 
-        return $name !== '' ? $name : AppConstants::DEFAULT_DISPLAY_NAME;
+        $name = $name !== '' ? $name : AppConstants::DEFAULT_DISPLAY_NAME;
+
+        return str_starts_with($name, AppConstants::COMPANY_DISPLAY_NAME . ' ')
+            ? $name
+            : AppConstants::COMPANY_DISPLAY_NAME . ' ' . $name;
     }
 
     #[\Override]

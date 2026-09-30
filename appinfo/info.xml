@@ -7,7 +7,7 @@
 -->
 <info>
 	<id>doconext_finder</id>
-	<name>DoCoNEXT Finder</name>
+	<name>DoCoNEXT - Finder</name>
 	<summary>Find files fast: structured search with filters, saved searches and configurable columns.</summary>
 	<description><![CDATA[
 Finder is a search page for your Nextcloud files, built for people who look
