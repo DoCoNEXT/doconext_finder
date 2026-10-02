@@ -12,6 +12,7 @@ use OCP\AppFramework\Http\Attribute\FrontpageRoute;
 use OCP\AppFramework\Http\Attribute\NoAdminRequired;
 use OCP\AppFramework\Http\Attribute\NoCSRFRequired;
 use OCP\AppFramework\Http\Attribute\OpenAPI;
+use OCP\AppFramework\Http\ContentSecurityPolicy;
 use OCP\AppFramework\Http\TemplateResponse;
 use OCP\IRequest;
 use OCP\Util;
@@ -56,12 +57,25 @@ class PageController extends Controller
         // custom element; without it the details panel falls back to Nextcloud's
         // own thumbnail. Only the app id is referenced — no classes, no dependency,
         // so Finder still installs and runs on its own.
-        if ($this->appManager->isEnabledForUser(self::PREVIEW_APP_ID)) {
+        $previews = $this->appManager->isEnabledForUser(self::PREVIEW_APP_ID);
+        if ($previews) {
             Util::addScript(self::PREVIEW_APP_ID, self::PREVIEW_APP_ID . '-main');
             Util::addStyle(self::PREVIEW_APP_ID, self::PREVIEW_APP_ID . '-main');
         }
         $this->initialState->provide();
 
-        return new TemplateResponse(AppConstants::APP_ID, 'index');
+        $response = new TemplateResponse(AppConstants::APP_ID, 'index');
+        if ($previews) {
+            // The preview element shows a PDF — and an office document, as its
+            // PDF rendition — in an iframe on this instance. The page's default
+            // policy allows no frames at all, so the browser drew a broken
+            // document where the preview should be. Only this instance's own
+            // pages may be framed; nothing else is widened.
+            $policy = new ContentSecurityPolicy();
+            $policy->addAllowedFrameDomain("'self'");
+            $response->setContentSecurityPolicy($policy);
+        }
+
+        return $response;
     }
 }
