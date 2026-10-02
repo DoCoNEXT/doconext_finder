@@ -22,3 +22,21 @@ spl_autoload_register(static function (string $class): void {
         require_once $file;
     }
 });
+
+// The platform suite (tests/Platform) checks this app against the core-private
+// search classes it constructs, which no stub package ships. They come from a
+// Nextcloud server checkout: $NEXTCLOUD_SERVER_DIR in CI, or the server this
+// app sits in during development (apps-extra/doconext_finder). Only
+// OC\Files\Search\ is mapped, on purpose: a test that reaches further into
+// core should fail to load rather than quietly depend on it.
+$serverDir = getenv('NEXTCLOUD_SERVER_DIR') ?: __DIR__ . '/../../..';
+spl_autoload_register(static function (string $class) use ($serverDir): void {
+    if (!str_starts_with($class, 'OC\\Files\\Search\\')) {
+        return;
+    }
+
+    $file = $serverDir . '/lib/private/' . str_replace('\\', '/', substr($class, 3)) . '.php';
+    if (is_file($file)) {
+        require_once $file;
+    }
+});

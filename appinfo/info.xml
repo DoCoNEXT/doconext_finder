@@ -7,7 +7,7 @@
 -->
 <info>
 	<id>doconext_finder</id>
-	<name>DoCoNEXT Finder</name>
+	<name>DoCoNEXT - Finder</name>
 	<summary>Find files fast: structured search with filters, saved searches and configurable columns.</summary>
 	<description><![CDATA[
 Finder is a search page for your Nextcloud files, built for people who look
@@ -26,8 +26,9 @@ things up all day.
   containing folder, preview, download, upload a new version or add files to a
   folder, straight from the result row.
 
-Everything works on a plain Nextcloud. When the DoCoNEXT Core app is also
-installed, Finder additionally filters and groups on Core's metadata fields.
+Everything works on a plain Nextcloud; nothing else needs to be installed.
+Where DoCoNEXT Core also runs (available from DoCoNEXT, not from this store),
+Finder additionally filters and groups on Core's metadata fields.
 	]]></description>
 	<version>0.9.1</version>
 	<licence>AGPL-3.0-or-later</licence>

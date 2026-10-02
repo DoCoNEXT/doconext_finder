@@ -8,5 +8,11 @@
 		<testsuite name="unit">
 			<directory>Unit</directory>
 		</testsuite>
+		<!-- Needs a Nextcloud server checkout (NEXTCLOUD_SERVER_DIR); see
+		     tests/Platform/CoreSearchTest.php. Kept apart so the unit suite
+		     stays runnable against the OCP stubs alone. -->
+		<testsuite name="platform">
+			<directory>Platform</directory>
+		</testsuite>
 	</testsuites>
 </phpunit>

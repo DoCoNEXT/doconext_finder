@@ -30,6 +30,7 @@ path = [
   "Makefile",
   "deploy.sh",
   "README.md",
+  "CHANGELOG.md",
   "CLAUDE.md",
   "vite.config.ts",
   "vitest.config.ts",
