@@ -153,12 +153,14 @@ import {
 } from '@lucide/vue'
 import { useI18n } from '../composables/useI18n'
 import { useHistoryStore } from '../stores/historyStore'
+import { useSearchStore } from '../stores/searchStore'
 import { useSaveSearch } from '../composables/useSaveSearch'
 import { describeQuery } from '../filters/describe'
 import type { StoredSearch } from '../types/Search'
 
 const { t } = useI18n()
 const history = useHistoryStore()
+const search = useSearchStore()
 const { saveSearch } = useSaveSearch()
 
 const emit = defineEmits<{ (e: 'run', entry: StoredSearch): void }>()
@@ -171,10 +173,13 @@ const emit = defineEmits<{ (e: 'run', entry: StoredSearch): void }>()
 const selected = ref<StoredSearch | null>(null)
 const error = ref('')
 
-onMounted(() => history.load())
+onMounted(() => {
+  history.load()
+  search.loadSchema()
+})
 
 function describe(entry: StoredSearch): string {
-  return describeQuery(t, entry.query)
+  return describeQuery(t, entry.query, search.schema?.metadata)
 }
 
 function isSelected(entry: StoredSearch): boolean {

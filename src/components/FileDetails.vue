@@ -238,7 +238,7 @@ const buttonCommands = computed(() => commands.value.filter((c) => !c.href))
  */
 const metadata = computed(() => {
   const values = props.file?.metadata ?? {}
-  const known = search.schema?.metadata ?? []
+  const known = search.metadata
 
   return Object.entries(values)
     .map(([key, value]) => ({

@@ -11,7 +11,8 @@ import { useHistoryStore } from './historyStore'
 import { usePreferencesStore } from './preferencesStore'
 import { anyTime, anyType, canonicalModifiedPreset, fileTypePresets, modifiedPresets, modifiedRange } from '../filters/presets'
 import type { Translate } from '../filters/presets'
-import type { Condition, FieldsResponse, FileResult, SearchState } from '../types/Search'
+import { labelledFor, realmOfScope } from '../filters/metadata'
+import type { Condition, FieldsResponse, FileResult, MetadataField, SearchState } from '../types/Search'
 
 /**
  * How many rows "Load all" will fetch before stopping. A row cap rather than a
@@ -69,6 +70,15 @@ export const useSearchStore = defineStore('search', {
   }),
 
   getters: {
+    /**
+     * The metadata fields, named the way the workspace the search is narrowed
+     * to names them — the list every screen labels a field from.
+     * @param state
+     */
+    metadata(state): MetadataField[] {
+      return labelledFor(state.schema?.metadata ?? [], realmOfScope(state.query.scope))
+    },
+
     /** The user's setting, so it applies to paging and to Load all alike. */
     pageSize: (): number => usePreferencesStore().pageSize,
 

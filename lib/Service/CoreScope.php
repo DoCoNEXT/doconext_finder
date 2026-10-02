@@ -22,8 +22,10 @@ use Psr\Log\LoggerInterface;
  * - **Workspace, entity type, entity** — DoCoNEXT Core's vocabulary, offered
  *   only when Core is there, cascading from one to the next.
  *
- * It answers one more question of Core's, unrelated to scoping but sharing the
- * same seam: **what a principal id means.** Core stores the people a file names
+ * It answers two more questions of Core's, unrelated to scoping but sharing the
+ * same seam: **what a metadata key is called** — the label Core gives the
+ * field, rather than the key it is stored under — and **what a principal id
+ * means.** Core stores the people a file names
  * as bare ids, so a column showing one needs a name from somewhere, and only
  * Core can say which keys hold them at all.
  *
@@ -43,6 +45,9 @@ class CoreScope
 
     /** Core's public principal lookup, absent on older versions of Core. */
     private const CORE_PRINCIPALS = 'OCA\\DcnCore\\Public\\Principals\\PrincipalNameService';
+
+    /** Core's public field labels, absent on older versions of Core. */
+    private const CORE_LABELS = 'OCA\\DcnCore\\Public\\Metadata\\FieldLabelService';
 
     /** A typeahead is a menu, not a result set. */
     private const MAX_SUGGESTIONS = 25;
@@ -287,6 +292,24 @@ class CoreScope
 
             return $found;
         }, []);
+    }
+
+    /**
+     * What Core calls the metadata keys it writes, per workspace the user may
+     * enter: `dcn_core_dossiernummer` → [1 => 'Matter Number']. Empty without
+     * Core, or with a Core that predates the question — the caller then names
+     * a key after itself, as it always did.
+     *
+     * @return array<string, array<int, string>>
+     */
+    public function fieldLabels(): array
+    {
+        $core = $this->coreService(self::CORE_LABELS);
+        if ($core === null) {
+            return [];
+        }
+
+        return $this->guard(static fn () => $core->labelsByRealm(), []);
     }
 
     private function core(): ?object

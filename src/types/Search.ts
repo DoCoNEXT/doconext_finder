@@ -116,6 +116,11 @@ export interface ScopeSelection {
   level: ScopeLevel
   id: number
   label: string
+  /**
+   * The workspace the scope lies in, where the picker knew it. Only for naming
+   * metadata fields the way that workspace does; the server is never told.
+   */
+  realmId?: number
 }
 
 /** The server describes its own filterable surface, so menus aren't hardcoded. */
@@ -124,7 +129,13 @@ export interface MetadataField {
   key: string
   /** How the API addresses it, e.g. meta:dcn_core_rechtsgebied. */
   field: string
+  /** What to call the field when no workspace says otherwise. */
   label: string
+  /**
+   * What each workspace calls it, by workspace id — DoCoNEXT Core labels its
+   * fields per workspace. Empty without Core, and for any other app's keys.
+   */
+  labels: Record<number, string>
   type: string
   /** Only indexed keys can be filtered or sorted on. */
   filterable: boolean

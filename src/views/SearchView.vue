@@ -123,11 +123,11 @@
         </NcCheckboxRadioSwitch>
       </div>
 
-      <template v-if="store.schema">
+      <template v-if="conditionSchema">
         <ConditionRow v-for="(condition, index) in store.query.conditions"
                       :key="index"
                       :condition="condition"
-                      :schema="store.schema"
+                      :schema="conditionSchema"
                       @update:condition="store.query.conditions.splice(index, 1, $event)"
                       @remove="store.query.conditions.splice(index, 1)" />
 
@@ -394,7 +394,10 @@ const filtersOpen = ref(false)
  * The filters in force, for the folded line. Neither the term nor the contents
  * switch is one of them: both stay on screen whether the filters are folded or not.
  */
-const activeFilters = computed(() => describeQuery(t, { ...store.query, searchContent: false }))
+/** The schema the condition rows label their fields from, named for the scope. */
+const conditionSchema = computed(() => store.schema && { ...store.schema, metadata: store.metadata })
+
+const activeFilters = computed(() => describeQuery(t, { ...store.query, searchContent: false }, store.schema?.metadata))
 
 const rangeLabel = computed(() => {
   const first = store.offset + 1

@@ -51,20 +51,30 @@ class MetadataFields
      * a picker there instead of a box for typing an id nobody knows by heart.
      * Null on every other key, and on all of them without Core.
      *
-     * @return list<array{key: string, field: string, label: string, type: string, filterable: bool, principal: array{type: ?string, multi: bool}|null}>
+     * A label comes from the app that wrote the key when it says one: Core
+     * calls `dcn_core_dossiernummer` "Matter Number" in an English workspace.
+     * Core answers per workspace, so `labels` carries every one and `label`
+     * the one they agree on — the screen picks the workspace's own when a
+     * search is narrowed to one. Where they disagree, or nobody says, the key
+     * names itself.
+     *
+     * @return list<array{key: string, field: string, label: string, labels: array<int, string>, type: string, filterable: bool, principal: array{type: ?string, multi: bool}|null}>
      */
     public function all(): array
     {
         $known = $this->metadataManager->getKnownMetadata();
         $indexed = $known->getIndexes();
         $principals = $this->principalFields();
+        $named = $this->core->fieldLabels();
 
         $fields = [];
         foreach ($known->getKeys() as $key) {
+            $labels = $named[$key] ?? [];
             $fields[] = [
                 'key'        => $key,
                 'field'      => self::PREFIX . $key,
-                'label'      => self::label($key),
+                'label'      => self::agreedLabel($labels) ?? self::label($key),
+                'labels'     => $labels,
                 'type'       => $known->getType($key),
                 'filterable' => in_array($key, $indexed, true),
                 'principal'  => $principals[$key] ?? null,
@@ -201,6 +211,19 @@ class MetadataFields
         }
 
         return $this->principals;
+    }
+
+    /**
+     * The label every workspace gives a key, or null when they differ or none
+     * gives one.
+     *
+     * @param array<int, string> $labels realm id => label
+     */
+    public static function agreedLabel(array $labels): ?string
+    {
+        $distinct = array_unique(array_values($labels));
+
+        return count($distinct) === 1 ? $distinct[0] : null;
     }
 
     /**

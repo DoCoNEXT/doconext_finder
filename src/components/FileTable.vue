@@ -130,7 +130,7 @@ function showDetails(file: FileResult) {
   preferences.setSidebarPinned(true)
 }
 
-const metadata = computed(() => search.schema?.metadata ?? [])
+const metadata = computed(() => search.metadata)
 
 const columns = computed(() => preferences.visibleColumns)
 
