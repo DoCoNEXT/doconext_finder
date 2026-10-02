@@ -62,7 +62,7 @@ final class AppConstants
     public const DISPLAY_NAME_KEY = 'display_name';
 
     /** Fallback shown when no custom display name is configured. */
-    public const DEFAULT_DISPLAY_NAME = 'DoCoNEXT Finder';
+    public const DEFAULT_DISPLAY_NAME = 'Finder';
 
     /**
      * app-config namespace + key for which file extensions "Open in local app"
