@@ -1,10 +1,4 @@
 <?xml version="1.0"?>
-<!--
-  App metadata. The <id> MUST equal the app's directory name and the composer
-  PSR-4 namespace segment. init-app.sh rewrites the id / name / namespace / DB
-  prefix across the whole tree — don't hand-edit these placeholders in a real
-  app, run the script.
--->
 <info>
 	<id>doconext_finder</id>
 	<name>DoCoNEXT - Finder</name>

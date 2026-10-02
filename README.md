@@ -90,6 +90,6 @@ Please report vulnerabilities privately; see [SECURITY.md](SECURITY.md).
 
 ## License
 
-AGPL-3.0-or-later. Licensing follows the [REUSE](https://reuse.software)
-layout: the licence texts are in `LICENSES/`, and `REUSE.toml` says which
-covers which files.
+AGPL-3.0-or-later; the full text is in [LICENSE](LICENSE). Licensing follows
+the [REUSE](https://reuse.software) layout: the licence texts are in
+`LICENSES/`, and `REUSE.toml` says which covers which files.
