@@ -307,8 +307,8 @@ jobs:
         run: npm audit --audit-level=moderate || true
 
   # Build the release tarball exactly as `make appstore` does, and refuse one
-  # that is the wrong shape — dev-only paths inside it, or a size that says
-  # css/ was never emptied between builds (vite appends, it does not replace).
+  # that is the wrong shape (.github/scripts/check-tarball.sh, which the
+  # release workflow runs too).
   package:
     name: Release tarball
     runs-on: ubuntu-latest
@@ -327,24 +327,7 @@ jobs:
           cache: npm
       - run: make appstore
       - name: Check what shipped
-        run: |
-          tar -tzf build/artifacts/doconext_finder.tar.gz | cut -d/ -f2 | sort -u
-          # Everything below is dev-only; none of it may be in the package.
-          for p in src tests docs scripts .github .husky node_modules vendor-bin; do
-            if tar -tzf build/artifacts/doconext_finder.tar.gz | grep -q "^doconext_finder/$p/"; then
-              echo "::error::dev-only path '$p' is inside the tarball"; exit 1
-            fi
-          done
-          for f in CLAUDE.md deploy.sh Makefile package.json composer.json; do
-            if tar -tzf build/artifacts/doconext_finder.tar.gz | grep -q "^doconext_finder/$f$"; then
-              echo "::error::dev-only file '$f' is inside the tarball"; exit 1
-            fi
-          done
-          # A clean build is well under 1 MB and carries a handful of
-          # stylesheets; a few hundred means css/ was never emptied.
-          size=$(stat -c %s build/artifacts/doconext_finder.tar.gz)
-          echo "tarball: $((size / 1024)) KB, css files: $(tar -tzf build/artifacts/doconext_finder.tar.gz | grep -c '/css/.*\.css$')"
-          test "$size" -lt $((5 * 1024 * 1024)) || { echo "::error::tarball is $((size / 1024 / 1024)) MB"; exit 1; }
+        run: .github/scripts/check-tarball.sh build/artifacts/doconext_finder.tar.gz
 
   # SBOM + third-party license inventory for enterprise buyers / audits and to
   # satisfy attribution duties of the MIT/Apache/BSD deps we redistribute.

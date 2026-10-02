@@ -1,0 +1,176 @@
+name: Release
+
+# Builds, signs and (when switched on) publishes a release to the Nextcloud
+# App Store.
+#
+#   Publishing a GitHub release  → build, check, sign; and if the repository
+#                                  variable APPSTORE_PUBLISH is 'true', attach
+#                                  the tarball to the release and announce it
+#                                  to apps.nextcloud.com.
+#   Run workflow (manual)        → build, check and sign the chosen ref, and
+#                                  keep the result as a workflow artifact.
+#                                  Publishes nothing: the dry run.
+#
+# Publishing stays off until the tarball can be downloaded anonymously: the
+# store keeps only its URL, and every Nextcloud instance fetches it from there
+# on install and update. A release asset of a private repository answers 404.
+#
+# Setup, once (Settings → Environments → New environment "appstore"):
+#   - required reviewers: whoever may release — the signing key is only
+#     handed to a job somebody approved
+#   - deployment branches and tags: main and tags v* (main for the dry run)
+#   - secret APP_PRIVATE_KEY: the contents of doconext_finder.key
+#   - secret APPSTORE_TOKEN: the API token from apps.nextcloud.com (account
+#     settings), needed only once APPSTORE_PUBLISH is on
+#
+# The signing key never reaches the build job, and the build never sees a
+# secret: what gets signed is exactly what CI-equivalent steps built from a
+# clean checkout, handed over as an artifact.
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  APP_ID: doconext_finder
+  TARBALL: build/artifacts/doconext_finder.tar.gz
+
+jobs:
+  build:
+    name: Build and check the tarball
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          persist-credentials: false
+
+      - id: version
+        name: Read the version, and match it against the tag
+        env:
+          EVENT: ${{ github.event_name }}
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          version=$(python3 -c "import xml.etree.ElementTree as ET; print(ET.parse('appinfo/info.xml').getroot().findtext('version'))")
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "info.xml version: $version"
+          # The store refuses a release whose info.xml repeats a published
+          # version, and a tag that says otherwise would ship under a name
+          # nobody can trace back.
+          if [ "$EVENT" = release ] && [ "${TAG#v}" != "$version" ]; then
+            echo "::error::tag '$TAG' does not match info.xml version '$version'"; exit 1
+          fi
+          # The store shows CHANGELOG.md as the release notes.
+          if ! grep -q "^## \[$version\]" CHANGELOG.md; then
+            echo "::error::CHANGELOG.md has no '## [$version]' section"; exit 1
+          fi
+
+      - uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # 2.37.2
+        with:
+          php-version: '8.2'
+          coverage: none
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version-file: '.nvmrc'
+          cache: npm
+
+      - run: make appstore
+      - run: .github/scripts/check-tarball.sh "$TARBALL"
+
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: tarball
+          path: ${{ env.TARBALL }}
+          if-no-files-found: error
+          retention-days: 7
+
+  sign:
+    name: Sign, and publish when switched on
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: appstore
+    permissions:
+      contents: write   # attaching the tarball to the release
+    steps:
+      - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          name: tarball
+
+      - name: Sign the tarball
+        env:
+          APP_PRIVATE_KEY: ${{ secrets.APP_PRIVATE_KEY }}
+        run: |
+          if [ -z "$APP_PRIVATE_KEY" ]; then
+            echo "::error::secret APP_PRIVATE_KEY is not set on the 'appstore' environment"; exit 1
+          fi
+          umask 077
+          key=$(mktemp)
+          trap 'rm -f "$key"' EXIT
+          printf '%s\n' "$APP_PRIVATE_KEY" > "$key"
+
+          openssl dgst -sha512 -sign "$key" "$APP_ID.tar.gz" | openssl base64 -A > "$APP_ID.tar.gz.sig"
+
+          # Check the signature against the public half before anything leaves
+          # this job: a key pasted with a line missing signs garbage.
+          openssl pkey -in "$key" -pubout > pub.pem
+          openssl base64 -d -A -in "$APP_ID.tar.gz.sig" > sig.bin
+          openssl dgst -sha512 -verify pub.pem -signature sig.bin "$APP_ID.tar.gz"
+          rm -f sig.bin pub.pem
+
+          sha256sum "$APP_ID.tar.gz" | tee "$APP_ID.tar.gz.sha256"
+
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: signed-${{ needs.build.outputs.version }}
+          path: |
+            ${{ env.APP_ID }}.tar.gz
+            ${{ env.APP_ID }}.tar.gz.sig
+            ${{ env.APP_ID }}.tar.gz.sha256
+          if-no-files-found: error
+
+      - name: Attach the tarball to the release
+        if: github.event_name == 'release' && vars.APPSTORE_PUBLISH == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.event.release.tag_name }}
+        run: gh release upload "$TAG" "$APP_ID.tar.gz" --clobber --repo "$GITHUB_REPOSITORY"
+
+      - name: Announce the release to the App Store
+        if: github.event_name == 'release' && vars.APPSTORE_PUBLISH == 'true'
+        env:
+          APPSTORE_TOKEN: ${{ secrets.APPSTORE_TOKEN }}
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          if [ -z "$APPSTORE_TOKEN" ]; then
+            echo "::error::secret APPSTORE_TOKEN is not set on the 'appstore' environment"; exit 1
+          fi
+          url="https://github.com/$GITHUB_REPOSITORY/releases/download/$TAG/$APP_ID.tar.gz"
+
+          # Fetch it back the way the store and every instance will — without
+          # credentials — and make sure it is the file that was signed. A
+          # private repository fails here, with a clear message, instead of
+          # in the store's queue.
+          if ! curl -fsSL --retry 3 -o fetched.tar.gz "$url"; then
+            echo "::error::$url cannot be downloaded anonymously; is the repository public?"; exit 1
+          fi
+          if [ "$(sha256sum < fetched.tar.gz)" != "$(sha256sum < "$APP_ID.tar.gz")" ]; then
+            echo "::error::the downloadable tarball differs from the one that was signed"; exit 1
+          fi
+
+          jq -n --arg download "$url" --rawfile signature "$APP_ID.tar.gz.sig" \
+            '{download: $download, signature: $signature, nightly: false}' \
+          | curl -fsS --show-error -X POST https://apps.nextcloud.com/api/v1/apps/releases \
+              -H "Authorization: Token $APPSTORE_TOKEN" \
+              -H "Content-Type: application/json" \
+              --data @-
