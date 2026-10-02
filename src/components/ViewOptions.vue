@@ -170,7 +170,7 @@ const columnsOpen = ref(false)
 
 const BUILTIN_LEVELS = ['folder', 'type', 'mimetype', 'modified', 'createdBy', 'modifiedBy']
 
-const metadataFields = computed(() => search.schema?.metadata ?? [])
+const metadataFields = computed(() => search.metadata)
 
 const atMaxLevels = computed(() => levels.value.length >= MAX_GROUPING_LEVELS)
 

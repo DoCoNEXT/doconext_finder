@@ -160,13 +160,18 @@ watch(() => store.query.scope, (next) => {
   }
 }, { flush: 'sync' })
 
-/** The deepest level the user has actually chosen. */
+/**
+ * The deepest level the user has actually chosen, with the workspace it lies
+ * in where that is known — which names the metadata fields the way that
+ * workspace does.
+ */
 function currentSelection() {
+  const realmId = realm.value?.id ?? (type.value?.realmId || undefined)
   if (entity.value) {
-    return { level: 'entity' as const, id: entity.value.id, label: entity.value.label }
+    return { level: 'entity' as const, id: entity.value.id, label: entity.value.label, realmId }
   }
   if (type.value) {
-    return { level: 'entityType' as const, id: type.value.id, label: type.value.name }
+    return { level: 'entityType' as const, id: type.value.id, label: type.value.name, realmId }
   }
   if (realm.value) {
     return { level: 'realm' as const, id: realm.value.id, label: realm.value.name }

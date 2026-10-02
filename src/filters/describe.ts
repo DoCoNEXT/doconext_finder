@@ -7,9 +7,16 @@
 import { fieldLabel, operatorLabel, toDateInput, toMegabytes } from './fields'
 import { canonicalModifiedPreset, fileTypePresets, modifiedPresets } from './presets'
 import type { Translate } from './presets'
-import type { Condition, SearchState } from '../types/Search'
+import { isMetadataField, labelledFor, metadataKeyOf, realmOfScope } from './metadata'
+import type { Condition, MetadataField, SearchState } from '../types/Search'
 
-export function describeQuery(t: Translate, query: SearchState): string {
+/**
+ * @param t translation function
+ * @param query the search, as the interface holds it
+ * @param metadata the server's metadata registry, so a metadata condition is
+ *   named the way its field is rather than by the id it is sent under
+ */
+export function describeQuery(t: Translate, query: SearchState, metadata: MetadataField[] = []): string {
   const parts: string[] = []
 
   // The scope goes first: it says where the search looked, which qualifies
@@ -38,7 +45,8 @@ export function describeQuery(t: Translate, query: SearchState): string {
     parts.push(time.label)
   }
 
-  const conditions = (query.conditions ?? []).map((c) => describeCondition(t, c))
+  const fields = labelledFor(metadata, realmOfScope(query.scope))
+  const conditions = (query.conditions ?? []).map((c) => describeCondition(t, c, fields))
   if (conditions.length > 0) {
     // "any" conditions are alternatives to each other; joining them with the
     // same separator as the AND-ed presets would misrepresent the search.
@@ -50,8 +58,10 @@ export function describeQuery(t: Translate, query: SearchState): string {
   return parts.join(' · ')
 }
 
-function describeCondition(t: Translate, condition: Condition): string {
-  const field = fieldLabel(t, condition.field)
+function describeCondition(t: Translate, condition: Condition, metadata: MetadataField[]): string {
+  const field = isMetadataField(condition.field)
+    ? metadata.find((f) => f.field === condition.field)?.label ?? metadataKeyOf(condition.field)
+    : fieldLabel(t, condition.field)
   const operator = operatorLabel(t, condition.field, condition.operator)
 
   if (condition.field === 'favorite') {
