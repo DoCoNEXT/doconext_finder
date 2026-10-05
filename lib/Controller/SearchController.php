@@ -7,6 +7,7 @@ namespace OCA\DcnFinder\Controller;
 use OCA\DcnFinder\AppInfo\AppConstants;
 use OCA\DcnFinder\Search\FileCondition;
 use OCA\DcnFinder\Search\FileQuery;
+use OCA\DcnFinder\Search\InvalidQueryException;
 use OCA\DcnFinder\Search\MetadataFields;
 use OCA\DcnFinder\Service\CoreScope;
 use OCA\DcnFinder\Service\FileSearchService;
@@ -188,6 +189,11 @@ class SearchController extends ApiController
 
         try {
             return new DataResponse($this->service->search($uid, $query));
+        } catch (InvalidQueryException $e) {
+            // Refused by this app, in words written for the caller: ordinary
+            // input, so answered without a log line — anyone could otherwise
+            // fill the log with stack traces by naming fields that do not exist.
+            return new DataResponse(['error' => $e->getMessage()], Http::STATUS_BAD_REQUEST);
         } catch (\InvalidArgumentException $e) {
             // The query builder rejects some operator/field pairings we cannot detect
             // up front. Report its own words rather than a blank failure.

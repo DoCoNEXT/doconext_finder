@@ -296,6 +296,7 @@ const aiMessage = computed(() => {
     case 'empty': return t('Nothing in that question maps to a filter this workspace has.')
     case 'failed': return t('Could not understand that question. The filters below still work.')
     case 'timeout': return t('Understanding the question took too long. Try again, or set the filters yourself.')
+    case 'busy': return t('Many questions were asked in a short time. Wait a few minutes and try again, or set the filters yourself.')
     default: return ''
   }
 })

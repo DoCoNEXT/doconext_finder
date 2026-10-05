@@ -34,6 +34,13 @@ class SearchHistoryService
      */
     public const MAX_SAVED = 200;
 
+    /**
+     * The largest stored query, encoded. A real one is well under a kilobyte —
+     * a term, a few conditions, a scope — so this only stops a request the page
+     * did not send from parking megabytes per row, two hundred rows a user.
+     */
+    public const MAX_QUERY_BYTES = 65536;
+
     public function __construct(private SavedSearchMapper $mapper)
     {
     }
@@ -94,7 +101,7 @@ class SearchHistoryService
         $entry = new SavedSearch();
         $entry->setUserId($userId);
         $entry->setKind(SavedSearch::KIND_RECENT);
-        $entry->setQuery(json_encode($query, JSON_THROW_ON_ERROR));
+        $entry->setQuery(self::encode($query));
         $entry->setFingerprint($fingerprint);
         $entry->setLastRun(time());
         $this->mapper->insert($entry);
@@ -123,7 +130,7 @@ class SearchHistoryService
         $entry->setKind(SavedSearch::KIND_SAVED);
         $entry->setName(self::trimTo($name, 255) ?: 'Saved search');
         $entry->setDescription(self::trimTo($description, 1024));
-        $entry->setQuery(json_encode($query, JSON_THROW_ON_ERROR));
+        $entry->setQuery(self::encode($query));
         $entry->setFingerprint(self::fingerprint($query));
         $entry->setLastRun(time());
 
@@ -176,7 +183,7 @@ class SearchHistoryService
         if ($entry->getKind() !== SavedSearch::KIND_SAVED) {
             throw new DoesNotExistException('Only saved searches can be replaced');
         }
-        $entry->setQuery(json_encode($query, JSON_THROW_ON_ERROR));
+        $entry->setQuery(self::encode($query));
         $entry->setFingerprint(self::fingerprint($query));
         $entry->setLastRun(time());
 
@@ -269,6 +276,23 @@ class SearchHistoryService
             && ($query['modifiedPreset'] ?? 'any') === 'any'
             // "Everything in this dossier" is a search someone will want back.
             && ($query['scope'] ?? null) === null;
+    }
+
+    /**
+     * The one way a query reaches the table, so the size ceiling holds for a
+     * saved search, a recent and a replaced query alike.
+     *
+     * @param array<string,mixed> $query
+     * @throws \InvalidArgumentException when it encodes to more than {@see MAX_QUERY_BYTES}
+     */
+    private static function encode(array $query): string
+    {
+        $json = json_encode($query, JSON_THROW_ON_ERROR);
+        if (strlen($json) > self::MAX_QUERY_BYTES) {
+            throw new \InvalidArgumentException('This search is too large to keep');
+        }
+
+        return $json;
     }
 
     private static function trimTo(string $value, int $length): string

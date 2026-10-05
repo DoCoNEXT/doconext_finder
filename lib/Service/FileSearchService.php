@@ -9,6 +9,7 @@ use OCA\DcnFinder\Search\FileCondition;
 use OCA\DcnFinder\Search\FileOwner;
 use OCA\DcnFinder\Search\FileQuery;
 use OCA\DcnFinder\Search\FileScope;
+use OCA\DcnFinder\Search\InvalidQueryException;
 use OCA\DcnFinder\Search\MetadataFields;
 use OCA\DcnFinder\Search\ResultOrder;
 use OCP\Files\FileInfo;
@@ -520,12 +521,12 @@ class FileSearchService
         if (MetadataFields::isMetadata($condition->field)) {
             $key = MetadataFields::key($condition->field);
             if (!$this->metadataFields->exists($key)) {
-                throw new \InvalidArgumentException('unknown metadata field "' . $key . '"');
+                throw new InvalidQueryException('unknown metadata field "' . $key . '"');
             }
             if (!$this->metadataFields->isFilterable($key)) {
                 // Its value is stored but never indexed, so there is nothing to
                 // compare against. Say that rather than returning an empty result.
-                throw new \InvalidArgumentException(
+                throw new InvalidQueryException(
                     '"' . $key . '" is not indexed on this server and cannot be filtered on'
                 );
             }
@@ -539,7 +540,7 @@ class FileSearchService
                     // It would become NOT(OR(...)), and SearchBuilder takes only a
                     // plain comparison inside "not". Say so rather than fail deep
                     // in the query builder.
-                    throw new \InvalidArgumentException(
+                    throw new InvalidQueryException(
                         '"' . $key . '" can name several people, and "is not" cannot be asked of such a field'
                     );
                 }
