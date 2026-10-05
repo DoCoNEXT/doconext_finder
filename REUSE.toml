@@ -31,6 +31,7 @@ path = [
   "deploy.sh",
   "README.md",
   "CHANGELOG.md",
+  "SECURITY.md",
   "CLAUDE.md",
   "vite.config.ts",
   "vitest.config.ts",

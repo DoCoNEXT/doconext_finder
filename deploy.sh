@@ -125,8 +125,9 @@ echo ""
 # STEP 1: Build the release package (runs locally)
 #
 # The package is the one `make appstore` builds — the same tarball a customer
-# or the App Store gets, with the same exclude list. Keeping a second list
-# here is how docs/private/ once ended up on a server.
+# or the App Store gets, with the same exclude list. There is deliberately no
+# second list here: two lists drift apart, and whatever only one of them
+# excludes ends up on a server.
 # ============================================================
 echo ">>> Building release package..."
 cd "$SCRIPT_DIR"

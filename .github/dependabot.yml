@@ -3,14 +3,12 @@
 # *blocker* half that fails the build while a moderate+ advisory ships.
 #
 # Once an ecosystem has open-pull-requests-limit PRs open, Dependabot opens
-# nothing more for it — silently. That is how the loop stalled in doconext_core
-# in July 2026: eighteen npm PRs nobody merged, and no new ones since. Minor
-# and patch bumps are therefore grouped into one PR per ecosystem per month,
-# and the limit is low enough that a full ceiling is noticed, not ignored.
+# nothing more for it — silently: a backlog of unmerged PRs stops the loop
+# without anyone noticing. Minor and patch bumps are therefore grouped into one
+# PR per ecosystem per month, and the limit is low enough that a full ceiling
+# is noticed, not ignored.
 #
-# The schedule is monthly because in a private repository every run costs
-# Actions minutes: the update job itself, and a full CI run for every PR it
-# opens or rebases. Security updates do not wait for it — they follow the
+# Security updates do not wait for the monthly schedule — they follow the
 # advisory, not this schedule, as long as Dependabot security updates are
 # switched on in the repository settings.
 version: 2

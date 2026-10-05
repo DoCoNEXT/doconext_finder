@@ -1,16 +1,12 @@
-# DoCoNEXT Nextcloud App — Conventions
+# DoCoNEXT Finder — Conventions
 
-This file is copied from `doconext_app_template`, which is the reference every
-DoCoNEXT app is scaffolded from. Keep it; prune the parts that don't apply and
-add app-specific context.
-
-A convention that applies to more than this app belongs in the template first:
-edit it there, then copy down. Editing only here is how the two drifted apart
-before — two hard-won rules about icons lived in this file for months while the
-template, and every app scaffolded after them, never saw them.
+How this app is built, and the traps that cost time before. Most of it is shared
+with the other DoCoNEXT apps, which start from a common internal template: a
+convention that applies beyond Finder is changed there first and then copied
+here, so the apps do not drift apart.
 
 ## Tech Stack
-- **Backend**: PHP 8.2+, Nextcloud App Framework (Nextcloud 31–34)
+- **Backend**: PHP 8.2+, Nextcloud App Framework (Nextcloud 33–35)
 - **Frontend**: Vue 3 + TypeScript (`<script setup>`), Nextcloud Vue components, Pinia
 - **Build**: `@nextcloud/vite-config` → `js/` + `css/`
 - **Architecture**: three-layer — Controller → Service → Mapper
@@ -127,6 +123,3 @@ npm run watch                       # frontend watch
 `deploy.sh` uploads exactly what `make appstore` builds — one exclude list, in
 the Makefile — and puts the dev composer dependencies back afterwards, since
 the release build strips them from this working tree.
-
-## The example domain
-The template ships a working **Note** example (entity + mapper + service + controller + migration + Vue list). Delete it once you scaffold your own domain — it exists only to demonstrate the layers end-to-end.
