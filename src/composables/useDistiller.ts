@@ -23,7 +23,18 @@ const POLL_MS = 800
  */
 const TIMEOUT_MS = 30000
 
-export type DistilOutcome = 'ready' | 'empty' | 'failed' | 'timeout'
+export type DistilOutcome = 'ready' | 'empty' | 'failed' | 'timeout' | 'busy'
+
+/**
+ * The status the server answers with once someone has asked more questions in
+ * a short while than it lets one person queue (AiController::distil). Told
+ * apart from a failure because the remedy differs: waiting, not rephrasing.
+ */
+const TOO_MANY_REQUESTS = 429
+
+function statusOf(error: unknown): number | undefined {
+  return (error as { response?: { status?: number } } | null)?.response?.status
+}
 
 export function useDistiller() {
   /** True while a question is being understood. */
@@ -121,11 +132,11 @@ export function useDistiller() {
 
         await sleep(POLL_MS)
       }
-    } catch {
+    } catch (error) {
       // Core unreachable, not allowed, or answering something unexpected. The
       // filters are still there to be set by hand, so this is a disappointment
       // rather than an error worth a stack trace.
-      outcome.value = 'failed'
+      outcome.value = statusOf(error) === TOO_MANY_REQUESTS ? 'busy' : 'failed'
 
       return null
     } finally {

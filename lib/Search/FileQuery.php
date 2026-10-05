@@ -36,6 +36,18 @@ final class FileQuery
     public const DEFAULT_LIMIT = 100;
 
     /**
+     * Ceilings on what one request may ask, far above what the page ever sends
+     * (it pages in steps of at most 200, and its largest type preset has six
+     * mimetypes). They exist for the request the page did not send: a search
+     * across several roots holds `offset + limit` rows per root in memory before
+     * it cuts the page, and every condition becomes a clause of one SQL query.
+     */
+    public const MAX_OFFSET = 10000;
+    public const MAX_CONDITIONS = 50;
+    public const MAX_MIMETYPES = 100;
+    public const MAX_TERM_LENGTH = 255;
+
+    /**
      * @param list<FileCondition> $conditions
      * @param list<string> $mimetypes
      */
@@ -79,6 +91,9 @@ final class FileQuery
         if (!is_array($rawConditions)) {
             throw new \InvalidArgumentException('"conditions" must be an array');
         }
+        if (count($rawConditions) > self::MAX_CONDITIONS) {
+            throw new \InvalidArgumentException('at most ' . self::MAX_CONDITIONS . ' conditions');
+        }
 
         $conditions = array_map(
             static fn ($c) => FileCondition::fromArray(is_array($c) ? $c : []),
@@ -87,13 +102,21 @@ final class FileQuery
 
         $term = trim((string)($body['term'] ?? ''));
         $content = trim((string)($body['content'] ?? ''));
+        if (mb_strlen($term) > self::MAX_TERM_LENGTH || mb_strlen($content) > self::MAX_TERM_LENGTH) {
+            throw new \InvalidArgumentException('a search term can be at most ' . self::MAX_TERM_LENGTH . ' characters');
+        }
+
+        $rawMimetypes = is_array($body['mimetypes'] ?? null) ? $body['mimetypes'] : [];
+        if (count($rawMimetypes) > self::MAX_MIMETYPES) {
+            throw new \InvalidArgumentException('at most ' . self::MAX_MIMETYPES . ' file types');
+        }
 
         // Preset filters are separate from the condition list on purpose: they AND with
         // everything, so switching the condition group to "match any" cannot accidentally
         // widen the chosen file type or date range into an alternative.
         $mimetypes = array_values(array_filter(array_map(
             static fn ($m) => self::validMimetype((string)$m),
-            is_array($body['mimetypes'] ?? null) ? $body['mimetypes'] : []
+            $rawMimetypes
         )));
 
         $modifiedAfter = isset($body['modifiedAfter']) ? (int)$body['modifiedAfter'] : null;
@@ -124,6 +147,15 @@ final class FileQuery
         $limit = (int)($body['limit'] ?? self::DEFAULT_LIMIT);
         $limit = max(1, min(self::MAX_LIMIT, $limit));
 
+        // Refused rather than clamped: a clamped offset hands "the next page"
+        // back as the same page, and a pager would ask for it forever.
+        $offset = max(0, (int)($body['offset'] ?? 0));
+        if ($offset > self::MAX_OFFSET) {
+            throw new \InvalidArgumentException(
+                'results beyond the first ' . self::MAX_OFFSET . ' cannot be paged to; narrow the search instead'
+            );
+        }
+
         $sort = (string)($body['sort'] ?? 'mtime');
         // Metadata keys are sortable too, and are checked against the registry by
         // the service rather than against a fixed list here.
@@ -144,7 +176,7 @@ final class FileQuery
             scope: $scope,
             matchAny: (bool)($body['matchAny'] ?? false),
             limit: $limit,
-            offset: max(0, (int)($body['offset'] ?? 0)),
+            offset: $offset,
             sort: $sort,
             descending: (bool)($body['descending'] ?? true),
         );

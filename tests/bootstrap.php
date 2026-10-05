@@ -23,6 +23,16 @@ spl_autoload_register(static function (string $class): void {
     }
 });
 
+// One private interface the stubs themselves depend on: OCP\Files\IRootFolder
+// extends OC\Hooks\Emitter, so mocking the root folder — which is how a test
+// checks that a file id is resolved through the caller's own home — needs it.
+// A stub of our own rather than core's file, so the rule below still holds.
+spl_autoload_register(static function (string $class): void {
+    if ($class === 'OC\\Hooks\\Emitter') {
+        require_once __DIR__ . '/stubs/OC/Hooks/Emitter.php';
+    }
+});
+
 // The platform suite (tests/Platform) checks this app against the core-private
 // search classes it constructs, which no stub package ships. They come from a
 // Nextcloud server checkout: $NEXTCLOUD_SERVER_DIR in CI, or the server this

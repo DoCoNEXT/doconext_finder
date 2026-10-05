@@ -9,6 +9,7 @@ use OCP\AppFramework\ApiController;
 use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\Attribute\FrontpageRoute;
 use OCP\AppFramework\Http\Attribute\NoAdminRequired;
+use OCP\AppFramework\Http\Attribute\UserRateLimit;
 use OCP\AppFramework\Http\DataResponse;
 use OCP\IRequest;
 
@@ -60,8 +61,13 @@ class AiController extends ApiController
      * trip, so it is scheduled rather than awaited.
      *
      * Body: { question }. Returns { taskId }.
+     *
+     * Rate limited per user, because every call queues a model task that costs
+     * the server — or its provider — real work. Twenty in five minutes is far
+     * more than someone typing questions asks; a loop gets a 429.
      */
     #[NoAdminRequired]
+    #[UserRateLimit(limit: 20, period: 300)]
     #[FrontpageRoute(verb: 'POST', url: '/api/ai/distil')]
     public function distil(): DataResponse
     {

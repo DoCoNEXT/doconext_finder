@@ -39,6 +39,9 @@ class CoreDistiller
     /** Core's public, semver-stable file distiller. Referenced by name so it may be absent. */
     private const CORE_DISTILLER = 'OCA\\DcnCore\\Public\\Ai\\FileSearchDistiller';
 
+    /** A question, not a document: far longer than anyone types into a search box. */
+    public const MAX_QUESTION_LENGTH = 1000;
+
     public function __construct(
         private IAppManager $appManager,
         private ContainerInterface $container,
@@ -74,10 +77,21 @@ class CoreDistiller
     /**
      * Schedule one question and return its task id.
      *
+     * Refused here rather than left to Core, so a question longer than
+     * {@see MAX_QUESTION_LENGTH} never becomes a model task whichever way it
+     * arrives.
+     *
      * @throws \RuntimeException with an HTTP status as its code
      */
     public function start(string $question): int
     {
+        if (mb_strlen($question) > self::MAX_QUESTION_LENGTH) {
+            throw new \RuntimeException(
+                'A question can be at most ' . self::MAX_QUESTION_LENGTH . ' characters',
+                Http::STATUS_BAD_REQUEST,
+            );
+        }
+
         return (int) $this->ask(static fn (object $core): int => $core->start($question));
     }
 

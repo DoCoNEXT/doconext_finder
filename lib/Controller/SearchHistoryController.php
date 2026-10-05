@@ -61,7 +61,11 @@ class SearchHistoryController extends ApiController
     {
         return $this->withUser(function (string $uid) use ($query) {
             if ($query !== []) {
-                $this->service->recordRecent($uid, $query);
+                try {
+                    $this->service->recordRecent($uid, $query);
+                } catch (\InvalidArgumentException $e) {
+                    return new DataResponse(['error' => $e->getMessage()], Http::STATUS_BAD_REQUEST);
+                }
             }
 
             return new DataResponse([], Http::STATUS_NO_CONTENT);
@@ -93,6 +97,9 @@ class SearchHistoryController extends ApiController
         return $this->withUser(function (string $uid) use ($name, $description, $query) {
             try {
                 return new DataResponse($this->service->save($uid, $name, $description, $query));
+            } catch (\InvalidArgumentException $e) {
+                // A query too large to keep; the message says so.
+                return new DataResponse(['error' => $e->getMessage()], Http::STATUS_BAD_REQUEST);
             } catch (\RuntimeException $e) {
                 // The ceiling on saved searches. Its message is written for the
                 // person who hit it, so it passes through as-is.
@@ -118,6 +125,8 @@ class SearchHistoryController extends ApiController
                 return new DataResponse($this->service->replaceQuery($uid, $id, $query));
             } catch (DoesNotExistException) {
                 return new DataResponse(['error' => 'not found'], Http::STATUS_NOT_FOUND);
+            } catch (\InvalidArgumentException $e) {
+                return new DataResponse(['error' => $e->getMessage()], Http::STATUS_BAD_REQUEST);
             }
         });
     }
