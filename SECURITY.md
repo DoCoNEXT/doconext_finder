@@ -50,6 +50,8 @@ reporters who wish to be acknowledged.
   runs `composer audit` and `npm audit` and **fails the build** on advisories in
   shipped (production) dependencies at *moderate* severity or higher.
 - Automated dependency-update PRs are raised by Dependabot.
+- A **Software Bill of Materials (SBOM, CycloneDX)** and a dependency license
+  inventory are produced in CI and are available on request.
 - Release packages are signed with the app's Nextcloud App Store certificate,
   which every Nextcloud server verifies on install and update.
 
