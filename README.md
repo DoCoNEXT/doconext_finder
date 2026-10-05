@@ -5,6 +5,8 @@ day. Structured conditions, saved searches, configurable columns and grouping �
 the things the Files app deliberately leaves out.
 
 Finder works on a **plain Nextcloud**; nothing else needs to be installed.
+Two other DoCoNEXT apps add to it when they are there — see
+[Better with other DoCoNEXT apps](#better-with-other-doconext-apps).
 
 ## Features
 
@@ -22,8 +24,8 @@ Finder works on a **plain Nextcloud**; nothing else needs to be installed.
 - **File commands** — open in Files or in the desktop app, go to the containing
   folder, preview, download, upload a new version or add files to a folder,
   straight from the result row.
-- **Details panel** — resizable, with rich previews when the Files Preview app
-  is installed.
+- **Details panel** — resizable, with everything the server knows about the
+  selected file, and a preview of it.
 - Admin and personal settings, and a Dutch translation.
 
 ## Requirements
@@ -36,15 +38,45 @@ Finder works on a **plain Nextcloud**; nothing else needs to be installed.
 Install **DoCoNEXT - Finder** from the Apps page of your Nextcloud
 (category *Files*), or from [apps.nextcloud.com](https://apps.nextcloud.com).
 
-## Finder and DoCoNEXT Core
+## Better with other DoCoNEXT apps
 
-Finder is the free, open half of the DoCoNEXT product; DoCoNEXT Core is
-available from DoCoNEXT, not from the App Store. Finder has no dependency on
-Core: no `<dependencies>` entry, no compile-time coupling, no shared tables.
-When Core is installed on the same server, Finder resolves Core's public
-services by name and additionally filters and groups on Core's metadata
-fields, scoped by workspace and entity. When it is not, Finder answers as if
-there were no Core. The browser only ever talks to Finder.
+Finder is complete on its own. Two other DoCoNEXT apps add to it when they are
+installed on the same server; Finder notices them by itself, with nothing to
+configure.
+
+### DoCoNEXT Files Preview
+
+Shows the file itself in Finder's details panel and full-screen preview, where
+Nextcloud on its own offers a thumbnail at best:
+
+- emails (`.eml`) with their headers, body and attachment list, Markdown
+  rendered, Word documents read in the browser, and PDF, images, video, audio
+  and text inline;
+- Excel and PowerPoint as well, when the server can convert them to PDF
+  (Nextcloud Office / Collabora);
+- **the words you searched for are marked in the preview**, so a match inside
+  a file's contents is visible at once — in a colour you pick in your personal
+  settings.
+
+### DoCoNEXT Core
+
+Core brings structured case and project management to Nextcloud: you define
+the things your organisation works on — clients, matters, projects, cases —
+each with its own folder structure, metadata fields, statuses and access
+rules, organised in workspaces. With Core installed, Finder additionally:
+
+- filters, groups and shows columns on Core's metadata fields, under the
+  names each workspace gives them;
+- narrows a search to a workspace, an entity type or a single entity;
+- turns a question in plain language into filters;
+- opens a result's entity in Core.
+
+Core is available from DoCoNEXT, not from the App Store.
+
+Neither app is a dependency: Finder has no `<dependencies>` entry for them, no
+compile-time coupling and no shared tables. It resolves Core's public services
+by name on the server, and the Preview app's renderer as a custom element in
+the page; when an app is not there, Finder answers as if it never existed.
 
 ## Development
 
