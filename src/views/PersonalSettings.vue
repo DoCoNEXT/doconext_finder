@@ -86,7 +86,7 @@
       <p class="muted settings__hint">
         {{ t('These are set in the app itself, next to the results, where you can see their effect — and where the switch is beside the thing it switches.') }}
       </p>
-      <NcButton @click="confirmReset">
+      <NcButton variant="secondary" @click="confirmReset">
         {{ t('Reset everything to defaults') }}
       </NcButton>
     </section>

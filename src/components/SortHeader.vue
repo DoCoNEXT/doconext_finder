@@ -1,4 +1,8 @@
 <template>
+  <!--
+    A bare <button>, not NcButton: it is the column header itself, which has
+    to look like the other headers and still be reachable by keyboard.
+  -->
   <button class="sort" :class="{ 'sort--active': active }" @click="$emit('sort', field)">
     <slot />
     <component :is="descending ? ChevronDown : ChevronUp"

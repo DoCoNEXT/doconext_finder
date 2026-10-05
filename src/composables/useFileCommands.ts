@@ -81,6 +81,25 @@ export function useFileCommands(onChanged?: (_file: FileResult) => void) {
     return file.isFolder ? file.path : folderOf(file)
   }
 
+  /**
+   * Says what went wrong in the user's language. The request's own message is
+   * axios's ("Request failed with status code 507"): true, untranslated and no
+   * help. The statuses a person can do something about get a sentence of their
+   * own; anything else is left at what was being attempted.
+   * @param attempted what failed, already translated
+   * @param error what the request threw
+   */
+  function failed(attempted: string, error: unknown): void {
+    const status = (error as { response?: { status?: number } } | null)?.response?.status
+    const reason = {
+      403: t('You do not have permission to do this.'),
+      423: t('The file is locked, probably because it is open somewhere else.'),
+      507: t('There is not enough storage space left.'),
+    }[status ?? 0]
+
+    showError(reason ? `${attempted} ${reason}` : attempted)
+  }
+
   async function replaceVersion(file: FileResult) {
     const [picked] = await pickLocalFiles(false)
     if (!picked) {
@@ -93,7 +112,7 @@ export function useFileCommands(onChanged?: (_file: FileResult) => void) {
       showSuccess(t('Uploaded a new version of {name}', { name: file.name }))
       onChanged?.(file)
     } catch (e) {
-      showError((e as Error).message)
+      failed(t('Could not upload a new version of {name}.', { name: file.name }), e)
     }
   }
 
@@ -113,7 +132,7 @@ export function useFileCommands(onChanged?: (_file: FileResult) => void) {
       }))
       onChanged?.(file)
     } catch (e) {
-      showError((e as Error).message)
+      failed(t('Could not upload to {folder}.', { folder: folder || '/' }), e)
     }
   }
 
@@ -133,7 +152,7 @@ export function useFileCommands(onChanged?: (_file: FileResult) => void) {
     try {
       await openLocally(file)
     } catch (e) {
-      showError((e as Error).message)
+      failed(t('Could not open {name} in the desktop app.', { name: file.name }), e)
     }
   }
 
@@ -163,7 +182,7 @@ export function useFileCommands(onChanged?: (_file: FileResult) => void) {
       }
       window.open(entity.url, '_blank', 'noopener')
     } catch (e) {
-      showError((e as Error).message)
+      failed(t('Could not open {name} in {product}.', { name: file.name, product: coreProductName() }), e)
     }
   }
 

@@ -32,7 +32,7 @@
         <NcButton variant="primary" :href="fileLink(file)" target="_blank">
           {{ t('Open in Files') }}
         </NcButton>
-        <NcButton @click="downloadFile(file)">
+        <NcButton variant="secondary" @click="downloadFile(file)">
           {{ t('Download') }}
         </NcButton>
       </div>

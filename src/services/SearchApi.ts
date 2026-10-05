@@ -9,6 +9,7 @@ import axios from '@nextcloud/axios'
 import { generateUrl } from '@nextcloud/router'
 import { API_BASE } from '../constants'
 import { RETIRED_FIELDS } from '../filters/fields'
+import { useI18n } from '../composables/useI18n'
 import type {
   FieldsResponse,
   Principal,
@@ -76,7 +77,7 @@ function restoredSearch(entry: StoredSearch): StoredSearch {
 function describe(error: unknown): Error {
   const message = (error as { response?: { data?: { error?: string } } })
     ?.response?.data?.error
-  return new Error(message || (error as Error)?.message || 'Search failed')
+  return new Error(message || useI18n().t('Search failed'))
 }
 
 export const SearchApi = {

@@ -17,7 +17,7 @@
       <NcButton variant="primary" :disabled="store.loading" @click="search">
         {{ t('Search') }}
       </NcButton>
-      <NcButton :disabled="!store.hasCriteria" @click="save">
+      <NcButton variant="secondary" :disabled="!store.hasCriteria" @click="save">
         <template #icon>
           <Save :size="20" />
         </template>
@@ -210,13 +210,13 @@
 
     <div v-if="store.results.length" class="finder__paging">
       <template v-if="!store.loadedAll">
-        <NcButton :disabled="store.offset === 0 || store.loading" @click="page(-1)">
+        <NcButton variant="secondary" :disabled="store.offset === 0 || store.loading" @click="page(-1)">
           {{ t('Previous') }}
         </NcButton>
-        <NcButton :disabled="!store.hasMore || store.loading" @click="page(1)">
+        <NcButton variant="secondary" :disabled="!store.hasMore || store.loading" @click="page(1)">
           {{ t('Next') }}
         </NcButton>
-        <NcButton v-if="store.hasMore" :disabled="store.loading" @click="store.loadAll(t)">
+        <NcButton v-if="store.hasMore" variant="secondary" :disabled="store.loading" @click="store.loadAll(t)">
           {{ t('Load all') }}
         </NcButton>
       </template>
