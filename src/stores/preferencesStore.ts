@@ -6,8 +6,20 @@
  * sides from quietly disagreeing.
  */
 import { defineStore } from 'pinia'
+import { showError } from '@nextcloud/dialogs'
 import { SearchApi } from '../services/SearchApi'
+import { useI18n } from '../composables/useI18n'
 import type { ColumnPref, GroupScope, Preferences } from '../types/Search'
+
+/**
+ * A copy that shares nothing with the store: the columns are edited in place,
+ * so a snapshot holding the same arrays would change along with them. JSON
+ * rather than structuredClone, which refuses the store's reactive proxies.
+ * @param preferences what to copy
+ */
+function detached(preferences: Preferences): Preferences {
+  return JSON.parse(JSON.stringify(preferences)) as Preferences
+}
 
 /** Mirrors the server's cap; offering more levels would silently drop them. */
 export const MAX_GROUPING_LEVELS = 4
@@ -33,6 +45,12 @@ interface State {
   /** Colour for the marked search terms in a preview; '' for the default. */
   highlightColor: string
   loaded: boolean
+  /**
+   * What the server last confirmed, so a save that fails can put the screen
+   * back to it — otherwise the page shows a setting the server never kept,
+   * and the next reload quietly takes it away.
+   */
+  stored: Preferences | null
 }
 
 export const usePreferencesStore = defineStore('preferences', {
@@ -48,6 +66,7 @@ export const usePreferencesStore = defineStore('preferences', {
     highlightColor: '',
     loaded: false,
     revision: 0,
+    stored: null,
   }),
 
   getters: {
@@ -87,6 +106,7 @@ export const usePreferencesStore = defineStore('preferences', {
       this.sidebarPinned = preferences.sidebarPinned
       this.highlightColor = preferences.highlightColor ?? ''
       this.loaded = true
+      this.stored = detached(preferences)
     },
 
     async save() {
@@ -109,7 +129,15 @@ export const usePreferencesStore = defineStore('preferences', {
           this.adopt(stored)
         }
       } catch {
-        // ignored on purpose — see above
+        // Unlike a failed load, a failed save is something the user did and
+        // has to hear about: the change is undone on screen, so what they see
+        // is what the server keeps.
+        if (revision === this.revision) {
+          if (this.stored) {
+            this.adopt(detached(this.stored))
+          }
+          showError(useI18n().t('Your settings could not be saved. Please try again.'))
+        }
       }
     },
 

@@ -26,6 +26,10 @@
             <th :colspan="columns.length + 2"
                 :class="`results__group--l${row.level}`"
                 :style="{ paddingInlineStart: `${8 + row.level * 20}px` }">
+              <!--
+                A bare <button>, not NcButton: the whole group heading is the
+                control, and it must read as a heading row, not a button.
+              -->
               <button class="results__toggle" @click="toggle(row.id)">
                 <component :is="collapsed.has(row.id) ? ChevronRight : ChevronDown" :size="18" />
                 <span>{{ row.label }}</span>
@@ -41,7 +45,7 @@
             <td class="results__star">
               <NcButton :aria-label="row.file.favorite ? t('Remove from favorites') : t('Add to favorites')"
                         variant="tertiary"
-                        @click.stop="$emit('toggle-favorite', row.file)">
+                        @click.stop="$emit('toggleFavorite', row.file)">
                 <template #icon>
                   <Star :size="20" :fill="row.file.favorite ? 'currentColor' : 'none'" />
                 </template>
@@ -73,7 +77,7 @@
             <td class="results__actions">
               <FileCommands :file="row.file"
                             @details="showDetails"
-                            @toggle-favorite="$emit('toggle-favorite', $event)"
+                            @toggle-favorite="$emit('toggleFavorite', $event)"
                             @changed="$emit('changed', $event)" />
             </td>
           </tr>
@@ -114,7 +118,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: 'sort', field: string): void
-  (e: 'toggle-favorite', file: FileResult): void
+  (e: 'toggleFavorite', file: FileResult): void
   (e: 'select', file: FileResult): void
   (e: 'changed', file: FileResult): void
 }>()

@@ -6,6 +6,10 @@
     <div v-if="levels.length" class="view-options__levels">
       <span v-for="(level, index) in levels" :key="level" class="chip">
         <span class="chip__label">{{ levelLabel(level) }}</span>
+        <!--
+          Bare <button>s, not NcButton: three glyph-sized controls inside one
+          chip, where an NcButton's 34px box would make the chip a toolbar.
+        -->
         <button v-if="index > 0"
                 class="chip__button"
                 :aria-label="t('Move outward')"
@@ -40,7 +44,7 @@
     </select>
     <span v-else class="muted">{{ t('Maximum levels reached') }}</span>
 
-    <NcButton @click="columnsOpen = true">
+    <NcButton variant="secondary" @click="columnsOpen = true">
       <template #icon>
         <Columns3 :size="20" />
       </template>
@@ -122,7 +126,7 @@
       </label>
 
       <template #actions>
-        <NcButton @click="preferences.reset()">
+        <NcButton variant="secondary" @click="preferences.reset()">
           {{ t('Reset to defaults') }}
         </NcButton>
         <NcButton variant="primary" @click="columnsOpen = false">

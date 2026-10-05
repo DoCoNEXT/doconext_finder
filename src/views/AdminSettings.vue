@@ -101,7 +101,7 @@
     <p class="hint">
       {{ t('Comma-separated. Exact mimetypes, or a single trailing wildcard like image/%.') }}
     </p>
-    <NcButton :disabled="!canAddCustom" @click="addCustom">
+    <NcButton variant="secondary" :disabled="!canAddCustom" @click="addCustom">
       {{ t('Add category') }}
     </NcButton>
 

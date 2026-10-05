@@ -52,7 +52,7 @@ const props = defineProps<{ file: FileResult }>()
 const emit = defineEmits<{
   /** Show this file in the details panel, opening the panel if it is closed. */
   (e: 'details', file: FileResult): void
-  (e: 'toggle-favorite', file: FileResult): void
+  (e: 'toggleFavorite', file: FileResult): void
   /** A command changed the file on the server; the list should reload. */
   (e: 'changed', file: FileResult): void
 }>()
@@ -60,5 +60,5 @@ const emit = defineEmits<{
 const { commandsFor } = useFileCommands((file) => emit('changed', file))
 
 const commands = computed(() =>
-  commandsFor(props.file, (file) => emit('toggle-favorite', file)))
+  commandsFor(props.file, (file) => emit('toggleFavorite', file)))
 </script>

@@ -4,7 +4,7 @@
                 :subname="folderOf(file) || '/'"
                 :active="activeTab"
                 :starred="file.favorite"
-                @update:starred="$emit('toggle-favorite', file)"
+                @update:starred="$emit('toggleFavorite', file)"
                 @close="$emit('close')"
                 @update:active="activeTab = $event">
     <!--
@@ -214,7 +214,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: 'close'): void
-  (e: 'toggle-favorite', file: FileResult): void
+  (e: 'toggleFavorite', file: FileResult): void
   (e: 'changed', file: FileResult): void
 }>()
 

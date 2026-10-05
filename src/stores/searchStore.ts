@@ -6,7 +6,9 @@
  * already loaded — and because Favorites reuses the same result plumbing.
  */
 import { defineStore } from 'pinia'
+import { showError } from '@nextcloud/dialogs'
 import { SearchApi } from '../services/SearchApi'
+import { useI18n } from '../composables/useI18n'
 import { useHistoryStore } from './historyStore'
 import { usePreferencesStore } from './preferencesStore'
 import { anyTime, anyType, canonicalModifiedPreset, fileTypePresets, modifiedPresets, modifiedRange } from '../filters/presets'
@@ -279,9 +281,13 @@ export const useSearchStore = defineStore('search', {
       file.favorite = next // optimistic: the star should not lag the click
       try {
         await SearchApi.setFavorite(file.fileid, next)
-      } catch (e) {
+      } catch {
         file.favorite = !next
-        this.error = (e as Error).message
+        // A toast rather than the search page's error line: the star is also
+        // clicked from the details panel on the favorites page, which does
+        // not show that line, and the star springing back unexplained reads
+        // as a bug.
+        showError(useI18n().t('Could not change the favorite of {name}.', { name: file.name }))
       }
     },
   },

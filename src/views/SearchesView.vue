@@ -8,6 +8,13 @@
     </div>
 
     <NcNoteCard v-if="error" type="error">{{ error }}</NcNoteCard>
+    <!--
+      Said in so many words: without it a failed load shows two empty lists,
+      which reads as "your saved searches are gone" rather than "try again".
+    -->
+    <NcNoteCard v-if="history.error" type="error">
+      {{ t('Your saved and recent searches could not be loaded. Reload the page to try again.') }}
+    </NcNoteCard>
     <NcLoadingIcon v-if="history.loading" :size="28" class="history__loading" />
 
     <!--
