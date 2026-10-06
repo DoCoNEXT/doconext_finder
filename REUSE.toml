@@ -32,6 +32,7 @@ path = [
   "README.md",
   "CHANGELOG.md",
   "SECURITY.md",
+  "CONTRIBUTING.md",
   "CLAUDE.md",
   "vite.config.ts",
   "vitest.config.ts",

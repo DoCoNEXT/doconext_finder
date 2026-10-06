@@ -120,6 +120,11 @@ Two sharp edges are handled in `lib/Search/FileCondition.php`:
 
 Please report vulnerabilities privately; see [SECURITY.md](SECURITY.md).
 
+## Contributing
+
+Bug reports and feature requests are welcome and are read; code contributions
+are not accepted. [CONTRIBUTING.md](CONTRIBUTING.md) explains why.
+
 ## License
 
 AGPL-3.0-or-later; the full text is in [LICENSE](LICENSE). Licensing follows
