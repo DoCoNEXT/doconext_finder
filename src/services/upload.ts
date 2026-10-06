@@ -38,13 +38,39 @@ export function pickLocalFiles(multiple: boolean): Promise<File[]> {
   })
 }
 
+/** Thrown by `uploadTo` when the path is taken and overwriting was not asked for. */
+export class FileExistsError extends Error {
+  readonly path: string
+
+  constructor(path: string) {
+    super(`${path} already exists`)
+    this.path = path
+  }
+}
+
 /**
  * Writes a local file to a path relative to the user's files root.
+ *
+ * Only replaces an existing file when told to: a new version of a known file
+ * is meant to overwrite, an upload into a folder is not, and WebDAV would
+ * quietly replace whatever carries the same name. `If-None-Match: *` makes the
+ * server refuse instead (412), which becomes `FileExistsError`.
  * @param path target path, e.g. Legal/Dossiers/case.pdf
  * @param content the picked file
+ * @param overwrite whether an existing file at that path may be replaced
  */
-export async function uploadTo(path: string, content: File): Promise<void> {
-  await axios.put(davUrl(path), content, {
-    headers: { 'Content-Type': content.type || 'application/octet-stream' },
-  })
+export async function uploadTo(path: string, content: File, overwrite: boolean): Promise<void> {
+  try {
+    await axios.put(davUrl(path), content, {
+      headers: {
+        'Content-Type': content.type || 'application/octet-stream',
+        ...(overwrite ? {} : { 'If-None-Match': '*' }),
+      },
+    })
+  } catch (error) {
+    if (!overwrite && (error as { response?: { status?: number } } | null)?.response?.status === 412) {
+      throw new FileExistsError(path)
+    }
+    throw error
+  }
 }

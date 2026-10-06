@@ -61,6 +61,17 @@ class MetadataFieldLabelsTest extends TestCase
         $this->assertSame([1 => 'Type of record', 3 => 'Kind of document'], $fields['dcn_core_document_type']['labels']);
     }
 
+    public function testACoreKeyNoWorkspaceOfThisUserLabelsIsLeftOut(): void
+    {
+        // Core labels one key for this user; the other Core key belongs to a
+        // workspace they may not enter and must not be listed. A key from
+        // another app is not Core's to label and stays.
+        $fields = $this->fieldsLabelled(['dcn_core_dossiernummer' => [1 => 'Matter Number']]);
+
+        $this->assertArrayNotHasKey('dcn_core_document_type', $fields);
+        $this->assertArrayHasKey('other_app_key', $fields);
+    }
+
     public function testWithoutCoreEveryKeyNamesItself(): void
     {
         $fields = $this->fieldsLabelled([]);

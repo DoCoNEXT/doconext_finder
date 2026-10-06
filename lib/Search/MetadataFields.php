@@ -31,6 +31,9 @@ class MetadataFields
     /** Marks a field as metadata in the API, e.g. `meta:dcn_core_ecli`. */
     public const PREFIX = 'meta:';
 
+    /** The keys DoCoNEXT Core writes; the only ones whose labels are per workspace. */
+    private const CORE_KEY_PREFIX = 'dcn_core_';
+
     /** Names Core gave back, keyed by what was asked. @var array<string, string> */
     private array $principals = [];
 
@@ -58,6 +61,14 @@ class MetadataFields
      * search is narrowed to one. Where they disagree, or nobody says, the key
      * names itself.
      *
+     * A Core key that no workspace of this user labels is left out altogether:
+     * the registry is instance-wide, so it also holds the fields of departments
+     * the user may not enter, and listing `dcn_core_candidate_name` to someone
+     * outside HR says what HR keeps a field for. Values were never shown — the
+     * results are filtered by file access — but the names were. Only once Core
+     * has answered with labels at all: without Core, or with one too old to
+     * name its fields, every key still names itself as before.
+     *
      * @return list<array{key: string, field: string, label: string, labels: array<int, string>, type: string, filterable: bool, principal: array{type: ?string, multi: bool}|null}>
      */
     public function all(): array
@@ -70,6 +81,9 @@ class MetadataFields
         $fields = [];
         foreach ($known->getKeys() as $key) {
             $labels = $named[$key] ?? [];
+            if ($named !== [] && $labels === [] && str_starts_with($key, self::CORE_KEY_PREFIX)) {
+                continue;
+            }
             $fields[] = [
                 'key'        => $key,
                 'field'      => self::PREFIX . $key,
@@ -233,7 +247,7 @@ class MetadataFields
      */
     private static function label(string $key): string
     {
-        $bare = preg_replace('/^dcn_core_/', '', $key) ?? $key;
+        $bare = preg_replace('/^' . self::CORE_KEY_PREFIX . '/', '', $key) ?? $key;
 
         return ucfirst(str_replace('_', ' ', $bare));
     }
