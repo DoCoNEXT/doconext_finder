@@ -1,0 +1,50 @@
+# Finder does not accept external code contributions (CONTRIBUTING.md → Why no
+# code). That is a real policy, and a policy nobody enforces reads worse in
+# public than no policy at all: an unanswered pull request looks like an
+# unmaintained project to the same reader the open issue tracker is meant to
+# reassure.
+#
+# So: answer immediately, explain why, and close — without spending more of the
+# contributor's time than they have already spent.
+name: External pull requests
+
+# pull_request_target, not pull_request: a fork's pull_request run gets a
+# read-only token and could not close anything. Nothing here runs, builds or
+# checks out the pull request's code — the checkout below takes the base branch,
+# which is what keeps the elevated token safe.
+on:
+  pull_request_target:
+    types: [opened, reopened]
+
+# contents:read is what actions/checkout needs; without it the token defaults to
+# none for every scope not listed here and the checkout — and therefore the whole
+# job — fails before it can answer anybody.
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  close:
+    name: Explain and close
+    runs-on: ubuntu-latest
+    # Dependabot raises its own pull requests (see .github/dependabot.yml) and
+    # maintainers work through branches on this repository. Only genuinely
+    # external contributions should reach the close step.
+    if: >-
+      github.event.pull_request.user.login != 'dependabot[bot]' &&
+      !contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.pull_request.author_association)
+    steps:
+      # Default ref under pull_request_target is the base branch, never the
+      # fork's head. We want it for one file: the reply text, kept out of the
+      # workflow so the wording can be edited without touching automation.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Explain, then close
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR: ${{ github.event.pull_request.html_url }}
+        run: |
+          gh pr comment "$PR" --body-file .github/external-pr-reply.md
+          gh pr close "$PR"
