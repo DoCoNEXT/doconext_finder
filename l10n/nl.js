@@ -123,6 +123,7 @@ OC.L10N.register(
         "No preview available": "Geen voorbeeld beschikbaar",
         "No recent searches": "Geen recente zoekopdrachten",
         "No saved searches yet": "Nog geen opgeslagen zoekopdrachten",
+        "Not uploaded, a file with that name is already there: {names}": "Niet geüpload, er staat al een bestand met die naam: {names}",
         "Nothing": "Niets",
         "Nothing in that question maps to a filter this workspace has.": "Niets in die vraag past op een filter dat deze werkruimte heeft.",
         "Nothing selected": "Niets geselecteerd",

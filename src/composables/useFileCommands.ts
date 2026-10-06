@@ -30,7 +30,7 @@ import { useI18n } from './useI18n'
 import { usePreviewStore } from '../stores/previewStore'
 import { downloadFile } from '../services/download'
 import { openLocally } from '../services/openLocally'
-import { pickLocalFiles, uploadTo } from '../services/upload'
+import { FileExistsError, pickLocalFiles, uploadTo } from '../services/upload'
 import { folderOf } from '../filters/grouping'
 import { coreProductName, HAS_ENTITY_SCOPE } from '../constants'
 import { SearchApi } from '../services/SearchApi'
@@ -108,7 +108,7 @@ export function useFileCommands(onChanged?: (_file: FileResult) => void) {
     try {
       // Deliberately written to the existing path under its existing name: that
       // is what makes it a *version* rather than a second file.
-      await uploadTo(file.path, picked)
+      await uploadTo(file.path, picked, true)
       showSuccess(t('Uploaded a new version of {name}', { name: file.name }))
       onChanged?.(file)
     } catch (e) {
@@ -122,15 +122,31 @@ export function useFileCommands(onChanged?: (_file: FileResult) => void) {
       return
     }
     const folder = targetFolder(file)
+    // A name already in use is skipped and named, not replaced: the person
+    // asked to add files to a folder, not to overwrite what was there.
+    const skipped: string[] = []
     try {
       for (const content of picked) {
-        await uploadTo(folder ? `${folder}/${content.name}` : content.name, content)
+        try {
+          await uploadTo(folder ? `${folder}/${content.name}` : content.name, content, false)
+        } catch (e) {
+          if (!(e instanceof FileExistsError)) {
+            throw e
+          }
+          skipped.push(content.name)
+        }
       }
-      showSuccess(t('Uploaded {count} file(s) to {folder}', {
-        count: picked.length,
-        folder: folder || '/',
-      }))
-      onChanged?.(file)
+      const uploaded = picked.length - skipped.length
+      if (uploaded > 0) {
+        showSuccess(t('Uploaded {count} file(s) to {folder}', {
+          count: uploaded,
+          folder: folder || '/',
+        }))
+        onChanged?.(file)
+      }
+      if (skipped.length > 0) {
+        showError(t('Not uploaded, a file with that name is already there: {names}', { names: skipped.join(', ') }))
+      }
     } catch (e) {
       failed(t('Could not upload to {folder}.', { folder: folder || '/' }), e)
     }
