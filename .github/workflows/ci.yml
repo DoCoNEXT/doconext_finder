@@ -1,9 +1,19 @@
 name: CI
 
+# A change that touches nothing this workflow builds or checks does not run it.
+# Its own files stay in: a change to ci.yml or .github/scripts/ is exactly the
+# one that needs a run. One trade-off: REUSE checks Markdown too, so a new .md
+# that REUSE.toml does not cover shows up on the next run instead of this one.
 on:
   push:
     branches: [main]
+    paths-ignore: &unbuilt
+      - '**.md'
+      - '.github/workflows/external-pull-requests.yml'
+      - '.github/dependabot.yml'
+      - '.github/workflows/release.yml'
   pull_request:
+    paths-ignore: *unbuilt
 
 # Nothing in this workflow writes to the repository, so the token gets read
 # access and nothing else, whatever the repository's default setting says.
