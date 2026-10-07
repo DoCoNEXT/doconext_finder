@@ -4,7 +4,10 @@
 # unmaintained project to the same reader the open issue tracker is meant to
 # reassure.
 #
-# So: answer immediately, explain why, and close — without spending more of the
+# The repository setting does the enforcing (Settings → General → Pull requests:
+# creation allowed by collaborators only), so an outside pull request should
+# never exist. This is the fallback for the day that setting is changed: answer
+# immediately, explain why, and close — without spending more of the
 # contributor's time than they have already spent.
 name: External pull requests
 
