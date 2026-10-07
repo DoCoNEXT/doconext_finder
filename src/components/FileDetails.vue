@@ -116,6 +116,14 @@
       -->
       <RichPreview v-if="previewOpened && richPreview" :file="file" :highlight="highlight" />
 
+      <NcEmptyContent v-else-if="previewOpened && !canRead(file)"
+                      :name="t('No preview available')"
+                      :description="t('You do not have permission to view this file.')">
+        <template #icon>
+          <Eye />
+        </template>
+      </NcEmptyContent>
+
       <img v-else-if="previewOpened && previewUrl && !previewFailed"
            class="details__preview"
            :src="previewUrl"
@@ -192,6 +200,7 @@ import { useFileCommands } from '../composables/useFileCommands'
 import { useSidebarResize } from '../composables/useSidebarResize'
 import { folderOf, typeName } from '../filters/grouping'
 import { formatDate, formatSize } from '../filters/columns'
+import { canRead } from '../filters/access'
 import RichPreview from './RichPreview.vue'
 import { HAS_RICH_PREVIEW } from '../constants'
 import type { FileResult } from '../types/Search'

@@ -32,6 +32,7 @@ import { downloadFile } from '../services/download'
 import { openLocally } from '../services/openLocally'
 import { FileExistsError, pickLocalFiles, uploadTo } from '../services/upload'
 import { folderOf } from '../filters/grouping'
+import { canDownload, canRead } from '../filters/access'
 import { coreProductName, HAS_ENTITY_SCOPE } from '../constants'
 import { SearchApi } from '../services/SearchApi'
 import type { FileResult } from '../types/Search'
@@ -216,7 +217,9 @@ export function useFileCommands(onChanged?: (_file: FileResult) => void) {
       },
     ]
 
-    if (!file.isFolder) {
+    // Opening locally downloads the file into the desktop client, so it needs
+    // what a download needs -- the Files app hides it on the same terms.
+    if (!file.isFolder && canDownload(file)) {
       commands.push({
         id: 'local',
         label: t('Open in local app'),
@@ -246,20 +249,28 @@ export function useFileCommands(onChanged?: (_file: FileResult) => void) {
       })
     }
 
+    // A file that is listed but cannot be read has nothing to preview or
+    // download: the server answers both with 404. See filters/access.ts.
+    if (!file.isFolder && canRead(file)) {
+      commands.push({
+        id: 'preview',
+        label: t('Open full preview'),
+        icon: FileSearch,
+        run: () => preview.open(file),
+      })
+    }
+
+    if (!file.isFolder && canDownload(file)) {
+      commands.push({
+        id: 'download',
+        label: t('Download'),
+        icon: Download,
+        run: () => downloadFile(file),
+      })
+    }
+
     if (!file.isFolder) {
       commands.push(
-        {
-          id: 'preview',
-          label: t('Open full preview'),
-          icon: FileSearch,
-          run: () => preview.open(file),
-        },
-        {
-          id: 'download',
-          label: t('Download'),
-          icon: Download,
-          run: () => downloadFile(file),
-        },
         {
           id: 'version',
           label: t('Upload new version'),

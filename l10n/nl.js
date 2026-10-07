@@ -230,6 +230,7 @@ OC.L10N.register(
         "Which categories the search page's Type filter offers, and in what order.": "Welke categorieën het Type-filter op de zoekpagina aanbiedt, en in welke volgorde.",
         "Workspace": "Werkruimte",
         "You do not have permission to do this.": "Je hebt hier geen toestemming voor.",
+        "You do not have permission to view this file.": "Je hebt geen toestemming om dit bestand te bekijken.",
         "Your saved and recent searches could not be loaded. Reload the page to try again.": "Je opgeslagen en recente zoekopdrachten konden niet worden geladen. Herlaad de pagina om het opnieuw te proberen.",
         "Your settings could not be saved. Please try again.": "Je instellingen konden niet worden opgeslagen. Probeer het opnieuw.",
         "after": "na",

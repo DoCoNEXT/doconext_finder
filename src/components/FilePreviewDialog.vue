@@ -32,7 +32,7 @@
         <NcButton variant="primary" :href="fileLink(file)" target="_blank">
           {{ t('Open in Files') }}
         </NcButton>
-        <NcButton variant="secondary" @click="downloadFile(file)">
+        <NcButton v-if="canDownload(file)" variant="secondary" @click="downloadFile(file)">
           {{ t('Download') }}
         </NcButton>
       </div>
@@ -49,6 +49,7 @@ import { useI18n } from '../composables/useI18n'
 import { usePreviewStore } from '../stores/previewStore'
 import { fileLink } from '../composables/useFileCommands'
 import { downloadFile } from '../services/download'
+import { canDownload } from '../filters/access'
 import { HAS_RICH_PREVIEW } from '../constants'
 import RichPreview from './RichPreview.vue'
 

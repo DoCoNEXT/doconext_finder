@@ -21,6 +21,7 @@ use OCP\Files\Search\ISearchBinaryOperator;
 use OCP\Files\Search\ISearchComparison;
 use OCP\Files\Search\ISearchOperator;
 use OCP\Files\Search\ISearchOrder;
+use OCP\Files\Storage\ISharedStorage;
 use OCP\FilesMetadata\IFilesMetadataManager;
 use OCP\FilesMetadata\IMetadataQuery;
 use OCP\IDBConnection;
@@ -606,6 +607,24 @@ class FileSearchService
     }
 
     /**
+     * A received share's attributes, as the JSON string WebDAV hands the Files
+     * app as nc:share-attributes -- it says whether the share allows downloading.
+     * Null for anything not received as a share, which is the common case.
+     */
+    private function shareAttributes(Node $node): ?string
+    {
+        $storage = $node->getStorage();
+        if (!$storage->instanceOfStorage(ISharedStorage::class)) {
+            return null;
+        }
+
+        /** @var ISharedStorage $storage */
+        $attributes = $storage->getShare()->getAttributes();
+
+        return $attributes === null ? null : json_encode($attributes->toArray(), JSON_THROW_ON_ERROR);
+    }
+
+    /**
      * @param array<string,string> $metadata
      * @param string $editor uid that wrote the current revision, '' when unknown
      * @return array<string,mixed>
@@ -645,6 +664,7 @@ class FileSearchService
             'mtime'        => $node->getMTime(),
             'creationTime' => $node->getCreationTime(),
             'permissions'  => $node->getPermissions(),
+            'shareAttributes' => $this->shareAttributes($node),
             'favorite'     => $favorite,
             'owner'        => $owner,
             'createdBy'    => $this->authors->displayName($owner),
