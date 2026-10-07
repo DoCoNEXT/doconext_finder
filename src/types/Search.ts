@@ -29,6 +29,11 @@ export interface FileResult {
   mtime: number
   creationTime: number
   permissions: number
+  /**
+   * A received share's attributes as JSON, as WebDAV's nc:share-attributes gives
+   * them; null for anything not received as a share. See filters/access.ts.
+   */
+  shareAttributes: string | null
   /** Mutated optimistically by the star toggle. */
   favorite: boolean
   /** The passage a content search matched, or '' — see SearchState.searchContent. */

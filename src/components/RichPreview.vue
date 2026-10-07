@@ -96,6 +96,12 @@ async function render() {
   element.setAttribute('mime', props.file.mimetype)
   element.setAttribute('source', downloadUrl(props.file))
   element.setAttribute('highlight', props.highlight ?? '')
+  // So a file that cannot be read says so instead of failing to load, and one
+  // that may not be downloaded offers no download. See filters/access.ts.
+  element.setAttribute('permissions', String(props.file.permissions))
+  if (props.file.shareAttributes) {
+    element.setAttribute('share-attributes', props.file.shareAttributes)
+  }
   paint(element)
   el.appendChild(element)
   preview.value = element
