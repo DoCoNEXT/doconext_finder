@@ -52,8 +52,8 @@ DoCoNEXT apps. That is a deliberate choice, and it is load-bearing:
   time, across all the DoCoNEXT apps.
 
 Accepting outside code would end this permanently, and it cannot be undone one
-contribution at a time. Pull requests are therefore closed without review, by an
-automation that replies immediately rather than leaving you waiting.
+contribution at a time. Opening a pull request is therefore limited to the
+maintainers.
 
 **This is a constraint on our development process, not on your rights.** Finder
 is AGPL-3.0-or-later ([LICENSE](LICENSE)). You may fork it, modify it, and run
