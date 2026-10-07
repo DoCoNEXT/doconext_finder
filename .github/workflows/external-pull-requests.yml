@@ -27,12 +27,12 @@ jobs:
   close:
     name: Explain and close
     runs-on: ubuntu-latest
-    # Dependabot raises its own pull requests (see .github/dependabot.yml) and
-    # maintainers work through branches on this repository. Only genuinely
-    # external contributions should reach the close step.
-    if: >-
-      github.event.pull_request.user.login != 'dependabot[bot]' &&
-      !contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.pull_request.author_association)
+    # Maintainers and Dependabot (see .github/dependabot.yml) both work through
+    # branches on this repository; only someone without write access has to come
+    # from a fork. So "external" is decided by where the branch lives, not by
+    # author_association: that reports an organisation owner whose membership is
+    # private as CONTRIBUTOR, which closed the owner's own pull request (#9).
+    if: github.event.pull_request.head.repo.full_name != github.repository
     steps:
       # Default ref under pull_request_target is the base branch, never the
       # fork's head. We want it for one file: the reply text, kept out of the
