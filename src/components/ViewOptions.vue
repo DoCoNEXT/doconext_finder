@@ -85,8 +85,10 @@
                         :placeholder="defaultHeaderOf(column)"
                         @update:model-value="preferences.rename(column.id, String($event))" />
 
+          <!-- Name is pinned first in the grid, so it does not move and
+               nothing moves above it. -->
           <NcButton variant="tertiary"
-                    :disabled="index === 0"
+                    :disabled="column.id === 'name' || index <= 1"
                     :aria-label="t('Move up')"
                     @click="preferences.move(column.id, -1)">
             <template #icon>
@@ -94,7 +96,7 @@
             </template>
           </NcButton>
           <NcButton variant="tertiary"
-                    :disabled="index === preferences.columns.length - 1"
+                    :disabled="column.id === 'name' || index === preferences.columns.length - 1"
                     :aria-label="t('Move down')"
                     @click="preferences.move(column.id, 1)">
             <template #icon>

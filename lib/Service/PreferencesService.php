@@ -181,6 +181,10 @@ class PreferencesService
      * appended in their default order, so a column added in a later version shows
      * up for existing users instead of silently never appearing.
      *
+     * Name always comes first, whatever order was stored: the grid pins its first
+     * column while the others scroll sideways, and only the name tells you which
+     * file a row is once the rest has scrolled away.
+     *
      * Metadata columns are only ever present because the user asked for them:
      * this server advertises around a hundred keys, and defaulting them on would
      * bury the grid.
@@ -226,7 +230,7 @@ class PreferencesService
             'label'   => $byId['name']['label'] ?? '',
         ];
 
-        $ordered = [];
+        $ordered = [$byId['name']];
         foreach (is_array($raw) ? $raw : [] as $entry) {
             $id = is_array($entry) ? (string)($entry['id'] ?? '') : '';
             if (isset($byId[$id]) && !in_array($id, array_column($ordered, 'id'), true)) {
