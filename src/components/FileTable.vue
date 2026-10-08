@@ -220,14 +220,23 @@ function cellText(file: FileResult, id: string): string {
 </script>
 
 <style scoped lang="scss">
+// Scrolls both ways itself, within the height the view gives it. A sticky cell
+// sticks to its nearest scroll container, and one that only scrolled sideways
+// would carry the header off with the rows when the view scrolled down.
 .results-scroll {
-  overflow-x: auto;
+  max-height: 100%;
+  overflow: auto;
+  // Lets the pinned actions column ask whether anything is scrolled under it.
+  container-type: scroll-state;
 }
 
 .results {
   width: 100%;
   min-width: 640px;
-  border-collapse: collapse;
+  // Not 'collapse': collapsed borders belong to the table, so a sticky cell's
+  // border would stay behind while the cell itself moves.
+  border-collapse: separate;
+  border-spacing: 0;
 
   th,
   td {
@@ -243,6 +252,21 @@ function cellText(file: FileResult, id: string): string {
   th {
     color: var(--color-text-maxcontrast);
     font-weight: 600;
+  }
+
+  // The column headings stay in view while the rows scroll under them. Above
+  // the pinned actions cells of the body, which would otherwise paint over
+  // them, being later in the document.
+  thead th {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: var(--color-main-background);
+
+    // The corner is pinned both ways, and must stay above everything else.
+    &.results__actions {
+      z-index: 3;
+    }
   }
 
   tbody tr {
@@ -298,8 +322,24 @@ function cellText(file: FileResult, id: string): string {
     }
   }
 
+  // Pinned to the visible right edge: on a grid wider than the page the menu
+  // would otherwise sit out of sight until the user scrolled to it.
   &__actions {
     width: 44px;
+    position: sticky;
+    inset-inline-end: 0;
+    // Opaque, or the columns scrolling underneath show through. The row's
+    // hover and selected colours are repeated below for the same reason.
+    background: var(--color-main-background);
+    z-index: 1;
+  }
+
+  tbody tr:hover &__actions {
+    background: var(--color-background-hover);
+  }
+
+  &__row--selected &__actions {
+    background: var(--color-primary-element-light);
   }
 
   &__excerpt {
@@ -332,6 +372,18 @@ function cellText(file: FileResult, id: string): string {
 
     &:hover span {
       text-decoration: underline;
+    }
+  }
+}
+
+// The edge only shows while columns are actually hidden under the pinned one.
+// Browsers without scroll-state queries simply go without it.
+@container scroll-state(scrollable: inline-end) {
+  .results__actions {
+    box-shadow: -6px 0 6px -6px var(--color-box-shadow);
+
+    &:dir(rtl) {
+      box-shadow: 6px 0 6px -6px var(--color-box-shadow);
     }
   }
 }
