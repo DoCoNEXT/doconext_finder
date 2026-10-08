@@ -48,4 +48,19 @@ class PreferencesServiceTest extends TestCase
         $this->assertSame('', $this->serviceReading([])->get('alice')['highlightColor']);
     }
 
+    public function testNameColumnComesFirstWhateverWasStored(): void
+    {
+        // Stored before the grid pinned its first column, when name could move.
+        $columns = $this->serviceReading(['columns' => [
+            ['id' => 'size', 'visible' => true, 'label' => ''],
+            ['id' => 'name', 'visible' => true, 'label' => 'File'],
+            ['id' => 'folder', 'visible' => false, 'label' => ''],
+        ]])->get('alice')['columns'];
+
+        $ids = array_column($columns, 'id');
+        $this->assertSame(['name', 'size', 'folder'], array_slice($ids, 0, 3));
+        $this->assertSame('File', $columns[0]['label'], 'the rename travels with it');
+        $this->assertCount(1, array_keys($ids, 'name', true));
+    }
+
 }

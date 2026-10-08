@@ -181,10 +181,16 @@ export const usePreferencesStore = defineStore('preferences', {
       }
     },
 
+    /**
+     * Name stays first — the grid pins it while the rest scrolls sideways, and
+     * the server puts it back there anyway — so it neither moves nor is passed.
+     * @param id
+     * @param direction
+     */
     move(id: string, direction: -1 | 1) {
       const from = this.columns.findIndex((c) => c.id === id)
       const to = from + direction
-      if (from === -1 || to < 0 || to >= this.columns.length) {
+      if (id === 'name' || from === -1 || to < 1 || to >= this.columns.length) {
         return
       }
       const [column] = this.columns.splice(from, 1)

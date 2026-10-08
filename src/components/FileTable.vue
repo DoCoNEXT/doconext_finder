@@ -1,8 +1,11 @@
 <template>
   <!-- Scrolls on its own so opening the detail panel narrows the grid
        instead of clipping its right-hand columns. -->
-  <div class="results-scroll">
-    <table class="results">
+  <div ref="scroller"
+       class="results-scroll"
+       :class="{ 'results-scroll--under-start': hidden.start, 'results-scroll--under-end': hidden.end }"
+       @scroll.passive="measure">
+    <table ref="table" class="results">
       <thead>
         <tr>
           <th class="results__star" />
@@ -88,7 +91,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { NcButton } from '@nextcloud/vue'
 import { ChevronDown, ChevronRight, Star } from '@lucide/vue'
 import { useI18n } from '../composables/useI18n'
@@ -133,6 +136,40 @@ function showDetails(file: FileResult) {
   emit('select', file)
   preferences.setSidebarPinned(true)
 }
+
+/**
+ * Whether columns are scrolled out of sight under the pinned ones, at either
+ * edge — that is when the pinned columns show an edge. Measured rather than
+ * left to a scroll-state container query, which only Chromium supports.
+ */
+const scroller = ref<HTMLElement | null>(null)
+const table = ref<HTMLElement | null>(null)
+const hidden = ref({ start: false, end: false })
+
+function measure() {
+  const el = scroller.value
+  if (!el) {
+    return
+  }
+  // Negative in a right-to-left page, where the start is on the right.
+  const scrolled = Math.abs(el.scrollLeft)
+  hidden.value = {
+    start: scrolled > 1,
+    end: el.scrollWidth - el.clientWidth - scrolled > 1,
+  }
+}
+
+// The grid changes width with the window and the details panel, and the table
+// with its columns and rows; either can hide or reveal columns without a scroll.
+const resizes = new ResizeObserver(measure)
+onMounted(() => {
+  for (const el of [scroller.value, table.value]) {
+    if (el) {
+      resizes.observe(el)
+    }
+  }
+})
+onBeforeUnmount(() => resizes.disconnect())
 
 const metadata = computed(() => search.metadata)
 
@@ -211,6 +248,9 @@ function sortableAs(id: string): string | null {
 }
 
 function cellClass(id: string): string {
+  if (id === 'name') {
+    return 'results__name-cell'
+  }
   return isNumericColumn(id) ? 'numeric' : ''
 }
 
@@ -220,14 +260,23 @@ function cellText(file: FileResult, id: string): string {
 </script>
 
 <style scoped lang="scss">
+// Scrolls both ways itself, within the height the view gives it. A sticky cell
+// sticks to its nearest scroll container, and one that only scrolled sideways
+// would carry the header off with the rows when the view scrolled down.
 .results-scroll {
-  overflow-x: auto;
+  max-height: 100%;
+  overflow: auto;
+  // Lets the pinned name size itself against the grid's width.
+  container-type: inline-size;
 }
 
 .results {
   width: 100%;
   min-width: 640px;
-  border-collapse: collapse;
+  // Not 'collapse': collapsed borders belong to the table, so a sticky cell's
+  // border would stay behind while the cell itself moves.
+  border-collapse: separate;
+  border-spacing: 0;
 
   th,
   td {
@@ -238,11 +287,42 @@ function cellText(file: FileResult, id: string): string {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+
+    // Pinned, the name would otherwise take up to 340px of a narrow grid and
+    // leave hardly any room to scroll the other columns through. Here, not
+    // under &__name-cell, or the 340px above outranks it.
+    &.results__name-cell {
+      max-width: min(340px, 40cqi);
+    }
+
+    // Not clipped, or the edge drawn just outside them (below) would be. The
+    // name truncates itself, in its own span; the menu is only a button.
+    &.results__name-cell,
+    &.results__actions {
+      overflow: visible;
+    }
   }
 
   th {
     color: var(--color-text-maxcontrast);
     font-weight: 600;
+  }
+
+  // The column headings stay in view while the rows scroll under them. Above
+  // the pinned actions cells of the body, which would otherwise paint over
+  // them, being later in the document.
+  thead th {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: var(--color-main-background);
+
+    // The corners are pinned both ways, and must stay above everything else.
+    &.results__star,
+    &.results__name-cell,
+    &.results__actions {
+      z-index: 3;
+    }
   }
 
   tbody tr {
@@ -267,7 +347,11 @@ function cellText(file: FileResult, id: string): string {
     font-size: 95%;
   }
 
+  // Sticky within its full-width heading cell, so the group's name stays in
+  // view, like the file names, while the columns scroll sideways.
   &__toggle {
+    position: sticky;
+    inset-inline-start: 8px;
     display: inline-flex;
     align-items: center;
     gap: 6px;
@@ -291,15 +375,45 @@ function cellText(file: FileResult, id: string): string {
   }
 
   &__star {
-    width: 44px;
+    // Exactly the button plus the cell's padding, so the pinned name can start
+    // where the star ends instead of overlapping it or leaving a gap.
+    width: var(--default-clickable-area);
+    inset-inline-start: 0;
 
     &--on {
       color: var(--color-favorite);
     }
   }
 
+  &__name-cell {
+    inset-inline-start: calc(var(--default-clickable-area) + 16px);
+  }
+
   &__actions {
     width: 44px;
+    inset-inline-end: 0;
+  }
+
+  // Pinned while the rest scrolls sideways: the star and name so a row still
+  // says which file it is, the menu so it is never out of reach.
+  &__star,
+  &__name-cell,
+  &__actions {
+    position: sticky;
+    z-index: 1;
+    // Opaque, or the columns scrolling underneath show through. The row's
+    // hover and selected colours are repeated below for the same reason.
+    background: var(--color-main-background);
+  }
+
+  // Every cell, not only the row: a pinned cell paints its own background, and
+  // must change with the row it belongs to.
+  &__row--selected td {
+    background: var(--color-primary-element-light);
+  }
+
+  tbody tr:hover td {
+    background: var(--color-background-hover);
   }
 
   &__excerpt {
@@ -334,6 +448,39 @@ function cellText(file: FileResult, id: string): string {
       text-decoration: underline;
     }
   }
+}
+
+// While columns are hidden under the pinned ones, a soft edge says so — the
+// same one the CRM's lists draw. A strip just outside the cell, full height,
+// rather than a box-shadow, which fades out at the top and bottom of every
+// cell and turns into a dashed bar down the grid.
+.results-scroll--under-start .results__name-cell::after,
+.results-scroll--under-end .results__actions::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 8px;
+  pointer-events: none;
+}
+
+.results-scroll--under-start .results__name-cell::after {
+  inset-inline-start: 100%;
+  background: linear-gradient(to right, rgba(0, 0, 0, 0.12), transparent);
+}
+
+.results-scroll--under-end .results__actions::before {
+  inset-inline-end: 100%;
+  background: linear-gradient(to left, rgba(0, 0, 0, 0.12), transparent);
+}
+
+// The edges fade away from the pinned column, which is mirrored right-to-left.
+.results-scroll--under-start .results__name-cell:dir(rtl)::after {
+  background: linear-gradient(to left, rgba(0, 0, 0, 0.12), transparent);
+}
+
+.results-scroll--under-end .results__actions:dir(rtl)::before {
+  background: linear-gradient(to right, rgba(0, 0, 0, 0.12), transparent);
 }
 
 .numeric {
