@@ -127,6 +127,8 @@ are not accepted. [CONTRIBUTING.md](CONTRIBUTING.md) explains why.
 
 ## License
 
+Copyright © 2026 DoCoNEXT.
+
 AGPL-3.0-or-later; the full text is in [LICENSE](LICENSE). Licensing follows
 the [REUSE](https://reuse.software) layout: the licence texts are in
 `LICENSES/`, and `REUSE.toml` says which covers which files.
