@@ -1,0 +1,40 @@
+name: Feature request
+description: Something Finder should be able to do.
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Describe the need rather than the solution: what you are trying to find,
+        and why the current behaviour is not enough. A request that carries its
+        reasoning is one we can act on.
+
+  - type: textarea
+    id: need
+    attributes:
+      label: What are you trying to find or do?
+    validations:
+      required: true
+
+  - type: textarea
+    id: today
+    attributes:
+      label: How do you do this today?
+      description: In Finder, in the Files app, or outside Nextcloud.
+    validations:
+      required: true
+
+  - type: textarea
+    id: gap
+    attributes:
+      label: What makes the current behaviour insufficient?
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: confirm
+    attributes:
+      label: Before you submit
+      options:
+        - label: This request contains no code or patch.
+          required: true

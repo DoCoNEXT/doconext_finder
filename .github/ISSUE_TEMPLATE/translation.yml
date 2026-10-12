@@ -1,0 +1,26 @@
+name: Translation
+description: A string that reads wrongly in your language.
+labels: ["translation"]
+body:
+  - type: input
+    id: language
+    attributes:
+      label: Language
+      placeholder: e.g. Dutch
+    validations:
+      required: true
+
+  - type: textarea
+    id: current
+    attributes:
+      label: The string as it appears now
+      description: Copy it exactly, and say where in Finder you saw it.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposed
+    attributes:
+      label: What it should say
+    validations:
+      required: true

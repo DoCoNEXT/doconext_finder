@@ -1,0 +1,104 @@
+name: Bug report
+description: Something in Finder does not work as it should.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report this. Please do not paste code or a
+        patch — [CONTRIBUTING.md](https://github.com/DoCoNEXT/doconext_finder/blob/main/CONTRIBUTING.md#why-no-code)
+        explains why an issue with a proposed implementation has to be closed.
+
+        Security problems do not belong here: use *Report a vulnerability* under
+        the Security tab instead.
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: What did you do?
+      description: The steps that lead to the problem, as precisely as you can.
+      placeholder: |
+        1. Search for …
+        2. …
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: What happened?
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect instead?
+    validations:
+      required: true
+
+  - type: input
+    id: finder-version
+    attributes:
+      label: Finder version
+      description: Settings → Apps, or `occ app:list | grep doconext_finder`.
+      placeholder: e.g. 0.9.1
+    validations:
+      required: true
+
+  - type: input
+    id: nextcloud-version
+    attributes:
+      label: Nextcloud version
+      placeholder: e.g. 34.0.2
+    validations:
+      required: true
+
+  - type: input
+    id: php-version
+    attributes:
+      label: PHP version
+      placeholder: e.g. 8.3
+    validations:
+      required: true
+
+  # Much of what Finder shows comes from these when they are installed.
+  - type: checkboxes
+    id: companions
+    attributes:
+      label: Also installed
+      options:
+        - label: DoCoNEXT Core
+        - label: DoCoNEXT Files Preview
+        - label: Full text search (with an index)
+
+  # What a search can see is decided by where the files are stored.
+  - type: dropdown
+    id: storage
+    attributes:
+      label: Where are the files involved?
+      options:
+        - In the user's own files
+        - On a Team folder (Group folders)
+        - On external storage
+        - Shared with the user by someone else
+        - I don't know
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant log entries
+      description: From `nextcloud.log`, with names, file names and identifiers removed.
+      render: shell
+
+  - type: checkboxes
+    id: confirm
+    attributes:
+      label: Before you submit
+      options:
+        - label: This report contains no code or patch.
+          required: true
+        - label: This is not a security vulnerability.
+          required: true
