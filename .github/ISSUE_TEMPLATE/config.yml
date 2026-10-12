@@ -1,0 +1,11 @@
+# A blank issue skips the questions below, and those are what make a report
+# actionable. Security reports must never become public issues at all, so that
+# route is offered before anyone starts typing.
+blank_issues_enabled: false
+contact_links:
+  - name: Report a security vulnerability
+    url: https://github.com/DoCoNEXT/doconext_finder/security/advisories/new
+    about: Privately, never in a public issue. SECURITY.md has the email alternative and what to expect.
+  - name: Why code contributions are not accepted
+    url: https://github.com/DoCoNEXT/doconext_finder/blob/main/CONTRIBUTING.md#why-no-code
+    about: Read this before preparing a patch.
