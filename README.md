@@ -5,8 +5,10 @@ day. Structured conditions, saved searches, configurable columns and grouping �
 the things the Files app deliberately leaves out.
 
 Finder works on a **plain Nextcloud**; nothing else needs to be installed.
-Two other DoCoNEXT apps add to it when they are there — see
+Other DoCoNEXT apps add to it when they are there — see
 [Better with other DoCoNEXT apps](#better-with-other-doconext-apps).
+
+![Finder's search page: results grouped by type, with a preview of the selected file](docs/screenshots/1-search.png)
 
 ## Features
 
@@ -76,22 +78,22 @@ you set up several servers the same way.
 
 ### Opening files on the desktop
 
-**Open in desktop app** hands a file to the Nextcloud desktop client, as the
+**Open in local app** hands a file to the Nextcloud desktop client, as the
 Files app does: it opens the synced copy, so edits sync back. A few formats go
 to **DoCoNEXT Bridge** instead, a separate helper on the user's computer. It
 exists for formats no local application can open as they are: an Outlook
 `.msg` opens in no mail client outside Windows until it is converted.
 
-Out of the box `.eml` and `.msg` go to the Bridge. **If your users do not have
-the Bridge, empty the list**, and every file goes to the desktop client:
+Which formats those are is the list in the settings page's first field. Until
+an administrator saves one, it is `eml, msg`: Finder stores nothing on
+installation, and that is the value it falls back to. **If your users do not
+have the Bridge, empty the field and save**, and every file goes to the desktop
+client. Add other formats to it, comma-separated, as they turn up.
+
+With `occ`, the same two changes are:
 
 ```bash
 occ config:app:set doconext_bridge extensions --value=''
-```
-
-Or extend it with other formats, comma-separated:
-
-```bash
 occ config:app:set doconext_bridge extensions --value='eml,msg,oft'
 ```
 
@@ -161,7 +163,7 @@ returns, together with every name match, and says so above the results.
 
 Finder is complete on its own. Two other DoCoNEXT apps add to it when they are
 installed on the same server; Finder notices them by itself, with nothing to
-configure.
+configure. A third, DoCoNEXT Bridge, runs on the user's own computer instead.
 
 ### DoCoNEXT Files Preview
 
@@ -192,10 +194,27 @@ rules, organised in workspaces. With Core installed, Finder additionally:
 
 Core is available from DoCoNEXT, not from the App Store.
 
-Neither app is a dependency: Finder has no `<dependencies>` entry for them, no
-compile-time coupling and no shared tables. It resolves Core's public services
-by name on the server, and the Preview app's renderer as a custom element in
-the page; when an app is not there, Finder answers as if it never existed.
+### DoCoNEXT Bridge
+
+A helper on the user's computer that opens the files the Nextcloud desktop
+client cannot. An Outlook `.msg` opens in no mail client outside Windows until
+it is converted; the Bridge fetches the file, converts it where needed and
+opens it on the computer. Finder sends a file there from
+**Open in local app**, for the extensions an administrator lists — see
+[Opening files on the desktop](#opening-files-on-the-desktop).
+
+Unlike the two server apps, the Bridge cannot be detected from the server: a
+browser cannot tell whether a computer handles a link. Which files go to it is
+therefore a setting, not something Finder works out.
+
+The Bridge is a desktop application, so it is not in the App Store; it is
+available from DoCoNEXT.
+
+None of the three is a dependency: Finder has no `<dependencies>` entry for
+them, no compile-time coupling and no shared tables. It resolves Core's public
+services by name on the server and the Preview app's renderer as a custom
+element in the page; when either is not there, Finder answers as if it never
+existed. The Bridge it reaches only through a `doconext://` link.
 
 ## Development
 

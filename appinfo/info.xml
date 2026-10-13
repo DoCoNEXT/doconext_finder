@@ -38,6 +38,10 @@ Finder additionally filters and groups on Core's metadata fields.
 	<website>https://doconext.com</website>
 	<bugs>https://github.com/DoCoNEXT/doconext_finder/issues</bugs>
 	<repository type="git">https://github.com/DoCoNEXT/doconext_finder.git</repository>
+	<screenshot>https://raw.githubusercontent.com/DoCoNEXT/doconext_finder/main/docs/screenshots/1-search.png</screenshot>
+	<screenshot>https://raw.githubusercontent.com/DoCoNEXT/doconext_finder/main/docs/screenshots/2-filters.png</screenshot>
+	<screenshot>https://raw.githubusercontent.com/DoCoNEXT/doconext_finder/main/docs/screenshots/3-columns.png</screenshot>
+	<screenshot>https://raw.githubusercontent.com/DoCoNEXT/doconext_finder/main/docs/screenshots/4-searches.png</screenshot>
 	<dependencies>
 		<nextcloud min-version="33" max-version="35"/>
 	</dependencies>
