@@ -28,6 +28,11 @@ Finder additionally filters and groups on Core's metadata fields.
 	<licence>AGPL-3.0-or-later</licence>
 	<author mail="support@doconext.com" homepage="https://doconext.com">DoCoNEXT</author>
 	<namespace>DcnFinder</namespace>
+	<documentation>
+		<user>https://github.com/DoCoNEXT/doconext_finder#quick-start</user>
+		<admin>https://github.com/DoCoNEXT/doconext_finder#configuration</admin>
+		<developer>https://github.com/DoCoNEXT/doconext_finder#development</developer>
+	</documentation>
 	<category>files</category>
 	<category>tools</category>
 	<website>https://doconext.com</website>
