@@ -8,7 +8,7 @@ import { fieldLabel, operatorLabel, toDateInput, toMegabytes } from './fields'
 import { canonicalModifiedPreset, fileTypePresets, modifiedPresets } from './presets'
 import type { Translate } from './presets'
 import { isMetadataField, labelledFor, metadataKeyOf, realmOfScope } from './metadata'
-import type { Condition, MetadataField, SearchState } from '../types/Search'
+import type { Condition, MetadataField, SearchState, StoredSearch } from '../types/Search'
 
 /**
  * @param t translation function
@@ -26,9 +26,11 @@ export function describeQuery(t: Translate, query: SearchState, metadata: Metada
     parts.push(t('In {name}', { name: query.scope.label }))
   }
 
-  // The term itself is not described — the box shows it — but how wide its net
-  // is, is not visible anywhere else, and a saved search that reads the same
-  // whether it looked inside the files or not is two searches under one label.
+  // The term itself is not described here — wherever a search is listed, its
+  // term is the title or {@link describeStored} puts it in front — but how wide
+  // its net is, is not visible anywhere else, and a saved search that reads the
+  // same whether it looked inside the files or not is two searches under one
+  // label.
   if (query.searchContent) {
     parts.push(t('Contents too'))
   }
@@ -56,6 +58,31 @@ export function describeQuery(t: Translate, query: SearchState, metadata: Metada
   }
 
   return parts.join(' · ')
+}
+
+/**
+ * The summary line of a listed search: {@link describeQuery}, plus the term
+ * when the title does not already show it.
+ *
+ * A recent search is titled by its term, but a saved one by its name, and
+ * without this its term appeared nowhere: "Quotes this year · This year" read
+ * as every file from this year, though it only finds the ones named "quote".
+ * A name that merely repeats the term — what saving a recent search gives —
+ * is left as it is rather than saying the same word twice.
+ *
+ * @param t translation function
+ * @param entry the saved or recent search
+ * @param metadata see {@link describeQuery}
+ */
+export function describeStored(t: Translate, entry: StoredSearch, metadata: MetadataField[] = []): string {
+  const term = entry.query.term?.trim() ?? ''
+  const name = entry.name?.trim() ?? ''
+  const titledByTerm = name === '' || name.toLocaleLowerCase() === term.toLocaleLowerCase()
+
+  return [
+    term !== '' && !titledByTerm ? t('“{term}”', { term }) : '',
+    describeQuery(t, entry.query, metadata),
+  ].filter((part) => part !== '').join(' · ')
 }
 
 function describeCondition(t: Translate, condition: Condition, metadata: MetadataField[]): string {

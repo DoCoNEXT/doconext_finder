@@ -162,7 +162,7 @@ import { useI18n } from '../composables/useI18n'
 import { useHistoryStore } from '../stores/historyStore'
 import { useSearchStore } from '../stores/searchStore'
 import { useSaveSearch } from '../composables/useSaveSearch'
-import { describeQuery } from '../filters/describe'
+import { describeStored } from '../filters/describe'
 import type { StoredSearch } from '../types/Search'
 
 const { t } = useI18n()
@@ -186,7 +186,7 @@ onMounted(() => {
 })
 
 function describe(entry: StoredSearch): string {
-  return describeQuery(t, entry.query, search.schema?.metadata)
+  return describeStored(t, entry, search.schema?.metadata)
 }
 
 function isSelected(entry: StoredSearch): boolean {

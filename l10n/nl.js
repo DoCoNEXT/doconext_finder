@@ -4,6 +4,7 @@ OC.L10N.register(
         " or ": " of ",
         "(no search term)": "(geen zoekterm)",
         "(not set)": "(niet ingesteld)",
+        "“{term}”": "‘{term}’",
         "A custom category's label is shown exactly as typed, in every language — it is not translated the way the built-in categories are.": "Het label van een eigen categorie wordt precies zo getoond als je het typt, in elke taal — het wordt niet vertaald zoals de ingebouwde categorieën.",
         "A saved search called \"{name}\" already exists. Replace it, or keep both under different names?": "Er bestaat al een opgeslagen zoekopdracht \"{name}\". Vervangen, of allebei bewaren onder verschillende namen?",
         "A single click selects a result; its details appear in the panel when the panel is open.": "Eén klik selecteert een resultaat; de gegevens verschijnen in het paneel als dat openstaat.",
