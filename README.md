@@ -1,6 +1,6 @@
 # DoCoNEXT Finder
 
-A search page for your Nextcloud files, built for people who look things up all
+A search app for your Nextcloud files, built for people who look things up all
 day. Structured conditions, saved searches, configurable columns and grouping —
 the things the Files app deliberately leaves out.
 
