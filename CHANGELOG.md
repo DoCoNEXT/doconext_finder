@@ -16,8 +16,6 @@ numbers are the ones in `appinfo/info.xml`.
 
 ## [0.9.1] - 2026-10-12
 
-First release.
-
 ### Added
 - Structured search on name, size, created and modified date, matching all
   conditions or any of them; date filters mean calendar periods, as the Files
