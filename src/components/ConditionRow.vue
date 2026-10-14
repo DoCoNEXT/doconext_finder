@@ -17,6 +17,7 @@
     <NcDateTimePicker v-if="input === 'date'"
                       v-model="dateValue"
                       class="condition__value"
+                      :class="{ 'finder-filter--set': set }"
                       type="date"
                       :placeholder="t('Pick a date')" />
 
@@ -29,6 +30,7 @@
     <NcSelect v-else-if="input === 'principal'"
               v-model="principalValue"
               class="condition__value condition__person"
+              :class="{ 'finder-filter--set': set }"
               label="displayName"
               :options="principalOptions"
               :filterable="false"
@@ -39,6 +41,7 @@
     <NcTextField v-else-if="input === 'size'"
                  v-model="sizeValue"
                  class="condition__value"
+                 :class="{ 'finder-filter--set': set }"
                  type="number"
                  :label="t('Size in MB')"
                  :label-outside="true"
@@ -47,11 +50,12 @@
     <NcTextField v-else-if="input === 'text'"
                  v-model="textValue"
                  class="condition__value"
+                 :class="{ 'finder-filter--set': set }"
                  :label="t('Value')"
                  :label-outside="true"
                  :placeholder="hint || t('Value')" />
 
-    <span v-else class="condition__value condition__value--fixed">
+    <span v-else class="condition__value condition__value--fixed" :class="{ 'finder-filter--set': set }">
       {{ t('Only favorited files') }}
     </span>
 
@@ -87,6 +91,7 @@ import {
   fieldHint,
   fieldInput,
   fieldLabel,
+  isUsable,
   operatorLabel,
   toBytes,
   toDateInput,
@@ -109,6 +114,9 @@ const emit = defineEmits<{
   (e: 'update:condition', value: Condition): void
   (e: 'remove'): void
 }>()
+
+/** Whether this row narrows the search, so its value is marked as a filter in force. */
+const set = computed(() => isUsable(props.condition))
 
 interface Option { id: string, label: string }
 

@@ -56,7 +56,7 @@
         <span class="search-box__label">
           <strong>{{ titleOf(entry) }}</strong>
           <span class="search-box__hint"
-                :title="describeQuery(t, entry.query)">{{ describeQuery(t, entry.query) || t('No filters') }}</span>
+                :title="describeStored(t, entry)">{{ describeStored(t, entry) || t('No filters') }}</span>
         </span>
       </li>
     </ul>
@@ -69,7 +69,7 @@ import { NcButton, NcLoadingIcon, NcTextField } from '@nextcloud/vue'
 import { RotateCcwClock, Save, Search, Sparkles } from '@lucide/vue'
 import { useI18n } from '../composables/useI18n'
 import { useHistoryStore } from '../stores/historyStore'
-import { describeQuery } from '../filters/describe'
+import { describeStored } from '../filters/describe'
 import type { StoredSearch } from '../types/Search'
 
 /** Enough to choose from without turning the box into a page of its own. */

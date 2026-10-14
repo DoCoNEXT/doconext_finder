@@ -14,6 +14,7 @@ import { usePreferencesStore } from './preferencesStore'
 import { anyTime, anyType, canonicalModifiedPreset, fileTypePresets, modifiedPresets, modifiedRange } from '../filters/presets'
 import type { Translate } from '../filters/presets'
 import { labelledFor, realmOfScope } from '../filters/metadata'
+import { isUsable } from '../filters/fields'
 import type { Condition, FieldsResponse, FileResult, MetadataField, SearchState } from '../types/Search'
 
 /**
@@ -159,7 +160,7 @@ export const useSearchStore = defineStore('search', {
         // A half-filled row would fail the whole request; drop it rather than
         // making the user delete it before searching. The display label goes no
         // further than this app, for the reason the scope's does not either.
-        conditions: this.query.conditions.filter(usable).map(sendable),
+        conditions: this.query.conditions.filter(isUsable).map(sendable),
         mimetypes: type.mimetypes,
         modifiedAfter: period.after ?? undefined,
         modifiedBefore: period.before ?? undefined,
@@ -303,8 +304,4 @@ function sendable(condition: Condition): Omit<Condition, 'label'> {
   delete sent.label
 
   return sent
-}
-
-function usable(condition: Condition): boolean {
-  return condition.value !== '' && condition.value !== null && condition.value !== undefined
 }

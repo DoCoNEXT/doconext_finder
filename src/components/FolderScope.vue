@@ -9,6 +9,7 @@
     -->
     <NcTextField :model-value="chosen?.label ?? t('Anywhere')"
                  class="folder-scope__field"
+                 :class="{ 'finder-filter--set': chosen !== null }"
                  :label="t('Folder')"
                  readonly
                  aria-haspopup="dialog"

@@ -6,6 +6,14 @@ numbers are the ones in `appinfo/info.xml`.
 
 ## [Unreleased]
 
+## [0.9.2] - 2026-10-14
+
+### Changed
+- The filters in force are easier to see. The Filters button counts them;
+  folded, each one is a chip that removes it, with a button to clear them all;
+  unfolded, the value of each filter in force is drawn bold in the theme's
+  accent colour.
+
 ## [0.9.1] - 2026-10-12
 
 First release.
