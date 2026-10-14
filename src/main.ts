@@ -6,6 +6,9 @@ import '@nextcloud/dialogs/style.css'
 // Global, and here rather than in a component: it styles the action menus
 // NcActions teleports out to <body>, past every component's scope.
 import './styles/action-icons.scss'
+// Global for the opposite reason: it reaches into Nc components several levels
+// below the ones that know whether their filter is set.
+import './styles/filter-set.scss'
 import App from './App.vue'
 
 // Mounts into templates/index.php's #doconext_finder div.

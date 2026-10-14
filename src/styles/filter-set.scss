@@ -1,0 +1,34 @@
+// A filter that narrows the search, marked in its own control.
+
+// The value of a filter in force is drawn bold, in the theme's accent: the one
+// way to tell "Type: PDFs" from "Type: Any type" without reading both. Only the
+// value, not the label or the box — an accented border read as keyboard focus,
+// and three focused fields at once as a bug. The leading icon (the folder, the
+// calendar) goes with the value it introduces.
+
+// Global, and here rather than in each component: the marked parts belong to
+// NcSelect, NcTextField and NcDateTimePicker, several components below the one
+// that knows whether its filter is set, and a :deep() rule only reaches as far
+// as its author's scope id is carried. The mount point's id outranks the
+// library's own class-plus-data-v rules without !important.
+#doconext_finder .finder-filter--set {
+  // .dp__ is the date picker NcDateTimePicker wraps, which draws its own input.
+  .vs__selected,
+  .input-field__input,
+  .input-field__icon,
+  .dp__input,
+  .dp__input_icon,
+  &.condition__value--fixed {
+    color: var(--color-primary-element);
+  }
+
+  .vs__selected,
+  .input-field__input,
+  .dp__input,
+  &.condition__value--fixed {
+    // A read-only input paints its text with this rather than with color in
+    // WebKit, and the folder field is read-only.
+    -webkit-text-fill-color: var(--color-primary-element);
+    font-weight: bold;
+  }
+}

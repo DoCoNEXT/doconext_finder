@@ -1,12 +1,13 @@
 /**
- * A one-line summary of a stored search, for the saved/recent lists.
+ * A one-line summary of a stored search, for the saved/recent lists, and the
+ * filters in force, for the search page's chips.
  *
  * Reads the interface state rather than the request, so it can name the preset
  * the user picked ("Last 7 days") instead of the timestamp it resolves to.
  */
-import { fieldLabel, operatorLabel, toDateInput, toMegabytes } from './fields'
+import { fieldLabel, isUsable, operatorLabel, toDateInput, toMegabytes } from './fields'
 import { canonicalModifiedPreset, fileTypePresets, modifiedPresets } from './presets'
-import type { Translate } from './presets'
+import type { FileTypePreset, ModifiedPreset, Translate } from './presets'
 import { isMetadataField, labelledFor, metadataKeyOf, realmOfScope } from './metadata'
 import type { Condition, MetadataField, SearchState, StoredSearch } from '../types/Search'
 
@@ -35,15 +36,13 @@ export function describeQuery(t: Translate, query: SearchState, metadata: Metada
     parts.push(t('Contents too'))
   }
 
-  const type = query.customType?.id === query.typePreset
-    ? query.customType
-    : fileTypePresets(t).find((p) => p.id === query.typePreset)
-  if (type && type.id !== 'any') {
+  const type = typeOf(t, query)
+  if (type) {
     parts.push(type.label)
   }
 
-  const time = modifiedPresets(t).find((p) => p.id === canonicalModifiedPreset(query.modifiedPreset))
-  if (time && time.id !== 'any') {
+  const time = timeOf(t, query)
+  if (time) {
     parts.push(time.label)
   }
 
@@ -58,6 +57,80 @@ export function describeQuery(t: Translate, query: SearchState, metadata: Metada
   }
 
   return parts.join(' · ')
+}
+
+/** One filter in force, as the search page lists it: a chip that clears it. */
+export interface ActiveFilter {
+  key: string
+  kind: 'scope' | 'type' | 'time' | 'condition'
+  label: string
+  /** Which row of `query.conditions`, for a condition. */
+  index?: number
+}
+
+/**
+ * The filters narrowing a search, one entry each, in the order
+ * {@link describeQuery} names them.
+ *
+ * Neither the term nor the contents switch is one: both stay on screen whether
+ * the filters are folded or not. A condition row without a value is left out,
+ * since the search does not send it either — a chip for it would claim a
+ * filter that does nothing.
+ *
+ * @param t translation function
+ * @param query the search, as the interface holds it
+ * @param metadata see {@link describeQuery}
+ */
+export function activeFilters(t: Translate, query: SearchState, metadata: MetadataField[] = []): ActiveFilter[] {
+  const filters: ActiveFilter[] = []
+
+  if (query.scope) {
+    filters.push({ key: 'scope', kind: 'scope', label: t('In {name}', { name: query.scope.label }) })
+  }
+
+  const type = typeOf(t, query)
+  if (type) {
+    filters.push({ key: 'type', kind: 'type', label: type.label })
+  }
+
+  const time = timeOf(t, query)
+  if (time) {
+    filters.push({ key: 'time', kind: 'time', label: time.label })
+  }
+
+  const fields = labelledFor(metadata, realmOfScope(query.scope))
+  ;(query.conditions ?? []).forEach((condition, index) => {
+    if (isUsable(condition)) {
+      filters.push({ key: `condition-${index}`, kind: 'condition', index, label: describeCondition(t, condition, fields) })
+    }
+  })
+
+  return filters
+}
+
+/**
+ * The Type filter in force, or null for "any type". A distilled type that is
+ * not in the configured list is still a type in force.
+ * @param t translation function
+ * @param query the search
+ */
+function typeOf(t: Translate, query: SearchState): FileTypePreset | null {
+  const type = query.customType?.id === query.typePreset
+    ? query.customType
+    : fileTypePresets(t).find((p) => p.id === query.typePreset)
+
+  return type && type.id !== 'any' ? type : null
+}
+
+/**
+ * The Modified preset in force, or null for "any time".
+ * @param t translation function
+ * @param query the search
+ */
+function timeOf(t: Translate, query: SearchState): ModifiedPreset | null {
+  const time = modifiedPresets(t).find((p) => p.id === canonicalModifiedPreset(query.modifiedPreset))
+
+  return time && time.id !== 'any' ? time : null
 }
 
 /**

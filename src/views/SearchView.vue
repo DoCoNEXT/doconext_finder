@@ -59,9 +59,11 @@
     <!--
       The filters fold away under one line, and start folded: most searches are a
       term and nothing else, and three rows of controls pushed the results down
-      the page for every one of them. Folded is not hidden, though — the line
-      says which filters are still narrowing the search, since a filter that
-      acts where nobody can see it is the kind nobody thinks to undo.
+      the page for every one of them. Folded is not hidden, though — each filter
+      still narrowing the search is a chip on that line, since a filter that acts
+      where nobody can see it is the kind nobody thinks to undo. The chip is also
+      the quickest way to undo it. The count stays on the button when the
+      filters are open, where the values themselves are marked.
     -->
     <div class="finder__toggle">
       <NcButton variant="tertiary"
@@ -71,11 +73,29 @@
         <template #icon>
           <component :is="filtersOpen ? ChevronDown : ChevronRight" :size="20" />
         </template>
-        {{ t('Filters') }}
+        <span class="finder__toggle-label">
+          {{ t('Filters') }}
+          <NcCounterBubble v-if="filters.length"
+                           :count="filters.length"
+                           type="highlighted" />
+        </span>
       </NcButton>
-      <span v-if="!filtersOpen && activeFilters"
-            class="muted finder__active"
-            :title="activeFilters">{{ activeFilters }}</span>
+      <div v-if="!filtersOpen && filters.length" class="finder__active">
+        <template v-for="(filter, index) in filters" :key="filter.key">
+          <!-- "Any condition" makes the conditions alternatives; side by side
+               without a word between them they would read as all of them. -->
+          <span v-if="orBefore(index)" class="muted">{{ t('or') }}</span>
+          <span class="finder__chip">
+            <NcChip variant="secondary"
+                    :text="filter.label"
+                    :aria-label-close="t('Remove {filter}', { filter: filter.label })"
+                    @close="clearFilter(filter)" />
+          </span>
+        </template>
+        <NcButton variant="tertiary" @click="clearFilters">
+          {{ t('Clear filters') }}
+        </NcButton>
+      </div>
     </div>
 
     <!--
@@ -92,12 +112,14 @@
       -->
       <div class="finder__grid">
         <NcSelect v-model="typeOption"
+                  :class="{ 'finder-filter--set': store.query.typePreset !== 'any' }"
                   label="label"
                   :options="typeOptions"
                   :clearable="false"
                   :input-label="t('Type')" />
 
         <NcSelect v-model="timeOption"
+                  :class="{ 'finder-filter--set': canonicalModifiedPreset(store.query.modifiedPreset) !== 'any' }"
                   label="label"
                   :options="timeOptions"
                   :clearable="false"
@@ -233,6 +255,7 @@ import {
   NcEmptyContent,
   NcLoadingIcon,
   NcChip,
+  NcCounterBubble,
   NcNoteCard,
   NcSelect,
 } from '@nextcloud/vue'
@@ -246,13 +269,14 @@ import { useSaveSearch } from '../composables/useSaveSearch'
 import { useDistiller } from '../composables/useDistiller'
 import { AiApi } from '../services/AiApi'
 import { anyTime, anyType, canonicalModifiedPreset, fileTypePresets, modifiedPresets } from '../filters/presets'
-import { describeQuery } from '../filters/describe'
+import { activeFilters } from '../filters/describe'
 import ConditionRow from '../components/ConditionRow.vue'
 import FolderScope from '../components/FolderScope.vue'
 import ScopeSelector from '../components/ScopeSelector.vue'
 import FileTable from '../components/FileTable.vue'
 import SearchBox from '../components/SearchBox.vue'
 import ViewOptions from '../components/ViewOptions.vue'
+import type { ActiveFilter } from '../filters/describe'
 import type { FileTypePreset, ModifiedPreset } from '../filters/presets'
 import type { ScopeChip } from '../filters/distilled'
 import type { StoredSearch } from '../types/Search'
@@ -391,14 +415,62 @@ const matchMode = computed<'all' | 'any'>({
  */
 const filtersOpen = ref(false)
 
-/**
- * The filters in force, for the folded line. Neither the term nor the contents
- * switch is one of them: both stay on screen whether the filters are folded or not.
- */
 /** The schema the condition rows label their fields from, named for the scope. */
 const conditionSchema = computed(() => store.schema && { ...store.schema, metadata: store.metadata })
 
-const activeFilters = computed(() => describeQuery(t, { ...store.query, searchContent: false }, store.schema?.metadata))
+/** The filters in force: the chips on the folded line, and the count on the button. */
+const filters = computed(() => activeFilters(t, store.query, store.schema?.metadata))
+
+/**
+ * Whether an "or" goes before this chip: between two conditions, when any one
+ * of them is enough.
+ * @param index position in {@link filters}
+ */
+function orBefore(index: number): boolean {
+  return store.query.matchAny
+    && index > 0
+    && filters.value[index].kind === 'condition'
+    && filters.value[index - 1].kind === 'condition'
+}
+
+/**
+ * Takes one filter back out, the way its own control would: a preset back to
+ * "any", the scope to everywhere, a condition row removed.
+ *
+ * Like every other change to the filters it does not run the search; the
+ * results on screen stay until Search is pressed, as they do when a filter is
+ * changed in its own control.
+ * @param filter the chip that was closed
+ */
+function clearFilter(filter: ActiveFilter) {
+  switch (filter.kind) {
+    case 'scope':
+      store.query.scope = null
+      break
+    case 'type':
+      store.query.typePreset = 'any'
+      store.query.customType = null
+      break
+    case 'time':
+      store.query.modifiedPreset = 'any'
+      break
+    case 'condition':
+      if (filter.index !== undefined) {
+        store.query.conditions.splice(filter.index, 1)
+      }
+      break
+  }
+}
+
+/** Every filter at once; the term, and whether it looks inside files, stay. */
+function clearFilters() {
+  store.query.scope = null
+  store.query.typePreset = 'any'
+  store.query.customType = null
+  store.query.modifiedPreset = 'any'
+  store.query.conditions = []
+  store.query.matchAny = false
+}
 
 const rangeLabel = computed(() => {
   const first = store.offset + 1
@@ -567,7 +639,9 @@ async function save() {
 
   &__toggle {
     display: flex;
-    align-items: center;
+    // Top, not centre: when the chips wrap to a second line the button stays
+    // level with the first, where the line it labels starts.
+    align-items: flex-start;
     gap: 8px;
     min-width: 0;
     margin-bottom: 8px;
@@ -577,13 +651,28 @@ async function save() {
     }
   }
 
-  // One line, however many filters there are: the full list is in the title,
-  // and one click away in the controls themselves.
+  &__toggle-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  // Wraps rather than cutting off: every chip is a filter that acts, and one
+  // hidden behind an ellipsis is one nobody can see to remove. Every item is a
+  // clickable area tall — the chips through a wrapper, so the chip keeps its own
+  // height — and the first line sits level with the button beside it.
   &__active {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0 6px;
     min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+
+    > * {
+      min-height: var(--default-clickable-area);
+      display: inline-flex;
+      align-items: center;
+    }
   }
 
   &__ranked {

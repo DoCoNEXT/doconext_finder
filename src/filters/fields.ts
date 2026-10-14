@@ -20,6 +20,7 @@ import {
   FileVideoCamera,
   Folder,
 } from '@lucide/vue'
+import type { Condition } from '../types/Search'
 
 /** How the value box behaves for a field. */
 export type InputKind = 'text' | 'date' | 'size' | 'principal' | 'none'
@@ -122,6 +123,16 @@ export function operatorLabel(t: Translate, field: string, operator: string): st
     case 'contains': return t('contains')
     default: return operator
   }
+}
+
+/**
+ * Whether a condition row narrows the search. A row just added, or one whose
+ * value was emptied, is not sent — and so must not be counted or marked as a
+ * filter in force either.
+ * @param condition the row
+ */
+export function isUsable(condition: Condition): boolean {
+  return condition.value !== '' && condition.value !== null && condition.value !== undefined
 }
 
 /** Bytes ⇄ MB, so the size box takes a figure a person can type. */

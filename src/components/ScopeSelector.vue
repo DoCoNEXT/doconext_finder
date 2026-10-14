@@ -6,6 +6,7 @@
     <NcSelect v-if="realms.length > 1 || store.query.scope?.level === 'realm'"
               v-model="realm"
               class="scope__select"
+              :class="{ 'finder-filter--set': realm !== null }"
               label="name"
               :options="realms"
               :disabled="disabled"
@@ -14,6 +15,7 @@
 
     <NcSelect v-model="type"
               class="scope__select"
+              :class="{ 'finder-filter--set': type !== null }"
               label="name"
               :options="typeOptions"
               :disabled="disabled"
@@ -26,6 +28,7 @@
          instead of letting vue-select narrow a list it only partly has. -->
     <NcSelect v-model="entity"
               class="scope__select"
+              :class="{ 'finder-filter--set': entity !== null }"
               label="label"
               :options="entityOptions"
               :filterable="false"
