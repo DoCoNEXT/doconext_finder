@@ -171,8 +171,8 @@ class SearchHistoryServiceTest extends TestCase
         $search->setId($id);
         $search->setUserId($owner);
         $search->setKind(SavedSearch::KIND_SAVED);
-        $search->setName('Leases');
-        $search->setQuery('{"term":"lease"}');
+        $search->setName('Quotes this year');
+        $search->setQuery('{"term":"quote"}');
         $search->resetUpdatedFields();
 
         return $search;

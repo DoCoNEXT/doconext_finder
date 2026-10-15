@@ -201,7 +201,7 @@ class SearchShareServiceTest extends TestCase
     public function testTheNameOfAScopeTheRecipientCannotReachIsWithheld(): void
     {
         $search = self::search(7, 'alice');
-        $search->setQuery('{"term":"lease","scope":{"level":"folder","id":42,"label":"Board/Salaries"}}');
+        $search->setQuery('{"term":"quote","scope":{"level":"folder","id":42,"label":"Board/Salaries"}}');
         $this->shares->method('findReaching')->willReturn([
             self::share(1, 7, SearchShare::TYPE_USER, 'bob', SearchShare::PERMISSION_READ),
         ]);
@@ -264,8 +264,8 @@ class SearchShareServiceTest extends TestCase
         $search->setId($id);
         $search->setUserId($owner);
         $search->setKind(SavedSearch::KIND_SAVED);
-        $search->setName('Leases');
-        $search->setQuery('{"term":"lease"}');
+        $search->setName('Quotes this year');
+        $search->setQuery('{"term":"quote"}');
 
         return $search;
     }

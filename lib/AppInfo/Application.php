@@ -52,7 +52,7 @@ class Application extends App implements IBootstrap
         $context->registerEventListener(UserDeletedEvent::class, UserDeletedListener::class);
         // Nor are the shares of searches with a group that is deleted.
         $context->registerEventListener(GroupDeletedEvent::class, GroupDeletedListener::class);
-        // "Alice shared the search Leases with you".
+        // "Alice shared the search Quotes this year with you".
         $context->registerNotifierService(Notifier::class);
     }
 

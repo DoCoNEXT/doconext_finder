@@ -18,7 +18,7 @@ use OCP\Notification\INotifier;
 use OCP\Notification\UnknownNotificationException;
 
 /**
- * Renders "Alice shared the search Leases with you".
+ * Renders "Alice shared the search Quotes this year with you".
  *
  * Rendered when it is shown, not when it was sent, so it always names the
  * search as it is called now — and a search that has since been deleted or
