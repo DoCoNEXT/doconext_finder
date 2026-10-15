@@ -36,13 +36,17 @@
         </div>
 
         <div class="history__body">
-          <NcEmptyContent v-if="history.saved.length === 0"
+          <NcEmptyContent v-if="history.saved.length === 0 && history.shared.length === 0"
                           :name="t('No saved searches yet')"
                           :description="t('Run a search, then use Save to keep it here.')">
             <template #icon>
               <Save />
             </template>
           </NcEmptyContent>
+
+          <p v-else-if="history.saved.length === 0" class="muted history__none">
+            {{ t('Run a search, then use Save to keep it here.') }}
+          </p>
 
           <ul v-else class="history__list">
             <li v-for="entry in history.saved"
@@ -55,12 +59,23 @@
                 <span class="muted" :title="describe(entry)">{{ describe(entry) }}</span>
                 <span v-if="entry.description" class="muted" :title="entry.description">{{ entry.description }}</span>
               </button>
+              <Share2 v-if="entry.shared"
+                      :size="18"
+                      class="history__mark"
+                      :aria-label="t('Shared')"
+                      :title="t('Shared')" />
               <NcActions :aria-label="t('Actions')">
                 <NcActionButton @click="run(entry)">
                   <template #icon>
                     <Play :size="20" />
                   </template>
                   {{ t('Run search') }}
+                </NcActionButton>
+                <NcActionButton close-after-click @click="sharing = entry">
+                  <template #icon>
+                    <Share2 :size="20" />
+                  </template>
+                  {{ t('Share…') }}
                 </NcActionButton>
                 <NcActionButton @click="startRename(entry)">
                   <template #icon>
@@ -77,6 +92,59 @@
               </NcActions>
             </li>
           </ul>
+
+          <!--
+            In the Saved column rather than a third one: a search shared with
+            you is a saved search, only not saved by you, and three columns
+            leave none of them wide enough to read a query description in.
+          -->
+          <template v-if="history.shared.length">
+            <div class="history__heading history__heading--sub">
+              <Share2 :size="20" />
+              <h4>{{ t('Shared with me') }}</h4>
+              <span class="muted">{{ history.shared.length }}</span>
+            </div>
+
+            <ul class="history__list">
+              <li v-for="entry in history.shared"
+                  :key="entry.id"
+                  :class="['history__item', { 'history__item--selected': isSelected(entry) }]">
+                <button class="history__run"
+                        @click="select(entry)"
+                        @dblclick="run(entry)">
+                  <strong>{{ entry.name }}</strong>
+                  <span class="muted" :title="describe(entry)">{{ describe(entry) }}</span>
+                  <span class="muted">{{ t('Shared by {owner}', { owner: entry.ownerDisplayName ?? entry.owner ?? '' }) }}</span>
+                </button>
+                <NcActions :aria-label="t('Actions')">
+                  <NcActionButton @click="run(entry)">
+                    <template #icon>
+                      <Play :size="20" />
+                    </template>
+                    {{ t('Run search') }}
+                  </NcActionButton>
+                  <NcActionButton v-if="entry.canEdit" @click="startRename(entry)">
+                    <template #icon>
+                      <Pencil :size="20" />
+                    </template>
+                    {{ t('Rename') }}
+                  </NcActionButton>
+                  <NcActionButton @click="copy(entry)">
+                    <template #icon>
+                      <Copy :size="20" />
+                    </template>
+                    {{ t('Save a copy') }}
+                  </NcActionButton>
+                  <NcActionButton @click="hide(entry)">
+                    <template #icon>
+                      <EyeOff :size="20" />
+                    </template>
+                    {{ t('Remove from my list') }}
+                  </NcActionButton>
+                </NcActions>
+              </li>
+            </ul>
+          </template>
         </div>
       </section>
 
@@ -137,6 +205,10 @@
         </div>
       </section>
     </div>
+
+    <ShareSearchDialog v-if="sharing"
+                       :entry="sharing"
+                       @close="closeSharing" />
   </div>
 </template>
 
@@ -152,12 +224,16 @@ import {
   NcNoteCard,
 } from '@nextcloud/vue'
 import {
+  Copy,
+  EyeOff,
   Pencil,
   Play,
   RotateCcwClock,
   Save,
+  Share2,
   Trash2,
 } from '@lucide/vue'
+import ShareSearchDialog from '../components/ShareSearchDialog.vue'
 import { useI18n } from '../composables/useI18n'
 import { useHistoryStore } from '../stores/historyStore'
 import { useSearchStore } from '../stores/searchStore'
@@ -179,6 +255,8 @@ const emit = defineEmits<{ (e: 'run', entry: StoredSearch): void }>()
  */
 const selected = ref<StoredSearch | null>(null)
 const error = ref('')
+/** The saved search whose share dialog is open. */
+const sharing = ref<StoredSearch | null>(null)
 
 onMounted(() => {
   history.load()
@@ -191,6 +269,49 @@ function describe(entry: StoredSearch): string {
 
 function isSelected(entry: StoredSearch): boolean {
   return selected.value?.kind === entry.kind && selected.value?.id === entry.id
+}
+
+/**
+ * The dialog changes shares, not searches, but the list marks which of the
+ * user's searches are shared — so it is read again once the dialog closes.
+ */
+function closeSharing() {
+  sharing.value = null
+  guard(() => history.load(true))
+}
+
+/**
+ * Keeps a search someone shared as one of the user's own, to change without
+ * changing it for everyone else.
+ * @param entry a search shared with the user
+ */
+async function copy(entry: StoredSearch) {
+  await guard(() => saveSearch(entry.query, entry.name || entry.query.term || t('Saved search'), true))
+}
+
+/**
+ * Not undoable by the user — only the owner sharing it again brings it back —
+ * so it is asked first, like a delete, though it deletes nothing.
+ * @param entry a search shared with the user
+ */
+async function hide(entry: StoredSearch) {
+  const confirmed = await showConfirmation({
+    name: t('Remove from my list'),
+    text: t('Remove "{name}" from your list? It stays shared with everyone else, and {owner} keeps it.', {
+      name: entry.name ?? '',
+      owner: entry.ownerDisplayName ?? entry.owner ?? '',
+    }),
+    labelConfirm: t('Remove'),
+    labelReject: t('Cancel'),
+    severity: 'warning',
+  })
+  if (!confirmed) {
+    return
+  }
+  if (isSelected(entry)) {
+    selected.value = null
+  }
+  await guard(() => history.hide(entry))
 }
 
 function select(entry: StoredSearch) {
@@ -327,6 +448,22 @@ async function guard(action: () => Promise<unknown>) {
     min-height: 40px;
     padding-bottom: 4px;
     border-bottom: 1px solid var(--color-border);
+  }
+
+  // The shared list's own heading, below the user's saved searches in the
+  // same column; the gap separates the two lists.
+  &__heading--sub {
+    margin-top: 24px;
+  }
+
+  &__none {
+    margin: 12px 4px;
+  }
+
+  // Says a search of the user's own is shared, beside its menu.
+  &__mark {
+    flex: none;
+    color: var(--color-text-maxcontrast);
   }
 
   // Pushed to the far end of its heading so it never sits against the count.

@@ -42,6 +42,7 @@ class SearchHistoryController extends ApiController
         return $this->withUser(fn (string $uid) => new DataResponse([
             'saved'   => $this->service->list($uid, SavedSearch::KIND_SAVED),
             'recents' => $this->service->list($uid, SavedSearch::KIND_RECENT),
+            'shared'  => $this->service->listShared($uid),
         ]));
     }
 

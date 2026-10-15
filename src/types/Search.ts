@@ -253,13 +253,48 @@ export interface StoredSearch {
   name: string | null
   description: string | null
   query: SearchState
-  /** Unix seconds. */
+  /**
+   * Unix seconds. For a search shared with the reader, when *they* last ran
+   * it — or when it was shared, until they do.
+   */
   lastRun: number
+  /** False for a search someone else shared with the reader. */
+  mine: boolean
+  /** Mine: shared with anyone. Not mine: always true. */
+  shared: boolean
+  /** Whether the reader may rename it and replace its query. */
+  canEdit: boolean
+  /** Only on a search shared with the reader. */
+  owner?: string
+  ownerDisplayName?: string
 }
 
 export interface SearchHistory {
   saved: StoredSearch[]
   recents: StoredSearch[]
+  /** Saved searches others shared with the reader, minus those they hid. */
+  shared: StoredSearch[]
+}
+
+/** Who a search can be shared with. 'circle' is a Nextcloud Team. */
+export type ShareType = 'user' | 'group' | 'circle'
+
+/** Someone the share dialog offers, from GET /api/sharees. */
+export interface Sharee {
+  type: ShareType
+  id: string
+  displayName: string
+}
+
+/** One share of a saved search, as its owner sees it. */
+export interface SearchShare {
+  id: number
+  type: ShareType
+  with: string
+  displayName: string
+  canEdit: boolean
+  /** Unix seconds. */
+  created: number
 }
 
 /** A column in the result grid. `label` empty means "use the built-in name". */

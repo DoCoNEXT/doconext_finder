@@ -7,7 +7,7 @@
 import { getDialogBuilder, showSuccess } from '@nextcloud/dialogs'
 import { useI18n } from './useI18n'
 import { useHistoryStore } from '../stores/historyStore'
-import type { SearchState } from '../types/Search'
+import type { SearchState, StoredSearch } from '../types/Search'
 
 type Answer = 'replace' | 'rename' | 'cancel'
 
@@ -22,9 +22,11 @@ export function useSaveSearch() {
    *
    * @param query the search to keep
    * @param suggested the name to offer first
+   * @param ownOnly only the user's own names count as taken — for a copy of a
+   *        shared search, which must never offer to replace the original
    * @return true when something was saved, false when the user backed out
    */
-  async function saveSearch(query: SearchState, suggested: string): Promise<boolean> {
+  async function saveSearch(query: SearchState, suggested: string, ownOnly = false): Promise<boolean> {
     // The duplicate check reads the saved list, which the Search page has no
     // other reason to have loaded.
     await history.load()
@@ -42,14 +44,14 @@ export function useSaveSearch() {
         continue // an unnamed saved search is unfindable; ask again
       }
 
-      const existing = history.savedNamed(trimmed)
+      const existing = history.savedNamed(trimmed, ownOnly)
       if (!existing) {
         await history.save(trimmed, '', { ...query })
         showSuccess(t('Saved "{name}"', { name: trimmed }))
         return true
       }
 
-      const answer = await askAboutName(trimmed)
+      const answer = await askAboutName(existing)
       if (answer === 'cancel') {
         return false
       }
@@ -67,13 +69,23 @@ export function useSaveSearch() {
   /**
    * Replace, pick another name, or give up. Closing the dialog is giving up,
    * which is why the promise's rejection is an answer rather than an error.
-   * @param name the name that is already taken
+   * @param existing the saved search that already has the name
    */
-  async function askAboutName(name: string): Promise<Answer> {
+  async function askAboutName(existing: StoredSearch): Promise<Answer> {
     let answer: Answer = 'cancel'
+    const name = existing.name ?? ''
+
+    // Replacing one that was shared with you changes it for its owner and for
+    // everyone else it is shared with; that is worth saying before, not after.
+    const text = existing.mine
+      ? t('A saved search called "{name}" already exists. Replace it, or keep both under different names?', { name })
+      : t('"{name}" is a search {owner} shared with you. Replacing it changes it for everyone it is shared with. Replace it, or save yours under a different name?', {
+        name,
+        owner: existing.ownerDisplayName ?? existing.owner ?? '',
+      })
 
     const dialog = getDialogBuilder(t('This name is taken'))
-      .setText(t('A saved search called "{name}" already exists. Replace it, or keep both under different names?', { name }))
+      .setText(text)
       .setSeverity('warning')
       .addButton({
         label: t('Cancel'),

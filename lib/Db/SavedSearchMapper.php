@@ -64,6 +64,28 @@ class SavedSearchMapper extends QBMapper
     }
 
     /**
+     * Saved searches by id, whoever owns them — for searches reached through a
+     * share, which the caller has already established may be read.
+     *
+     * @param int[] $ids
+     * @return SavedSearch[]
+     */
+    public function findSavedByIds(array $ids): array
+    {
+        $found = [];
+        foreach (array_chunk($ids, 1000) as $chunk) {
+            $qb = $this->db->getQueryBuilder();
+            $qb->select('*')
+                ->from($this->getTableName())
+                ->where($qb->expr()->in('id', $qb->createNamedParameter($chunk, IQueryBuilder::PARAM_INT_ARRAY)))
+                ->andWhere($qb->expr()->eq('kind', $qb->createNamedParameter(SavedSearch::KIND_SAVED)));
+            array_push($found, ...$this->findEntities($qb));
+        }
+
+        return $found;
+    }
+
+    /**
      * Trims the user's recents to the newest $keep, so the list cannot grow
      * without bound. Saved searches are never trimmed — the user chose those.
      */
