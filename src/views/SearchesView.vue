@@ -56,7 +56,7 @@
                       @click="select(entry)"
                       @dblclick="run(entry)">
                 <strong>{{ entry.name }}</strong>
-                <span class="muted" :title="describe(entry)">{{ describe(entry) }}</span>
+                <span class="muted" :title="describe(entry)">{{ describe(entry) || t('No filters') }}</span>
                 <span v-if="entry.description" class="muted" :title="entry.description">{{ entry.description }}</span>
               </button>
               <Share2 v-if="entry.shared"
@@ -107,7 +107,7 @@
                         @click="select(entry)"
                         @dblclick="run(entry)">
                   <strong>{{ entry.name }}</strong>
-                  <span class="muted" :title="describe(entry)">{{ describe(entry) }}</span>
+                  <span class="muted" :title="describe(entry)">{{ describe(entry) || t('No filters') }}</span>
                   <span class="muted">{{ t('Shared by {owner}', { owner: entry.ownerDisplayName ?? entry.owner ?? '' }) }}</span>
                 </button>
                 <NcActions :aria-label="t('Actions')">
@@ -178,7 +178,7 @@
                       @click="select(entry)"
                       @dblclick="run(entry)">
                 <strong>{{ entry.query.term || t('(no search term)') }}</strong>
-                <span class="muted" :title="describe(entry)">{{ describe(entry) }}</span>
+                <span class="muted" :title="describe(entry)">{{ describe(entry) || t('No filters') }}</span>
               </button>
               <NcActions :aria-label="t('Actions')">
                 <NcActionButton @click="run(entry)">
@@ -262,6 +262,12 @@ onMounted(() => {
   search.loadSchema()
 })
 
+/**
+ * The grey line under a search's title. Empty for a bare term — the template
+ * says "No filters" then, as the search box does, so every row has the same
+ * two lines and the two columns stay level.
+ * @param entry the saved or recent search
+ */
 function describe(entry: StoredSearch): string {
   return describeStored(t, entry, search.schema?.metadata)
 }
