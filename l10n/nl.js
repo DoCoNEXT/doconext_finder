@@ -259,8 +259,6 @@ OC.L10N.register(
         "Whoever you share with runs the same search and sees only the files they can open themselves.": "Met wie je deelt, voert dezelfde zoekopdracht uit en ziet alleen de bestanden die diegene zelf kan openen.",
         "Share with": "Delen met",
         "Name of a person, group or team": "Naam van een persoon, groep of team",
-        "Type a name to search": "Typ een naam om te zoeken",
-        "No one found": "Niemand gevonden",
         "Not shared with anyone yet.": "Nog met niemand gedeeld.",
         "Can edit": "Mag bewerken",
         "Stop sharing with {name}": "Stoppen met delen met {name}",
@@ -282,6 +280,14 @@ OC.L10N.register(
         "Save a copy": "Kopie opslaan",
         "Remove from my list": "Uit mijn lijst verwijderen",
         "Remove \"{name}\" from your list? It stays shared with everyone else, and {owner} keeps it.": "\"{name}\" uit je lijst verwijderen? Hij blijft gedeeld met alle anderen, en {owner} houdt hem.",
-        "\"{name}\" is a search {owner} shared with you. Replacing it changes it for everyone it is shared with. Replace it, or save yours under a different name?": "\"{name}\" is een zoekopdracht die {owner} met je heeft gedeeld. Vervangen wijzigt hem voor iedereen met wie hij gedeeld is. Vervangen, of de jouwe onder een andere naam opslaan?"
+        "\"{name}\" is a search {owner} shared with you. Replacing it changes it for everyone it is shared with. Replace it, or save yours under a different name?": "\"{name}\" is een zoekopdracht die {owner} met je heeft gedeeld. Vervangen wijzigt hem voor iedereen met wie hij gedeeld is. Vervangen, of de jouwe onder een andere naam opslaan?",
+        "In a place you cannot open": "Op een plek die je niet kunt openen",
+        "The link could not be copied": "De link kon niet worden gekopieerd",
+        "This search looks in a place you cannot open, or one that no longer exists. Pick another scope to search.": "Deze zoekopdracht zoekt op een plek die je niet kunt openen, of die niet meer bestaat. Kies een andere plek om in te zoeken.",
+        "This search no longer exists, or is no longer shared with you.": "Deze zoekopdracht bestaat niet meer, of wordt niet meer met je gedeeld.",
+        "{user} shared the search {search} with you": "{user} heeft de zoekopdracht {search} met je gedeeld",
+        "This link works only for you until you share the search with someone.": "Deze link werkt alleen voor jou zolang je de zoekopdracht met niemand deelt.",
+        "Opens this search for you and for everyone above. Anyone else sees nothing.": "Opent deze zoekopdracht voor jou en voor iedereen hierboven. Anderen zien niets.",
+        "Link copied. It works only for people this search is shared with.": "Link gekopieerd. Hij werkt alleen voor wie deze zoekopdracht gedeeld heeft gekregen."
     },
     "nplurals=2; plural=(n != 1);");

@@ -10,7 +10,9 @@ use OCA\DcnFinder\Db\SearchShare;
 use OCA\DcnFinder\Db\SearchShareMapper;
 use OCA\DcnFinder\Db\SearchShareState;
 use OCA\DcnFinder\Db\SearchShareStateMapper;
+use OCA\DcnFinder\Service\FileSearchService;
 use OCA\DcnFinder\Service\SearchShareService;
+use OCA\DcnFinder\Service\ShareNotifications;
 use OCA\DcnFinder\Service\ShareRecipients;
 use OCA\DcnFinder\Service\ShareRefusedException;
 use OCP\AppFramework\Db\DoesNotExistException;
@@ -32,6 +34,8 @@ class SearchShareServiceTest extends TestCase
     private SearchShareMapper&MockObject $shares;
     private SearchShareStateMapper&MockObject $states;
     private ShareRecipients&MockObject $recipients;
+    private FileSearchService&MockObject $files;
+    private ShareNotifications&MockObject $notifications;
 
     protected function setUp(): void
     {
@@ -39,6 +43,8 @@ class SearchShareServiceTest extends TestCase
         $this->shares = $this->createMock(SearchShareMapper::class);
         $this->states = $this->createMock(SearchShareStateMapper::class);
         $this->recipients = $this->createMock(ShareRecipients::class);
+        $this->files = $this->createMock(FileSearchService::class);
+        $this->notifications = $this->createMock(ShareNotifications::class);
         $this->recipients->method('displayName')->willReturnArgument(1);
         $this->recipients->method('membershipsOf')->willReturnCallback(static fn (string $uid) => [
             SearchShare::TYPE_USER   => [$uid],
@@ -108,6 +114,29 @@ class SearchShareServiceTest extends TestCase
         $this->service()->share('alice', 7, SearchShare::TYPE_USER, 'bob', 0);
     }
 
+    public function testANewShareWithAPersonNotifiesThem(): void
+    {
+        $this->searches->method('findOwned')->willReturn(self::search(7, 'alice'));
+        $this->recipients->method('refusal')->willReturn(null);
+        $this->shares->method('findRecipient')->willReturn(null);
+        $this->shares->method('insert')->willReturnArgument(0);
+        $this->notifications->expects($this->once())->method('shared')->with('alice', 'bob', 7);
+
+        $this->service()->share('alice', 7, SearchShare::TYPE_USER, 'bob', SearchShare::PERMISSION_READ);
+    }
+
+    /** A group could be the whole company; its members find it in their list. */
+    public function testAGroupShareNotifiesNobody(): void
+    {
+        $this->searches->method('findOwned')->willReturn(self::search(7, 'alice'));
+        $this->recipients->method('refusal')->willReturn(null);
+        $this->shares->method('findRecipient')->willReturn(null);
+        $this->shares->method('insert')->willReturnArgument(0);
+        $this->notifications->expects($this->never())->method('shared');
+
+        $this->service()->share('alice', 7, SearchShare::TYPE_GROUP, 'staff', SearchShare::PERMISSION_READ);
+    }
+
     public function testOnlyTheOwnerCanUnshare(): void
     {
         $this->searches->method('findOwned')->with(7, 'bob')->willThrowException(new DoesNotExistException('not yours'));
@@ -164,6 +193,29 @@ class SearchShareServiceTest extends TestCase
         $this->assertSame([], $this->service()->sharedWith('alice'));
     }
 
+    /**
+     * The owner's picker named the folder; a recipient who cannot open it must
+     * not learn its name from the list. The scope itself stays, so running the
+     * search still says it reaches nowhere.
+     */
+    public function testTheNameOfAScopeTheRecipientCannotReachIsWithheld(): void
+    {
+        $search = self::search(7, 'alice');
+        $search->setQuery('{"term":"lease","scope":{"level":"folder","id":42,"label":"Board/Salaries"}}');
+        $this->shares->method('findReaching')->willReturn([
+            self::share(1, 7, SearchShare::TYPE_USER, 'bob', SearchShare::PERMISSION_READ),
+        ]);
+        $this->searches->method('findSavedByIds')->willReturn([$search]);
+        $this->states->method('findForUser')->willReturn([]);
+        $this->files->method('scopeReachable')->willReturn(false);
+
+        $listed = $this->service()->sharedWith('bob')[0];
+
+        $this->assertTrue($listed['scopeUnavailable']);
+        $this->assertSame('', $listed['query']['scope']['label']);
+        $this->assertSame(42, $listed['query']['scope']['id']);
+    }
+
     public function testAReadOnlyShareDoesNotAllowEditing(): void
     {
         $this->shares->method('findReaching')->willReturn([
@@ -203,7 +255,7 @@ class SearchShareServiceTest extends TestCase
         $users = $this->createMock(IUserManager::class);
         $users->method('getDisplayName')->willReturnArgument(0);
 
-        return new SearchShareService($this->searches, $this->shares, $this->states, $this->recipients, $users);
+        return new SearchShareService($this->searches, $this->shares, $this->states, $this->recipients, $users, $this->files, $this->notifications);
     }
 
     private static function search(int $id, string $owner): SavedSearch

@@ -7,9 +7,11 @@ namespace OCA\DcnFinder\Service;
 /**
  * Nextcloud's sharing rules do not allow this share.
  *
- * Carries a reason code next to the English message because Finder translates
- * in the browser only: the page turns the code into a sentence in the reader's
- * language, and the message is for logs and for any client that does not.
+ * Carries a reason code next to the English message because Finder's pages
+ * word their own messages: the page turns the code into a sentence in the
+ * reader's language, and the message is for logs and for any client that does
+ * not. (The notifier is the one exception, since nothing of Finder's is open
+ * when a notification is worded.)
  */
 class ShareRefusedException extends \DomainException
 {

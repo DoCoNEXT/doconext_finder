@@ -6,6 +6,7 @@ namespace OCA\DcnFinder\AppInfo;
 
 use OCA\DcnFinder\Listener\GroupDeletedListener;
 use OCA\DcnFinder\Listener\UserDeletedListener;
+use OCA\DcnFinder\Notification\Notifier;
 use OCP\AppFramework\App;
 use OCP\AppFramework\Bootstrap\IBootContext;
 use OCP\AppFramework\Bootstrap\IBootstrap;
@@ -51,6 +52,8 @@ class Application extends App implements IBootstrap
         $context->registerEventListener(UserDeletedEvent::class, UserDeletedListener::class);
         // Nor are the shares of searches with a group that is deleted.
         $context->registerEventListener(GroupDeletedEvent::class, GroupDeletedListener::class);
+        // "Alice shared the search Leases with you".
+        $context->registerNotifierService(Notifier::class);
     }
 
     #[\Override]

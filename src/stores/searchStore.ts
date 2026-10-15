@@ -203,6 +203,9 @@ export const useSearchStore = defineStore('search', {
         if (response.truncated) {
           this.error = 'scope-truncated'
         }
+        if (response.scopeUnavailable) {
+          this.error = 'scope-unavailable'
+        }
         if (record) {
           // Not awaited: the results are already on screen and this only keeps
           // the history in step. Reloading it matters because the search box

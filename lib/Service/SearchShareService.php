@@ -10,6 +10,7 @@ use OCA\DcnFinder\Db\SearchShare;
 use OCA\DcnFinder\Db\SearchShareMapper;
 use OCA\DcnFinder\Db\SearchShareState;
 use OCA\DcnFinder\Db\SearchShareStateMapper;
+use OCA\DcnFinder\Search\FileScope;
 use OCP\AppFramework\Db\DoesNotExistException;
 use OCP\DB\Exception as DbException;
 use OCP\IUserManager;
@@ -37,6 +38,8 @@ class SearchShareService
         private SearchShareStateMapper $states,
         private ShareRecipients $recipients,
         private IUserManager $userManager,
+        private FileSearchService $files,
+        private ShareNotifications $notifications,
     ) {
     }
 
@@ -99,6 +102,9 @@ class SearchShareService
             $share->setSharedBy($owner);
             $share->setCreated(time());
             $share = $this->shares->insert($share);
+            if ($type === SearchShare::TYPE_USER) {
+                $this->notifications->shared($owner, $with, $searchId);
+            }
         }
 
         return $this->shareToArray($share, $owner);
@@ -125,6 +131,9 @@ class SearchShareService
         $share = $this->shares->findOfSearch($shareId, $searchId);
         $this->states->deleteByShares([$share->getId()]);
         $this->shares->delete($share);
+        if ($share->getShareType() === SearchShare::TYPE_USER) {
+            $this->notifications->withdraw($searchId, $share->getShareWith());
+        }
     }
 
     /**
@@ -143,6 +152,7 @@ class SearchShareService
     public function forgetSearch(int $searchId): void
     {
         $this->states->deleteByShares($this->shares->deleteBySearch($searchId));
+        $this->notifications->withdraw($searchId);
     }
 
     // ---- The recipient's side ----------------------------------------------
@@ -183,7 +193,7 @@ class SearchShareService
                 continue;
             }
             $out[] = [
-                ...$search->toArray(),
+                ...$this->withReachableScope($userId, $search->toArray()),
                 'lastRun'          => $lastRun,
                 'mine'             => false,
                 'shared'           => true,
@@ -236,6 +246,23 @@ class SearchShareService
     public function hide(string $userId, int $searchId): void
     {
         $this->updateState($userId, $searchId, static fn (SearchShareState $s) => $s->setHidden(1));
+        // Removed from the list, so no longer something to be told about.
+        $this->notifications->withdraw($searchId, $userId);
+    }
+
+    /**
+     * A search shared with this user, hidden or not.
+     *
+     * @throws DoesNotExistException when it is not, or no longer, shared with them
+     */
+    public function sharedSearch(string $userId, int $searchId): SavedSearch
+    {
+        $reached = $this->reachedBy($userId, $searchId)[$searchId] ?? null;
+        if ($reached === null) {
+            throw new DoesNotExistException('Not shared with this user');
+        }
+
+        return $reached['search'];
     }
 
     /**
@@ -277,6 +304,39 @@ class SearchShareService
     }
 
     // ---- Internals ---------------------------------------------------------
+
+    /**
+     * A shared search whose scope the recipient cannot reach keeps its scope —
+     * running it still says so — but loses the scope's name. The label is a
+     * snapshot the owner's picker took, and it names a folder or dossier this
+     * reader has no right to see the name of.
+     *
+     * @param array<string,mixed> $entry as SavedSearch::toArray() gives it
+     * @return array<string,mixed> with `scopeUnavailable` added
+     */
+    private function withReachableScope(string $userId, array $entry): array
+    {
+        $query = $entry['query'];
+        $scope = is_array($query) && is_array($query['scope'] ?? null) ? $query['scope'] : null;
+        if ($scope === null) {
+            return [...$entry, 'scopeUnavailable' => false];
+        }
+
+        try {
+            $reachable = $this->files->scopeReachable($userId, FileScope::fromArray($scope));
+        } catch (\Throwable) {
+            // An unusable scope reaches nothing, and a failing lookup must not
+            // take the rest of the list with it.
+            $reachable = false;
+        }
+        if ($reachable) {
+            return [...$entry, 'scopeUnavailable' => false];
+        }
+
+        $query['scope']['label'] = '';
+
+        return [...$entry, 'query' => $query, 'scopeUnavailable' => true];
+    }
 
     /**
      * Saved searches of others that reach this user, with the shares through

@@ -59,6 +59,12 @@ export interface SearchResponse {
    * server searched only some of them. Results are real but incomplete.
    */
   truncated?: boolean
+  /**
+   * True when the scope led to no folder the user can open — deleted, or
+   * shared by someone who can open it and they cannot. Results are empty, and
+   * not because nothing matched.
+   */
+  scopeUnavailable?: boolean
 }
 
 /**
@@ -267,6 +273,11 @@ export interface StoredSearch {
   /** Only on a search shared with the reader. */
   owner?: string
   ownerDisplayName?: string
+  /**
+   * Only on a search shared with the reader: its scope leads nowhere they can
+   * open, and its label was withheld.
+   */
+  scopeUnavailable?: boolean
 }
 
 export interface SearchHistory {
@@ -284,6 +295,8 @@ export interface Sharee {
   type: ShareType
   id: string
   displayName: string
+  /** What tells two of the same name apart: an e-mail address, an id, a team's description. */
+  subname: string
 }
 
 /** One share of a saved search, as its owner sees it. */

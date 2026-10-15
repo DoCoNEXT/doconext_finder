@@ -114,6 +114,8 @@ import {
   NcContent,
 } from '@nextcloud/vue'
 import { generateUrl } from '@nextcloud/router'
+import { showError } from '@nextcloud/dialogs'
+import { takeLinkedSearch } from './services/links'
 import { useI18n } from './composables/useI18n'
 import { useNavigationRail } from './composables/useNavigationRail'
 import { Cog, PanelLeftClose, PanelLeftOpen, Search, Star, TextSearch } from '@lucide/vue'
@@ -146,11 +148,42 @@ const appId = APP_ID
 const productName = PRODUCT_NAME
 
 // Loaded once for the whole app: every page shows the same grid.
-onMounted(() => {
-  preferences.load()
-  // Loaded here rather than per page: Favorites needs the metadata labels too.
-  store.loadSchema()
+onMounted(async () => {
+  const linked = takeLinkedSearch()
+  const loading = Promise.all([
+    preferences.load(),
+    // Loaded here rather than per page: Favorites needs the metadata labels too.
+    store.loadSchema(),
+  ])
+  if (linked !== null) {
+    // A linked search runs with the user's page size and the field names in
+    // hand, as one picked from the list would.
+    await loading
+    await openLinked(linked)
+  }
 })
+
+/**
+ * Opens the app on the search a link named — one of the user's own saved
+ * searches or one shared with them. Anything else, including a search that has
+ * since been deleted or unshared, is said to be gone rather than run as an
+ * empty search.
+ * @param id the saved search the link names
+ */
+async function openLinked(id: number) {
+  await history.load()
+  if (history.error) {
+    showError(t('Your saved and recent searches could not be loaded. Reload the page to try again.'))
+    return
+  }
+  const entry = [...history.saved, ...history.shared].find((candidate) => candidate.id === id)
+  if (!entry) {
+    showError(t('This search no longer exists, or is no longer shared with you.'))
+    return
+  }
+  history.markRun(entry)
+  runStored(entry)
+}
 
 const page = ref<Page>('search')
 

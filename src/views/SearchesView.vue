@@ -135,6 +135,12 @@
                     </template>
                     {{ t('Save a copy') }}
                   </NcActionButton>
+                  <NcActionButton close-after-click @click="copyLink(entry)">
+                    <template #icon>
+                      <LinkIcon :size="20" />
+                    </template>
+                    {{ t('Copy link') }}
+                  </NcActionButton>
                   <NcActionButton @click="hide(entry)">
                     <template #icon>
                       <EyeOff :size="20" />
@@ -214,7 +220,7 @@
 
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
-import { showConfirmation } from '@nextcloud/dialogs'
+import { showConfirmation, showError, showSuccess } from '@nextcloud/dialogs'
 import {
   NcActionButton,
   NcActions,
@@ -226,6 +232,7 @@ import {
 import {
   Copy,
   EyeOff,
+  Link as LinkIcon,
   Pencil,
   Play,
   RotateCcwClock,
@@ -234,6 +241,8 @@ import {
   Trash2,
 } from '@lucide/vue'
 import ShareSearchDialog from '../components/ShareSearchDialog.vue'
+import { useClipboard } from '../composables/useClipboard'
+import { searchLink } from '../services/links'
 import { useI18n } from '../composables/useI18n'
 import { useHistoryStore } from '../stores/historyStore'
 import { useSearchStore } from '../stores/searchStore'
@@ -245,6 +254,7 @@ const { t } = useI18n()
 const history = useHistoryStore()
 const search = useSearchStore()
 const { saveSearch } = useSaveSearch()
+const { copy: copyText } = useClipboard()
 
 const emit = defineEmits<{ (e: 'run', entry: StoredSearch): void }>()
 
@@ -278,6 +288,21 @@ function isSelected(entry: StoredSearch): boolean {
 function closeSharing() {
   sharing.value = null
   guard(() => history.load(true))
+}
+
+/**
+ * A link that opens the app on this search, for a search shared with the user
+ * — who has no share dialog to find it in. It works only for whoever already
+ * has the search, and the confirmation says so: a link reads as a way to
+ * share, and sending it to anyone else gives them nothing.
+ * @param entry a search shared with the user
+ */
+async function copyLink(entry: StoredSearch) {
+  if (await copyText(searchLink(entry.id))) {
+    showSuccess(t('Link copied. It works only for people this search is shared with.'))
+  } else {
+    showError(t('The link could not be copied'))
+  }
 }
 
 /**

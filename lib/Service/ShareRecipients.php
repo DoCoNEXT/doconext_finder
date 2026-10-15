@@ -67,7 +67,11 @@ class ShareRecipients
      * offers them. Searches as the signed-in user, so the admin's limits on
      * who may be found apply.
      *
-     * @return list<array{type: string, id: string, displayName: string}>
+     * `subname` is the second line the Files share dialog shows: what tells
+     * two people of the same name apart (their e-mail address, or their id),
+     * and a team's own description. Empty for a group, which has neither.
+     *
+     * @return list<array{type: string, id: string, displayName: string, subname: string}>
      */
     public function search(string $term): array
     {
@@ -95,13 +99,21 @@ class ShareRecipients
             $exact = $found['exact'][$key] ?? [];
             $rest = $found[$key] ?? [];
             foreach ([...$exact, ...$rest] as $row) {
-                /** @var array{label?: string, value?: array{shareWith?: string}} $row */
+                /** @var array{label?: string, value?: array{shareWith?: string}, shareWithDisplayNameUnique?: string, shareWithDescription?: string} $row */
                 $id = (string)($row['value']['shareWith'] ?? '');
                 if ($id === '' || isset($seen[$type][$id])) {
                     continue;
                 }
                 $seen[$type][$id] = true;
-                $out[] = ['type' => $type, 'id' => $id, 'displayName' => (string)($row['label'] ?? $id)];
+                $name = (string)($row['label'] ?? $id);
+                $subname = (string)($row['shareWithDisplayNameUnique'] ?? $row['shareWithDescription'] ?? '');
+                $out[] = [
+                    'type'        => $type,
+                    'id'          => $id,
+                    'displayName' => $name,
+                    // A second line that only repeats the first says nothing.
+                    'subname'     => $subname === $name ? '' : $subname,
+                ];
             }
         }
 

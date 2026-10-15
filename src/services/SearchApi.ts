@@ -86,8 +86,8 @@ function describe(error: unknown): Error {
 
 /**
  * Why Nextcloud's sharing rules refused a share, in the reader's language. The
- * server sends a code next to its English message, because Finder translates
- * in the browser only.
+ * server sends a code next to its English message, because Finder's pages
+ * word their own messages — see ShareRefusedException.
  * @param reason one of the codes in ShareRecipients::REFUSALS
  */
 function refusalMessage(reason: string): string {
