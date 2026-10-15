@@ -71,17 +71,11 @@
                   </template>
                   {{ t('Run search') }}
                 </NcActionButton>
-                <NcActionButton close-after-click @click="sharing = entry">
-                  <template #icon>
-                    <Share2 :size="20" />
-                  </template>
-                  {{ t('Share…') }}
-                </NcActionButton>
-                <NcActionButton @click="startRename(entry)">
+                <NcActionButton close-after-click @click="edit(entry)">
                   <template #icon>
                     <Pencil :size="20" />
                   </template>
-                  {{ t('Rename') }}
+                  {{ t('Edit or share…') }}
                 </NcActionButton>
                 <NcActionButton @click="remove(entry)">
                   <template #icon>
@@ -123,11 +117,11 @@
                     </template>
                     {{ t('Run search') }}
                   </NcActionButton>
-                  <NcActionButton v-if="entry.canEdit" @click="startRename(entry)">
+                  <NcActionButton v-if="entry.canEdit" close-after-click @click="edit(entry)">
                     <template #icon>
                       <Pencil :size="20" />
                     </template>
-                    {{ t('Rename') }}
+                    {{ t('Edit…') }}
                   </NcActionButton>
                   <NcActionButton @click="copy(entry)">
                     <template #icon>
@@ -211,10 +205,6 @@
         </div>
       </section>
     </div>
-
-    <ShareSearchDialog v-if="sharing"
-                       :entry="sharing"
-                       @close="closeSharing" />
   </div>
 </template>
 
@@ -240,7 +230,8 @@ import {
   Share2,
   Trash2,
 } from '@lucide/vue'
-import ShareSearchDialog from '../components/ShareSearchDialog.vue'
+import { spawnDialog } from '@nextcloud/vue/functions/dialog'
+import SearchDialog from '../components/SearchDialog.vue'
 import { useClipboard } from '../composables/useClipboard'
 import { searchLink } from '../services/links'
 import { useI18n } from '../composables/useI18n'
@@ -265,8 +256,6 @@ const emit = defineEmits<{ (e: 'run', entry: StoredSearch): void }>()
  */
 const selected = ref<StoredSearch | null>(null)
 const error = ref('')
-/** The saved search whose share dialog is open. */
-const sharing = ref<StoredSearch | null>(null)
 
 onMounted(() => {
   history.load()
@@ -282,12 +271,15 @@ function isSelected(entry: StoredSearch): boolean {
 }
 
 /**
- * The dialog changes shares, not searches, but the list marks which of the
- * user's searches are shared — so it is read again once the dialog closes.
+ * Name, description and — for the owner — who it is shared with, in one
+ * dialog. The list is read again afterwards: it shows the name and marks
+ * which searches are shared.
+ * @param entry a saved search, the user's own or one they may edit
  */
-function closeSharing() {
-  sharing.value = null
-  guard(() => history.load(true))
+async function edit(entry: StoredSearch) {
+  if (await spawnDialog(SearchDialog, { entry })) {
+    await guard(() => history.load(true))
+  }
 }
 
 /**
@@ -355,14 +347,6 @@ function run(entry: StoredSearch) {
  */
 async function keep(entry: StoredSearch) {
   await guard(() => saveSearch(entry.query, entry.query.term || t('Saved search')))
-}
-
-async function startRename(entry: StoredSearch) {
-  const name = window.prompt(t('Rename this search'), entry.name ?? '')
-  if (name === null) {
-    return
-  }
-  await guard(() => history.rename(entry, name, entry.description ?? ''))
 }
 
 async function remove(entry: StoredSearch) {

@@ -46,6 +46,24 @@ class SearchShareController extends ApiController
         return $this->withUser(fn () => new DataResponse(['sharees' => $this->recipients->search($search)]));
     }
 
+    /**
+     * Whether the user may share with this recipient — the same check sharing
+     * makes, asked before there is a search to share. The save dialog asks it
+     * when someone is picked, so a refusal shows up then, not after saving.
+     */
+    #[NoAdminRequired]
+    #[FrontpageRoute(verb: 'GET', url: '/api/sharees/check')]
+    public function check(string $type = '', string $with = ''): DataResponse
+    {
+        return $this->withUser(function (string $uid) use ($type, $with) {
+            $reason = $this->recipients->refusal($uid, $type, trim($with));
+
+            return new DataResponse($reason === null
+                ? ['allowed' => true]
+                : ['allowed' => false, 'reason' => $reason, 'error' => ShareRecipients::REFUSALS[$reason]]);
+        });
+    }
+
     #[NoAdminRequired]
     #[FrontpageRoute(verb: 'GET', url: '/api/searches/{id}/shares')]
     public function index(int $id): DataResponse

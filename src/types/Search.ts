@@ -299,6 +299,23 @@ export interface Sharee {
   subname: string
 }
 
+/**
+ * A recipient in the save dialog's list, before the dialog saves. One that
+ * already exists on the server carries its share id and what it allowed then,
+ * so saving sends only what changed.
+ */
+export interface StagedShare {
+  key: string
+  type: ShareType
+  with: string
+  displayName: string
+  canEdit: boolean
+  /** Set for a share that exists already. */
+  shareId?: number
+  /** What the existing share allowed when the dialog read it. */
+  savedCanEdit?: boolean
+}
+
 /** One share of a saved search, as its owner sees it. */
 export interface SearchShare {
   id: number

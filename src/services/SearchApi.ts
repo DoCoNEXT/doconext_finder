@@ -321,6 +321,25 @@ export const SearchApi = {
   },
 
   /**
+   * Whether the user may share with this recipient — asked when they are
+   * picked, before there is a search to share.
+   * @param type what kind of recipient
+   * @param withId the recipient's id
+   * @return '' when allowed; otherwise why not, in the reader's language
+   */
+  async checkSharee(type: ShareType, withId: string): Promise<string> {
+    try {
+      const { data } = await axios.get<{ allowed: boolean, reason?: string, error?: string }>(
+        url('/sharees/check'),
+        { params: { type, with: withId } },
+      )
+      return data.allowed ? '' : (refusalMessage(data.reason ?? '') || data.error || useI18n().t('Sharing failed'))
+    } catch (error) {
+      throw describe(error)
+    }
+  },
+
+  /**
    * @param id the saved search
    */
   async shares(id: number): Promise<SearchShare[]> {
