@@ -2,64 +2,66 @@
   <NcDialog :name="title"
             size="normal"
             @closing="emit('close', changed)">
-    <NcTextField ref="nameField"
-                 v-model="name"
-                 :label="t('Name')"
-                 :disabled="busy"
-                 :error="nameProblem !== ''"
-                 :helper-text="nameProblem"
-                 @keydown.enter.prevent="submit" />
+    <div class="search-dialog">
+      <NcTextField ref="nameField"
+                   v-model="name"
+                   :label="t('Name')"
+                   :disabled="busy"
+                   :error="nameProblem !== ''"
+                   :helper-text="nameProblem"
+                   @keydown.enter.prevent="submit" />
 
-    <!--
+      <!--
       Said under the field rather than in a second dialog: choosing another
       name is just typing on, and replacing is the button below.
     -->
-    <NcNoteCard v-if="clash" type="warning" class="dialog__note">
-      {{ clashText }}
-    </NcNoteCard>
+      <NcNoteCard v-if="clash" type="warning" class="search-dialog__note">
+        {{ clashText }}
+      </NcNoteCard>
 
-    <NcTextArea v-model="description"
-                class="dialog__description"
-                :label="t('Description (optional)')"
-                :disabled="busy"
-                resize="vertical" />
+      <NcTextArea v-model="description"
+                  class="search-dialog__description"
+                  :label="t('Description (optional)')"
+                  :disabled="busy"
+                  resize="vertical" />
 
-    <!-- What is being named. Building a search and naming it are two steps;
+      <!-- What is being named. Building a search and naming it are two steps;
          this is what the second one is about. -->
-    <section v-if="query" class="dialog__section">
-      <h4>{{ t('What you save') }}</h4>
-      <p class="muted">{{ summary }}</p>
-    </section>
+      <section v-if="query" class="search-dialog__section">
+        <h4>{{ t('What you save') }}</h4>
+        <p class="muted">{{ summary }}</p>
+      </section>
 
-    <section class="dialog__section">
-      <h4>{{ t('Sharing') }}</h4>
-      <p v-if="!canShare" class="muted">
-        {{ t('Only {owner} can share this search.', { owner: ownerName }) }}
-      </p>
-      <template v-else>
-        <p class="muted">
-          {{ t('Whoever you share with runs the same search and sees only the files they can open themselves.') }}
+      <section class="search-dialog__section">
+        <h4>{{ t('Sharing') }}</h4>
+        <p v-if="!canShare" class="muted">
+          {{ t('Only {owner} can share this search.', { owner: ownerName }) }}
         </p>
-        <ShareRecipientsEditor :rows="rows"
-                               :disabled="busy || loadingShares"
-                               @add="add"
-                               @toggle="toggle"
-                               @remove="remove" />
+        <template v-else>
+          <p class="muted">
+            {{ t('Whoever you share with runs the same search and sees only the files they can open themselves.') }}
+          </p>
+          <ShareRecipientsEditor :rows="rows"
+                                 :disabled="busy || loadingShares"
+                                 @add="add"
+                                 @toggle="toggle"
+                                 @remove="remove" />
 
-        <!-- Only once there is a search to link to. -->
-        <div v-if="linkTarget" class="dialog__link">
-          <NcButton class="dialog__copy" variant="secondary" @click="copyLink">
-            <template #icon>
-              <LinkIcon :size="20" />
-            </template>
-            {{ t('Copy link') }}
-          </NcButton>
-          <span class="muted">{{ linkReach }}</span>
-        </div>
-      </template>
-    </section>
+          <!-- Only once there is a search to link to. -->
+          <div v-if="linkTarget" class="search-dialog__link">
+            <NcButton class="search-dialog__copy" variant="secondary" @click="copyLink">
+              <template #icon>
+                <LinkIcon :size="20" />
+              </template>
+              {{ t('Copy link') }}
+            </NcButton>
+            <span class="muted">{{ linkReach }}</span>
+          </div>
+        </template>
+      </section>
 
-    <NcNoteCard v-if="error" type="error">{{ error }}</NcNoteCard>
+      <NcNoteCard v-if="error" type="error">{{ error }}</NcNoteCard>
+    </div>
 
     <template #actions>
       <NcButton variant="tertiary" :disabled="busy" @click="emit('close', changed)">
@@ -426,13 +428,18 @@ function savedMessage(trimmed: string): string {
 </script>
 
 <style scoped lang="scss">
-.dialog {
+// Not `.dialog`: NcDialog names its own parts dialog__content, dialog__wrapper…
+.search-dialog {
   &__note {
     margin: 4px 0 0;
   }
 
-  &__description {
-    margin-top: 12px;
+  // Nested on purpose. NcTextArea gives its own root a top margin, and a
+  // single scoped class here only ties with that rule — load order then
+  // decided, and its 6px won: the label, which floats above the field's
+  // border, sat on the name field above it.
+  & &__description {
+    margin-top: 16px;
   }
 
   &__section {
