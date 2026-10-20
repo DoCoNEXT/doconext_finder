@@ -17,8 +17,8 @@ Other DoCoNEXT apps add to it when they are there — see
   calendar periods, as the Files app does.
 - **Search inside files** — on request, next to the name search that always
   runs, when the Full text search app is installed and indexing.
-- **Saved searches** — name a search you run often; recent searches are kept
-  automatically.
+- **Saved searches** — name a search you run often and share it with people,
+  groups or teams; recent searches are kept automatically.
 - **Configurable columns** — choose which columns the result grid shows, in
   which order, and rename them to your own vocabulary.
 - **Grouping** — by type, folder or date, stacked in several levels.
@@ -46,8 +46,9 @@ Other DoCoNEXT apps add to it when they are there — see
 5. **Columns** chooses which columns the grid shows, in which order and under
    which name; **Group by:** groups the results by type, folder or date.
    Both are remembered for you.
-6. **Save** keeps the search under a name. Your saved searches, and the ones you
-   ran recently, are under **Searches** in the left navigation.
+6. **Save** keeps the search under a name, and can share it in the same step.
+   Your saved searches, the ones shared with you and the ones you ran recently
+   are under **Searches** in the left navigation.
 
 Each result row has a menu with the file commands — open, go to the folder,
 preview, download and so on. Click a row to see its details in the panel on
