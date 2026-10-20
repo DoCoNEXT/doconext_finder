@@ -5,11 +5,14 @@
        class="results-scroll"
        :class="{ 'results-scroll--under-start': hidden.start, 'results-scroll--under-end': hidden.end }"
        @scroll.passive="measure">
-    <table ref="table" class="results">
+    <table ref="table" class="results" :class="{ 'results--resizing': dragging !== null }">
       <thead>
         <tr>
           <th class="results__star" />
-          <th v-for="column in columns" :key="column.id" :class="cellClass(column.id)">
+          <th v-for="column in columns"
+              :key="column.id"
+              :class="cellClass(column.id)"
+              :style="sizeOf(column)">
             <SortHeader v-if="sortableAs(column.id)"
                         :field="sortableAs(column.id)!"
                         :sort="sort"
@@ -18,6 +21,24 @@
               {{ headerOf(column) }}
             </SortHeader>
             <template v-else>{{ headerOf(column) }}</template>
+            <!--
+              Drag to resize, double-click to let the column size itself again;
+              arrow keys when focused. A separator in ARIA's sense: it divides
+              two columns and its value is the width of the one before it.
+            -->
+            <span class="results__resizer"
+                  :class="{ 'results__resizer--active': dragging?.id === column.id }"
+                  role="separator"
+                  aria-orientation="vertical"
+                  tabindex="0"
+                  :aria-label="t('Resize the {column} column', { column: headerOf(column) })"
+                  :aria-valuemin="COLUMN_WIDTH.min"
+                  :aria-valuemax="COLUMN_WIDTH.max"
+                  :aria-valuenow="widthOf(column) ?? undefined"
+                  @pointerdown="startResize($event, column)"
+                  @dblclick="setWidth(column.id, null)"
+                  @keydown="nudge($event, column)"
+                  @click.stop />
           </th>
           <th class="results__actions" />
         </tr>
@@ -55,7 +76,10 @@
               </NcButton>
             </td>
 
-            <td v-for="column in columns" :key="column.id" :class="cellClass(column.id)">
+            <td v-for="column in columns"
+                :key="column.id"
+                :class="cellClass(column.id)"
+                :style="sizeOf(column)">
               <span v-if="column.id === 'name'" class="results__name" :title="row.file.name">
                 <component :is="iconFor(row.file.mimetype, row.file.isFolder)" :size="20" />
                 <span>
@@ -98,8 +122,16 @@ import { useI18n } from '../composables/useI18n'
 import { usePreferencesStore } from '../stores/preferencesStore'
 import { useSearchStore } from '../stores/searchStore'
 import { useFileCommands } from '../composables/useFileCommands'
+import { useColumnWidths } from '../composables/useColumnWidths'
 import { iconFor } from '../filters/fields'
-import { columnLabel, columnSortField, columnValue, isNumericColumn } from '../filters/columns'
+import {
+  clampColumnWidth,
+  COLUMN_WIDTH,
+  columnLabel,
+  columnSortField,
+  columnValue,
+  isNumericColumn,
+} from '../filters/columns'
 import { buildRows } from '../filters/grouping'
 import FileCommands from './FileCommands.vue'
 import SortHeader from './SortHeader.vue'
@@ -109,6 +141,7 @@ const { t } = useI18n()
 const preferences = usePreferencesStore()
 const search = useSearchStore()
 const { fileLink, folderLink } = useFileCommands()
+const { widthOf: storedWidth, setWidth } = useColumnWidths()
 
 const props = defineProps<{
   files: FileResult[]
@@ -257,6 +290,143 @@ function cellClass(id: string): string {
 function cellText(file: FileResult, id: string): string {
   return columnValue(t, file, id)
 }
+
+/**
+ * The column being resized and the width it has reached. Held here while the
+ * drag lasts, so the grid follows the pointer without writing to storage on
+ * every pixel; the width is stored once, when it ends.
+ */
+const dragging = ref<{ id: string, width: number } | null>(null)
+
+/** How much of the grid's width a dragged name column may take. */
+const NAME_SHARE = 0.6
+
+/**
+ * The widest a column can be dragged to here and now. For the name that is its
+ * share of the grid, so the drag stops where the column stops growing, and the
+ * width saved is the width seen.
+ * @param column the column being resized
+ * @param cell its heading
+ */
+function limitOf(column: ColumnPref, cell: HTMLElement): (width: number) => number {
+  const grid = scroller.value?.clientWidth ?? Infinity
+  const padding = cell.getBoundingClientRect().width - contentWidth(cell)
+  const ceiling = column.id === 'name' ? grid * NAME_SHARE - padding : Infinity
+  return (width: number) => clampColumnWidth(Math.min(width, ceiling))
+}
+
+/**
+ * @param column a visible column
+ * @return pixels, or null while it sizes itself
+ */
+function widthOf(column: ColumnPref): number | null {
+  return dragging.value?.id === column.id ? dragging.value.width : storedWidth(column.id)
+}
+
+/**
+ * The same width on the heading and on every cell under it, as width, min and
+ * max at once: in a table that sizes its columns to their content, a width
+ * alone is only a suggestion the content may overrule.
+ *
+ * The pinned name keeps a ceiling, as the stylesheet gives it: pinned, it
+ * stays in view while the rest scrolls under it, and at full width it would
+ * leave no grid to scroll. Dragged, the ceiling is higher than the 40% it
+ * sizes itself to — a width someone chose outranks a default.
+ * @param column a visible column
+ */
+function sizeOf(column: ColumnPref): Record<string, string> | undefined {
+  const width = widthOf(column)
+  if (width === null) {
+    return undefined
+  }
+  const size = column.id === 'name' ? `min(${width}px, ${NAME_SHARE * 100}cqi)` : `${width}px`
+  return { width: size, minWidth: size, maxWidth: size }
+}
+
+/**
+ * The width a cell's content box has now — what `width` is about to be set to,
+ * so the drag starts where the column already is instead of jumping.
+ * @param cell the column's heading
+ */
+function contentWidth(cell: HTMLElement): number {
+  const style = getComputedStyle(cell)
+  const padding = style.boxSizing === 'border-box'
+    ? 0
+    : parseFloat(style.paddingLeft) + parseFloat(style.paddingRight)
+  return cell.getBoundingClientRect().width - padding
+}
+
+/**
+ * Right-to-left, the column's end is on its left, and dragging left widens it.
+ * @param cell the column's heading
+ */
+function directionOf(cell: HTMLElement): 1 | -1 {
+  return getComputedStyle(cell).direction === 'rtl' ? -1 : 1
+}
+
+/**
+ * @param event the press on a column's resize handle
+ * @param column the column before the handle
+ */
+function startResize(event: PointerEvent, column: ColumnPref) {
+  if (event.button !== 0) {
+    return
+  }
+  const handle = event.currentTarget as HTMLElement
+  const cell = handle.parentElement as HTMLElement
+  const start = event.clientX
+  const startWidth = contentWidth(cell)
+  const direction = directionOf(cell)
+  const limit = limitOf(column, cell)
+
+  // Captured, so the drag carries on when the pointer leaves the thin handle
+  // — which it does at once — and ends wherever the button is let go.
+  event.preventDefault()
+  handle.setPointerCapture(event.pointerId)
+  dragging.value = { id: column.id, width: limit(startWidth) }
+
+  const move = (moved: PointerEvent) => {
+    dragging.value = { id: column.id, width: limit(startWidth + (moved.clientX - start) * direction) }
+  }
+  const end = () => {
+    handle.removeEventListener('pointermove', move)
+    handle.removeEventListener('pointerup', end)
+    handle.removeEventListener('pointercancel', end)
+    const width = dragging.value?.width
+    dragging.value = null
+    if (width !== undefined) {
+      setWidth(column.id, width)
+    }
+  }
+  handle.addEventListener('pointermove', move)
+  handle.addEventListener('pointerup', end)
+  handle.addEventListener('pointercancel', end)
+}
+
+let nudged: ReturnType<typeof setTimeout> | undefined
+
+/**
+ * Arrow keys widen and narrow the focused column, a step at a time. Saved a
+ * moment after the last key, not on every one of them.
+ * @param event the key pressed on a resize handle
+ * @param column the column before the handle
+ */
+function nudge(event: KeyboardEvent, column: ColumnPref) {
+  if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') {
+    return
+  }
+  event.preventDefault()
+  const cell = (event.currentTarget as HTMLElement).parentElement as HTMLElement
+  const step = (event.key === 'ArrowRight' ? 16 : -16) * directionOf(cell)
+  const width = limitOf(column, cell)((dragging.value?.id === column.id ? dragging.value.width : contentWidth(cell)) + step)
+  dragging.value = { id: column.id, width }
+
+  clearTimeout(nudged)
+  nudged = setTimeout(() => {
+    dragging.value = null
+    setWidth(column.id, width)
+  }, 500)
+}
 </script>
 
 <style scoped lang="scss">
@@ -317,6 +487,12 @@ function cellText(file: FileResult, id: string): string {
     z-index: 2;
     background: var(--color-main-background);
 
+    // The handle shows itself where it can be used: a faint line while the
+    // pointer is on the heading row, a strong one on the handle itself.
+    &:hover .results__resizer::after {
+      background: var(--color-border-dark);
+    }
+
     // The corners are pinned both ways, and must stay above everything else.
     &.results__star,
     &.results__name-cell,
@@ -372,6 +548,44 @@ function cellText(file: FileResult, id: string): string {
 
   &__row--selected {
     background: var(--color-primary-element-light);
+  }
+
+  // A strip on the heading's trailing edge, wider than the line it draws so it
+  // is easy to catch. Inside the heading, which is sticky and therefore the
+  // containing block, so it travels with the column.
+  &__resizer {
+    position: absolute;
+    inset-block: 0;
+    inset-inline-end: 0;
+    width: 8px;
+    cursor: col-resize;
+    touch-action: none;
+
+    &::after {
+      content: '';
+      position: absolute;
+      inset-block: 6px;
+      inset-inline-end: 0;
+      width: 2px;
+      border-radius: 1px;
+    }
+
+    &:hover::after,
+    &:focus-visible::after,
+    &--active::after {
+      background: var(--color-primary-element);
+    }
+
+    &:focus-visible {
+      outline: none;
+    }
+  }
+
+  // While a column is dragged, nothing gets selected along the way and the
+  // cursor stays the resize cursor wherever the pointer goes.
+  &--resizing {
+    cursor: col-resize;
+    user-select: none;
   }
 
   &__star {

@@ -97,6 +97,7 @@
 import { computed, onMounted } from 'vue'
 import { NcButton, NcCheckboxRadioSwitch, NcColorPicker, NcSettingsSection } from '@nextcloud/vue'
 import { useI18n } from '../composables/useI18n'
+import { useColumnWidths } from '../composables/useColumnWidths'
 import { usePreferencesStore } from '../stores/preferencesStore'
 import { useSearchStore } from '../stores/searchStore'
 import { readableTextOn } from '../filters/colors'
@@ -104,6 +105,7 @@ import { HAS_RICH_PREVIEW, PRODUCT_NAME } from '../constants'
 
 const { t } = useI18n()
 const preferences = usePreferencesStore()
+const { clearWidths } = useColumnWidths()
 const search = useSearchStore()
 
 onMounted(() => {
@@ -179,6 +181,8 @@ function onDoubleClick(event: Event) {
  */
 function confirmReset() {
   if (window.confirm(t('Reset all Finder settings, columns and grouping to their defaults?'))) {
+    // Column widths live in this browser, not with the rest; see useColumnWidths.
+    clearWidths()
     preferences.reset()
   }
 }

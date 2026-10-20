@@ -17,6 +17,20 @@ import type { FileResult, MetadataField } from '../types/Search'
  * @param id column id, or a `meta:` field
  * @param metadata the server's metadata registry, for labelling `meta:` ids
  */
+/**
+ * How narrow and how wide a dragged column may be, in pixels. Narrower and not
+ * even a heading fits; wider and one column pushes every other off a laptop
+ * screen.
+ */
+export const COLUMN_WIDTH = { min: 60, max: 800 } as const
+
+/**
+ * @param width a width in pixels, as dragged
+ */
+export function clampColumnWidth(width: number): number {
+  return Math.round(Math.min(COLUMN_WIDTH.max, Math.max(COLUMN_WIDTH.min, width)))
+}
+
 export function columnLabel(t: Translate, id: string, metadata: MetadataField[] = []): string {
   if (isMetadataField(id)) {
     return metadata.find((f) => f.field === id)?.label ?? metadataKeyOf(id)
