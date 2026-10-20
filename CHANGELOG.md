@@ -19,6 +19,9 @@ numbers are the ones in `appinfo/info.xml`.
 - A notification when someone shares a search with you, and a link that opens
   a saved search straight away.
 - A description for a saved search.
+- Resizable columns: drag a column heading's edge, or double-click it to let
+  the column size itself again. Widths are kept per browser, like the width of
+  the details panel.
 
 ### Changed
 - Saving, renaming and sharing a search happen in one dialog instead of the
