@@ -19,6 +19,7 @@ import {
   FolderUp,
   Laptop,
   Link,
+  Pencil,
   SquareArrowUpRight,
   Star,
   StarOff,
@@ -30,6 +31,7 @@ import { useI18n } from './useI18n'
 import { usePreviewStore } from '../stores/previewStore'
 import { downloadFile } from '../services/download'
 import { openLocally } from '../services/openLocally'
+import { editorFor, openInEditor } from '../services/editor'
 import { FileExistsError, pickLocalFiles, uploadTo } from '../services/upload'
 import { folderOf } from '../filters/grouping'
 import { canDownload, canRead } from '../filters/access'
@@ -54,6 +56,24 @@ export interface FileCommand {
  */
 export function fileLink(file: FileResult): string {
   return generateUrl(`/f/${file.fileid}`)
+}
+
+/**
+ * A file in Files, in its folder and selected, but not opened; a folder opened.
+ *
+ * `/f/{id}` sends a file on with `openfile=true`, which puts it straight into
+ * Viewer or its editor, and "Open in Files" then did the same as editing. This
+ * asks for `openfile=false`, as DoCoNEXT Core's Show in Files does. Copy link
+ * keeps the short `/f/{id}` permalink: whoever receives it wants the file.
+ * @param file the row to show
+ */
+export function showInFilesLink(file: FileResult): string {
+  if (file.isFolder) {
+    return fileLink(file)
+  }
+  const dir = folderOf(file)
+
+  return `${generateUrl('/apps/files/files')}/${file.fileid}?dir=${encodeURIComponent(dir.startsWith('/') ? dir : `/${dir}`)}&openfile=false`
 }
 
 /**
@@ -207,15 +227,27 @@ export function useFileCommands(onChanged?: (_file: FileResult) => void) {
     file: FileResult,
     toggleFavorite?: (_file: FileResult) => void,
   ): FileCommand[] {
-    const commands: FileCommand[] = [
-      {
-        id: 'open',
-        label: t('Open in Files'),
-        icon: ExternalLink,
-        href: fileLink(file),
-        target: '_blank',
-      },
-    ]
+    const commands: FileCommand[] = []
+
+    // First after Show details, as in DoCoNEXT Core: after reading a file,
+    // changing it is what is wanted most.
+    const editor = editorFor(file)
+    if (editor) {
+      commands.push({
+        id: 'edit',
+        label: t('Edit'),
+        icon: Pencil,
+        run: () => openInEditor(file, editor),
+      })
+    }
+
+    commands.push({
+      id: 'open',
+      label: file.isFolder ? t('Open in Files') : t('Show in Files'),
+      icon: ExternalLink,
+      href: showInFilesLink(file),
+      target: '_blank',
+    })
 
     // Opening locally downloads the file into the desktop client, so it needs
     // what a download needs -- the Files app hides it on the same terms.

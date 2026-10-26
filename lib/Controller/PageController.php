@@ -14,6 +14,8 @@ use OCP\AppFramework\Http\Attribute\NoCSRFRequired;
 use OCP\AppFramework\Http\Attribute\OpenAPI;
 use OCP\AppFramework\Http\ContentSecurityPolicy;
 use OCP\AppFramework\Http\TemplateResponse;
+use OCP\EventDispatcher\Event;
+use OCP\EventDispatcher\IEventDispatcher;
 use OCP\IRequest;
 use OCP\Util;
 
@@ -27,11 +29,15 @@ class PageController extends Controller
     /** Optional companion app providing rich file previews. */
     private const PREVIEW_APP_ID = 'doconext_files_preview';
 
+    /** Named rather than imported: Viewer is an optional app, and Finder runs without it. */
+    private const VIEWER_LOAD_EVENT = 'OCA\\Viewer\\Event\\LoadViewer';
+
     public function __construct(
         string $appName,
         IRequest $request,
         private InitialStateProvider $initialState,
         private IAppManager $appManager,
+        private IEventDispatcher $dispatcher,
     ) {
         parent::__construct($appName, $request);
     }
@@ -63,6 +69,17 @@ class PageController extends Controller
             Util::addStyle(self::PREVIEW_APP_ID, self::PREVIEW_APP_ID . '-main');
         }
         $this->initialState->provide();
+
+        // Edit opens a file in its editor through Nextcloud's Viewer, as Files
+        // does, and as DoCoNEXT Core's Folder view does. Viewer loads its script
+        // on a page that asks for it with this event.
+        $viewerEvent = self::VIEWER_LOAD_EVENT;
+        if (class_exists($viewerEvent)) {
+            $event = new $viewerEvent();
+            if ($event instanceof Event) {
+                $this->dispatcher->dispatchTyped($event);
+            }
+        }
 
         $response = new TemplateResponse(AppConstants::APP_ID, 'index');
         if ($previews) {

@@ -22,6 +22,7 @@ numbers are the ones in `appinfo/info.xml`.
 - Resizable columns: drag a column heading's edge, or double-click it to let
   the column size itself again. Widths are kept per browser, like the width of
   the details panel.
+- Edit a file from its menu, in the editor the Files app would open it in.
 
 ### Changed
 - Saving, renaming and sharing a search happen in one dialog instead of the
@@ -30,6 +31,10 @@ numbers are the ones in `appinfo/info.xml`.
   of reporting no files found.
 - On the Searches page, a search without filters says "No filters", so the
   rows line up.
+- Show in Files opens the file's folder with the file selected, instead of
+  opening the file itself; a folder still opens. The full preview has the
+  layout of DoCoNEXT Core's.
+- An action menu closes once an item in it is picked.
 
 ## [0.9.2] - 2026-10-14
 

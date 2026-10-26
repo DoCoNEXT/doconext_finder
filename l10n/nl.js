@@ -299,6 +299,8 @@ OC.L10N.register(
         "Click to sort descending": "Klik om aflopend te sorteren",
         "Sorted ascending — click to sort descending": "Oplopend gesorteerd — klik om aflopend te sorteren",
         "Sorted descending — click to sort ascending": "Aflopend gesorteerd — klik om oplopend te sorteren",
-        "Click to sort ascending": "Klik om oplopend te sorteren"
+        "Click to sort ascending": "Klik om oplopend te sorteren",
+        "Show in Files": "Tonen in Bestanden",
+        "Edit": "Bewerken"
     },
     "nplurals=2; plural=(n != 1);");

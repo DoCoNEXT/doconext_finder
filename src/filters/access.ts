@@ -11,7 +11,7 @@
  */
 import type { FileResult } from '../types/Search'
 
-/** Permission.READ in @nextcloud/files; written out to avoid the dependency. */
+/** `Permission.READ` in `@nextcloud/files`; written out to avoid the dependency. */
 const READ = 1
 
 export function canRead(file: Pick<FileResult, 'permissions'>): boolean {

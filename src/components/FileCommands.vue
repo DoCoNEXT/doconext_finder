@@ -12,7 +12,7 @@
       can actually ask for. The panel itself does not offer it — it is already
       showing what the entry would show.
     -->
-    <NcActionButton @click="$emit('details', file)">
+    <NcActionButton close-after-click @click="$emit('details', file)">
       <template #icon>
         <PanelRight :size="20" />
       </template>
@@ -21,13 +21,13 @@
     <NcActionSeparator />
 
     <template v-for="command in commands" :key="command.id">
-      <NcActionLink v-if="command.href" :href="command.href" :target="command.target">
+      <NcActionLink v-if="command.href" close-after-click :href="command.href" :target="command.target">
         <template #icon>
           <component :is="command.icon" :size="20" />
         </template>
         {{ command.label }}
       </NcActionLink>
-      <NcActionButton v-else @click="command.run?.()">
+      <NcActionButton v-else close-after-click @click="command.run?.()">
         <template #icon>
           <component :is="command.icon" :size="20" />
         </template>
