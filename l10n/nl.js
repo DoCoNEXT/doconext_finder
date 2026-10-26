@@ -294,6 +294,8 @@ OC.L10N.register(
         "What you save": "Wat je opslaat",
         "You already have a search called \"{name}\". Saving replaces it.": "Je hebt al een zoekopdracht met de naam \"{name}\". Opslaan vervangt hem.",
         "You already have a search with this name.": "Je hebt al een zoekopdracht met deze naam.",
-        "Sharing failed": "Delen mislukt"
+        "Sharing failed": "Delen mislukt",
+        "Show in Files": "Tonen in Bestanden",
+        "Edit": "Bewerken"
     },
     "nplurals=2; plural=(n != 1);");
