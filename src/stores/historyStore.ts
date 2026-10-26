@@ -12,6 +12,8 @@ import type { StoredSearch } from '../types/Search'
 interface State {
   saved: StoredSearch[]
   recents: StoredSearch[]
+  /** Saved searches others shared with the user. */
+  shared: StoredSearch[]
   loading: boolean
   loaded: boolean
   error: string
@@ -21,6 +23,7 @@ export const useHistoryStore = defineStore('history', {
   state: (): State => ({
     saved: [],
     recents: [],
+    shared: [],
     loading: false,
     loaded: false,
     error: '',
@@ -34,16 +37,22 @@ export const useHistoryStore = defineStore('history', {
      * @param state
      */
     suggestions: (state): StoredSearch[] =>
-      [...state.saved, ...state.recents].sort((a, b) => b.lastRun - a.lastRun),
+      [...state.saved, ...state.shared, ...state.recents].sort((a, b) => b.lastRun - a.lastRun),
 
     /**
      * A saved search by name, matched the way a person reads a name: trimmed
      * and regardless of case, so "Reports" and "reports " are the same one.
+     *
+     * The user's own first; then one shared with them that they may edit,
+     * since saving over that is how its query is replaced. One they may only
+     * read is not a match — saving under its name just adds their own.
      * @param state
      */
-    savedNamed: (state) => (name: string): StoredSearch | undefined => {
+    savedNamed: (state) => (name: string, ownOnly = false): StoredSearch | undefined => {
       const wanted = name.trim().toLocaleLowerCase()
-      return state.saved.find((entry) => (entry.name ?? '').trim().toLocaleLowerCase() === wanted)
+      const named = (entry: StoredSearch) => (entry.name ?? '').trim().toLocaleLowerCase() === wanted
+      return state.saved.find(named)
+        ?? (ownOnly ? undefined : state.shared.find((entry) => entry.canEdit && named(entry)))
     },
   },
 
@@ -61,6 +70,7 @@ export const useHistoryStore = defineStore('history', {
         const history = await SearchApi.history()
         this.saved = history.saved
         this.recents = history.recents
+        this.shared = history.shared
         this.loaded = true
       } catch (e) {
         this.error = (e as Error).message
@@ -69,29 +79,18 @@ export const useHistoryStore = defineStore('history', {
       }
     },
 
-    async save(name: string, description: string, query: StoredSearch['query']) {
-      await SearchApi.save(name, description, query)
+    async remove(entry: StoredSearch) {
+      await SearchApi.remove(entry.id)
       await this.load(true)
     },
 
     /**
-     * Saves over an existing saved search rather than adding a second one
-     * under the same name.
-     * @param entry the saved search to overwrite
-     * @param query what it should search for from now on
+     * Takes a search someone shared out of this user's list. Theirs to undo
+     * only by asking the owner to share it again.
+     * @param entry a search shared with the user
      */
-    async overwrite(entry: StoredSearch, query: StoredSearch['query']) {
-      await SearchApi.replaceQuery(entry.id, query)
-      await this.load(true)
-    },
-
-    async rename(entry: StoredSearch, name: string, description: string) {
-      await SearchApi.rename(entry.id, name, description)
-      await this.load(true)
-    },
-
-    async remove(entry: StoredSearch) {
-      await SearchApi.remove(entry.id)
+    async hide(entry: StoredSearch) {
+      await SearchApi.hide(entry.id)
       await this.load(true)
     },
 

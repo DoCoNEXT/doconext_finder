@@ -4,11 +4,14 @@ declare(strict_types=1);
 
 namespace OCA\DcnFinder\AppInfo;
 
+use OCA\DcnFinder\Listener\GroupDeletedListener;
 use OCA\DcnFinder\Listener\UserDeletedListener;
+use OCA\DcnFinder\Notification\Notifier;
 use OCP\AppFramework\App;
 use OCP\AppFramework\Bootstrap\IBootContext;
 use OCP\AppFramework\Bootstrap\IBootstrap;
 use OCP\AppFramework\Bootstrap\IRegistrationContext;
+use OCP\Group\Events\GroupDeletedEvent;
 use OCP\IAppConfig;
 use OCP\INavigationManager;
 use OCP\IURLGenerator;
@@ -47,6 +50,10 @@ class Application extends App implements IBootstrap
         // The app's own table is not cleaned up by Nextcloud when an account is
         // deleted, so it cleans up after itself.
         $context->registerEventListener(UserDeletedEvent::class, UserDeletedListener::class);
+        // Nor are the shares of searches with a group that is deleted.
+        $context->registerEventListener(GroupDeletedEvent::class, GroupDeletedListener::class);
+        // "Alice shared the search Quotes this year with you".
+        $context->registerNotifierService(Notifier::class);
     }
 
     #[\Override]

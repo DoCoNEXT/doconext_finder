@@ -41,21 +41,48 @@ class SearchHistoryService
      */
     public const MAX_QUERY_BYTES = 65536;
 
-    public function __construct(private SavedSearchMapper $mapper)
-    {
+    public function __construct(
+        private SavedSearchMapper $mapper,
+        private SearchShareService $shares,
+    ) {
     }
 
-    /** @return array<string,mixed>[] */
+    /**
+     * The user's own searches of one kind. Each says whether it is shared with
+     * anyone, so the list can show it.
+     *
+     * @return array<string,mixed>[]
+     */
     public function list(string $userId, string $kind): array
     {
-        return array_map(
-            static fn (SavedSearch $s) => $s->toArray(),
-            $this->mapper->findByKind(
-                $userId,
-                $kind,
-                $kind === SavedSearch::KIND_RECENT ? self::KEEP_RECENTS : self::MAX_SAVED,
-            )
+        $entries = $this->mapper->findByKind(
+            $userId,
+            $kind,
+            $kind === SavedSearch::KIND_RECENT ? self::KEEP_RECENTS : self::MAX_SAVED,
         );
+        $shared = $kind === SavedSearch::KIND_SAVED
+            ? array_flip($this->shares->sharedAmong(array_map(static fn (SavedSearch $s) => $s->getId(), $entries)))
+            : [];
+
+        return array_map(
+            static fn (SavedSearch $s) => [
+                ...$s->toArray(),
+                'mine'    => true,
+                'shared'  => isset($shared[$s->getId()]),
+                'canEdit' => true,
+            ],
+            $entries,
+        );
+    }
+
+    /**
+     * Saved searches others shared with the user.
+     *
+     * @return array<string,mixed>[]
+     */
+    public function listShared(string $userId): array
+    {
+        return $this->shares->sharedWith($userId);
     }
 
     /**
@@ -84,6 +111,17 @@ class SearchHistoryService
         if ($saved !== null) {
             $saved->setLastRun(time());
             $this->mapper->update($saved);
+            $this->dropRecentTwin($userId, $fingerprint);
+
+            return;
+        }
+
+        // The same for a search someone shared with the user: running it is a
+        // run of that search, ordered in the user's own list.
+        $shared = $this->shares->findByFingerprint($userId, $fingerprint);
+
+        if ($shared !== null) {
+            $this->shares->markRun($userId, $shared->getId());
             $this->dropRecentTwin($userId, $fingerprint);
 
             return;
@@ -154,7 +192,7 @@ class SearchHistoryService
      */
     public function rename(string $userId, int $id, string $name, string $description): array
     {
-        $entry = $this->mapper->findOwned($id, $userId);
+        $entry = $this->editable($userId, $id);
         if ($entry->getKind() !== SavedSearch::KIND_SAVED) {
             // A named recent is a contradiction: recents are trimmed and deduped
             // behind the user's back. Keeping one means saving it, which the client
@@ -179,15 +217,22 @@ class SearchHistoryService
      */
     public function replaceQuery(string $userId, int $id, array $query): array
     {
-        $entry = $this->mapper->findOwned($id, $userId);
+        $entry = $this->editable($userId, $id);
         if ($entry->getKind() !== SavedSearch::KIND_SAVED) {
             throw new DoesNotExistException('Only saved searches can be replaced');
         }
+        $mine = $entry->getUserId() === $userId;
         $entry->setQuery(self::encode($query));
         $entry->setFingerprint(self::fingerprint($query));
-        $entry->setLastRun(time());
+        if ($mine) {
+            $entry->setLastRun(time());
+        }
 
         $replaced = $this->mapper->update($entry)->toArray();
+        if (!$mine) {
+            // The owner's last_run is the owner's; the editor's order moves.
+            $this->shares->markRun($userId, $id);
+        }
         $this->dropRecentTwin($userId, $entry->getFingerprint());
 
         return $replaced;
@@ -207,18 +252,63 @@ class SearchHistoryService
         }
     }
 
-    /** @throws DoesNotExistException */
+    /**
+     * Records that a stored search was run. One shared with the user moves in
+     * their own list only.
+     *
+     * @throws DoesNotExistException
+     */
     public function touch(string $userId, int $id): void
     {
-        $entry = $this->mapper->findOwned($id, $userId);
+        try {
+            $entry = $this->mapper->findOwned($id, $userId);
+        } catch (DoesNotExistException $notOwn) {
+            try {
+                $this->shares->markRun($userId, $id);
+            } catch (DoesNotExistException) {
+                throw $notOwn;
+            }
+
+            return;
+        }
         $entry->setLastRun(time());
         $this->mapper->update($entry);
     }
 
-    /** @throws DoesNotExistException */
+    /**
+     * Deletes one of the user's own searches, and with it every share of it.
+     * A search shared with the user is hidden instead — see SearchShareService.
+     *
+     * @throws DoesNotExistException
+     */
     public function delete(string $userId, int $id): void
     {
-        $this->mapper->delete($this->mapper->findOwned($id, $userId));
+        $entry = $this->mapper->findOwned($id, $userId);
+        if ($entry->getKind() === SavedSearch::KIND_SAVED) {
+            $this->shares->forgetSearch($id);
+        }
+        $this->mapper->delete($entry);
+    }
+
+    /**
+     * A saved search the user may change: their own, or one shared with them
+     * with the edit permission. The owner's own is asked first and its "not
+     * found" is the one reported, so a search that is neither reads the same as
+     * before sharing existed.
+     *
+     * @throws DoesNotExistException
+     */
+    private function editable(string $userId, int $id): SavedSearch
+    {
+        try {
+            return $this->mapper->findOwned($id, $userId);
+        } catch (DoesNotExistException $notOwn) {
+            try {
+                return $this->shares->editableBy($userId, $id);
+            } catch (DoesNotExistException) {
+                throw $notOwn;
+            }
+        }
     }
 
     public function clearRecents(string $userId): void

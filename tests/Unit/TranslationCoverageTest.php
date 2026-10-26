@@ -179,9 +179,13 @@ final class TranslationCoverageTest extends TestCase
         $found   = [];
         $plurals = [];
         foreach ([
-            // Finder's strings live entirely in src/: nothing in lib/ calls
-            // IL10N. If that changes, add the lib/php row Core carries.
-            ['src', ['vue', 'ts'],  "/(?<![\\w.])t\\(\\s*{$a}\\s*[,)]/s",  "/(?<![\\w.])n\\(\\s*{$a}\\s*,\\s*{$a}/s"],
+            // A bare t(), or useI18n().t() where there is no component to
+            // destructure it in — a store, a service. Any other `x.t(` is
+            // someone else's method and not ours to check.
+            ['src', ['vue', 'ts'],  "/(?:(?<![\\w.])|(?<=useI18n\\(\\)\\.))t\\(\\s*{$a}\\s*[,)]/s",  "/(?:(?<![\\w.])|(?<=useI18n\\(\\)\\.))n\\(\\s*{$a}\\s*,\\s*{$a}/s"],
+            // The notifier is the one place lib/ translates: a notification is
+            // worded by the server. Core's row, as it carries it.
+            ['lib', ['php'],        "/->t\\(\\s*{$a}\\s*[,)]/s",             "/->n\\(\\s*{$a}\\s*,\\s*{$a}/s"],
         ] as [$dir, $extensions, $singlePattern, $pluralPattern]) {
             foreach ($this->files($dir, $extensions) as $file) {
                 $code = (string) file_get_contents($file);

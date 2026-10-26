@@ -40,9 +40,13 @@ final class DbConstants
     // Bare table names, private: nothing outside this class may use one
     // without the prefix.
     private const SEARCHES = 'searches';
+    private const SHARES = 'shares';
+    private const SHARE_STATE = 'share_state';
 
     // Resolve all table names from the central prefix constant.
     public const DB_TABLENAME_SEARCHES = self::DB_TABLE_PREFIX . self::SEARCHES;
+    public const DB_TABLENAME_SHARES = self::DB_TABLE_PREFIX . self::SHARES;
+    public const DB_TABLENAME_SHARE_STATE = self::DB_TABLE_PREFIX . self::SHARE_STATE;
 
     /**
      * The example table the app template shipped, dropped by the migration that

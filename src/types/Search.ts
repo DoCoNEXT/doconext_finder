@@ -59,6 +59,12 @@ export interface SearchResponse {
    * server searched only some of them. Results are real but incomplete.
    */
   truncated?: boolean
+  /**
+   * True when the scope led to no folder the user can open — deleted, or
+   * shared by someone who can open it and they cannot. Results are empty, and
+   * not because nothing matched.
+   */
+  scopeUnavailable?: boolean
 }
 
 /**
@@ -253,13 +259,72 @@ export interface StoredSearch {
   name: string | null
   description: string | null
   query: SearchState
-  /** Unix seconds. */
+  /**
+   * Unix seconds. For a search shared with the reader, when *they* last ran
+   * it — or when it was shared, until they do.
+   */
   lastRun: number
+  /** False for a search someone else shared with the reader. */
+  mine: boolean
+  /** Mine: shared with anyone. Not mine: always true. */
+  shared: boolean
+  /** Whether the reader may rename it and replace its query. */
+  canEdit: boolean
+  /** Only on a search shared with the reader. */
+  owner?: string
+  ownerDisplayName?: string
+  /**
+   * Only on a search shared with the reader: its scope leads nowhere they can
+   * open, and its label was withheld.
+   */
+  scopeUnavailable?: boolean
 }
 
 export interface SearchHistory {
   saved: StoredSearch[]
   recents: StoredSearch[]
+  /** Saved searches others shared with the reader, minus those they hid. */
+  shared: StoredSearch[]
+}
+
+/** Who a search can be shared with. 'circle' is a Nextcloud Team. */
+export type ShareType = 'user' | 'group' | 'circle'
+
+/** Someone the share dialog offers, from GET /api/sharees. */
+export interface Sharee {
+  type: ShareType
+  id: string
+  displayName: string
+  /** What tells two of the same name apart: an e-mail address, an id, a team's description. */
+  subname: string
+}
+
+/**
+ * A recipient in the save dialog's list, before the dialog saves. One that
+ * already exists on the server carries its share id and what it allowed then,
+ * so saving sends only what changed.
+ */
+export interface StagedShare {
+  key: string
+  type: ShareType
+  with: string
+  displayName: string
+  canEdit: boolean
+  /** Set for a share that exists already. */
+  shareId?: number
+  /** What the existing share allowed when the dialog read it. */
+  savedCanEdit?: boolean
+}
+
+/** One share of a saved search, as its owner sees it. */
+export interface SearchShare {
+  id: number
+  type: ShareType
+  with: string
+  displayName: string
+  canEdit: boolean
+  /** Unix seconds. */
+  created: number
 }
 
 /** A column in the result grid. `label` empty means "use the built-in name". */

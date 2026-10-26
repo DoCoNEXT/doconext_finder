@@ -5,14 +5,18 @@ declare(strict_types=1);
 namespace OCA\DcnFinder\Listener;
 
 use OCA\DcnFinder\AppInfo\AppConstants;
+use OCA\DcnFinder\Db\SavedSearch;
 use OCA\DcnFinder\Db\SavedSearchMapper;
+use OCA\DcnFinder\Service\SearchHistoryService;
+use OCA\DcnFinder\Service\SearchShareService;
 use OCP\EventDispatcher\Event;
 use OCP\EventDispatcher\IEventListener;
 use OCP\User\Events\UserDeletedEvent;
 use Psr\Log\LoggerInterface;
 
 /**
- * Removes a deleted account's saved and recent searches.
+ * Removes a deleted account's saved and recent searches, the shares of them,
+ * and what was shared with the account.
  *
  * Nextcloud clears what it stores on a user's behalf — preferences among them,
  * which is why {@see \OCA\DcnFinder\Service\PreferencesService} needs nothing
@@ -29,6 +33,7 @@ class UserDeletedListener implements IEventListener
 {
     public function __construct(
         private SavedSearchMapper $mapper,
+        private SearchShareService $shares,
         private LoggerInterface $logger,
     ) {
     }
@@ -43,6 +48,9 @@ class UserDeletedListener implements IEventListener
         $userId = $event->getUser()->getUID();
 
         try {
+            // Shares first: they are found through the searches they point at.
+            $own = $this->mapper->findByKind($userId, SavedSearch::KIND_SAVED, SearchHistoryService::MAX_SAVED);
+            $this->shares->forgetUser($userId, array_map(static fn (SavedSearch $s) => $s->getId(), $own));
             $removed = $this->mapper->deleteByUser($userId);
         } catch (\Throwable $e) {
             // The account is already gone; failing loudly here would only break

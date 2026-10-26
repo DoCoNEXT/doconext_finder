@@ -82,12 +82,12 @@ class FileSearchService
     }
 
     /**
-     * @return array{results: list<array<string,mixed>>, hasMore: bool, offset: int, limit: int, truncated: bool}
+     * @return array{results: list<array<string,mixed>>, hasMore: bool, offset: int, limit: int, truncated: bool, scopeUnavailable: bool}
      * @throws NotFoundException when the user has no accessible home folder
      */
     public function search(string $uid, FileQuery $query): array
     {
-        $userFolder = $this->rootFolder->getUserFolder($uid);
+        $userFolder = $this->userFolder($uid);
         $user = $this->userManager->get($uid);
 
         // A scope changes where the search starts rather than what it matches, so
@@ -100,9 +100,11 @@ class FileSearchService
             [$roots, $truncated] = $this->scopeRoots($uid, $userFolder, $query->scope);
 
             // No reachable root — deleted, never provisioned, or simply not this
-            // user's to see. That is an empty result, never the whole account.
+            // user's to see. That is an empty result, never the whole account —
+            // but one the page must not show as "nothing found": a search
+            // someone shared may point at a folder only they can open.
             if ($roots === []) {
-                return $this->emptyPage($query, $truncated);
+                return $this->emptyPage($query, $truncated, true);
             }
 
             $searchRoots = $roots;
@@ -201,7 +203,23 @@ class FileSearchService
             // True when the scope had more roots than are worth querying, so the
             // page can say the results are partial instead of quietly lying.
             'truncated' => $truncated,
+            'scopeUnavailable' => false,
         ];
+    }
+
+    /**
+     * Whether a scope leads anywhere this user can open. The same resolution a
+     * search makes, so the answer cannot disagree with what running it shows.
+     */
+    public function scopeReachable(string $uid, FileScope $scope): bool
+    {
+        return $this->scopeRoots($uid, $this->userFolder($uid), $scope)[0] !== [];
+    }
+
+    /** @throws NotFoundException when the user has no accessible home folder */
+    private function userFolder(string $uid): Folder
+    {
+        return $this->rootFolder->getUserFolder($uid);
     }
 
     /**
@@ -376,9 +394,10 @@ class FileSearchService
     }
 
     /**
-     * @return array{results: list<array<string,mixed>>, hasMore: bool, offset: int, limit: int, truncated: bool}
+     * @param bool $scopeUnavailable the scope reached no folder the user can open
+     * @return array{results: list<array<string,mixed>>, hasMore: bool, offset: int, limit: int, truncated: bool, scopeUnavailable: bool}
      */
-    private function emptyPage(FileQuery $query, bool $truncated): array
+    private function emptyPage(FileQuery $query, bool $truncated, bool $scopeUnavailable = false): array
     {
         return [
             'results'   => [],
@@ -386,6 +405,7 @@ class FileSearchService
             'offset'    => $query->offset,
             'limit'     => $query->limit,
             'truncated' => $truncated,
+            'scopeUnavailable' => $scopeUnavailable,
         ];
     }
 

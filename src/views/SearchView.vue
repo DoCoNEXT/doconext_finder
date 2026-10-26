@@ -209,7 +209,11 @@
     <div class="finder__results">
       <NcLoadingIcon v-if="store.loading" class="finder__loading" :size="32" />
 
-      <NcEmptyContent v-else-if="store.searched && store.results.length === 0"
+      <!--
+        Not when the scope reached nowhere: "loosen the filters" would send
+        someone after the wrong cause, and the warning above already says it.
+      -->
+      <NcEmptyContent v-else-if="store.searched && store.results.length === 0 && store.error !== 'scope-unavailable'"
                       :name="t('No files found')"
                       :description="t('Try a different term, or loosen the filters.')">
         <template #icon>
@@ -490,6 +494,7 @@ const message = computed(() => {
     case 'no-criteria': return t('Enter a search term, or pick a filter.')
     case 'capped': return t('Stopped after {count} results. Narrow the search to see the rest.', { count: store.results.length })
     case 'scope-truncated': return t('This scope covers too many folders to search at once. Pick a dossier type or a single dossier.')
+    case 'scope-unavailable': return t('This search looks in a place you cannot open, or one that no longer exists. Pick another scope to search.')
     default: return store.error
   }
 })
@@ -534,7 +539,7 @@ const rankedResults = computed(() => (
 ))
 
 const messageType = computed(() => (
-  store.error === 'capped' || store.error === 'scope-truncated' ? 'warning' : 'error'
+  ['capped', 'scope-truncated', 'scope-unavailable'].includes(store.error) ? 'warning' : 'error'
 ))
 
 function search() {

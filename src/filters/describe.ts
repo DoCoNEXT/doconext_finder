@@ -17,6 +17,18 @@ import type { Condition, MetadataField, SearchState, StoredSearch } from '../typ
  * @param metadata the server's metadata registry, so a metadata condition is
  *   named the way its field is rather than by the id it is sent under
  */
+/**
+ * Where a scoped search looks. A search shared with someone who cannot open
+ * its folder arrives with the folder's name withheld; it still says that it
+ * looks somewhere, so it does not read as a search of everything.
+ * @param t translation function
+ * @param query a search with a scope
+ */
+function scopePhrase(t: Translate, query: SearchState): string {
+  const label = query.scope?.label ?? ''
+  return label === '' ? t('In a place you cannot open') : t('In {name}', { name: label })
+}
+
 export function describeQuery(t: Translate, query: SearchState, metadata: MetadataField[] = []): string {
   const parts: string[] = []
 
@@ -24,7 +36,7 @@ export function describeQuery(t: Translate, query: SearchState, metadata: Metada
   // everything after it. Its label is the snapshot stored with the search, so a
   // folder or entity type that has since been renamed still reads as it did.
   if (query.scope) {
-    parts.push(t('In {name}', { name: query.scope.label }))
+    parts.push(scopePhrase(t, query))
   }
 
   // The term itself is not described here — wherever a search is listed, its
@@ -85,7 +97,7 @@ export function activeFilters(t: Translate, query: SearchState, metadata: Metada
   const filters: ActiveFilter[] = []
 
   if (query.scope) {
-    filters.push({ key: 'scope', kind: 'scope', label: t('In {name}', { name: query.scope.label }) })
+    filters.push({ key: 'scope', kind: 'scope', label: scopePhrase(t, query) })
   }
 
   const type = typeOf(t, query)

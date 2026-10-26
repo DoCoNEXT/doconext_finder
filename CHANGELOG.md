@@ -6,6 +6,28 @@ numbers are the ones in `appinfo/info.xml`.
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-10-20
+
+### Added
+- Share a saved search with people, groups or teams, read-only or with the
+  right to edit it. What is shared is the search, never its results: whoever
+  runs it sees only the files they can open themselves. Who may be shared with
+  follows Nextcloud's own sharing settings.
+- Searches shared with you are listed under "Shared with me" and offered by the
+  search box. You can run, copy or remove them from your own list; only the
+  owner deletes a search.
+- A notification when someone shares a search with you, and a link that opens
+  a saved search straight away.
+- A description for a saved search.
+
+### Changed
+- Saving, renaming and sharing a search happen in one dialog instead of the
+  browser's own prompts.
+- A search that looks in a folder or dossier you cannot open says so, instead
+  of reporting no files found.
+- On the Searches page, a search without filters says "No filters", so the
+  rows line up.
+
 ## [0.9.2] - 2026-10-14
 
 ### Changed

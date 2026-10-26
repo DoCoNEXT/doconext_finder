@@ -19,7 +19,10 @@ import type {
   SearchHistory,
   SearchRequest,
   SearchResponse,
+  SearchShare,
   SearchState,
+  Sharee,
+  ShareType,
   StoredSearch,
   Preferences,
 } from '../types/Search'
@@ -75,9 +78,31 @@ function restoredSearch(entry: StoredSearch): StoredSearch {
  * @param error
  */
 function describe(error: unknown): Error {
-  const message = (error as { response?: { data?: { error?: string } } })
-    ?.response?.data?.error
-  return new Error(message || useI18n().t('Search failed'))
+  const data = (error as { response?: { data?: { error?: string, reason?: string } } })
+    ?.response?.data
+  const refusal = data?.reason ? refusalMessage(data.reason) : ''
+  return new Error(refusal || data?.error || useI18n().t('Search failed'))
+}
+
+/**
+ * Why Nextcloud's sharing rules refused a share, in the reader's language. The
+ * server sends a code next to its English message, because Finder's pages
+ * word their own messages — see ShareRefusedException.
+ * @param reason one of the codes in ShareRecipients::REFUSALS
+ */
+function refusalMessage(reason: string): string {
+  const { t } = useI18n()
+  const messages: Record<string, string> = {
+    sharing_disabled: t('You are not allowed to share'),
+    self: t('You cannot share a search with yourself'),
+    no_such_user: t('This user does not exist'),
+    not_in_shared_group: t('You can only share with members of your own groups'),
+    group_sharing_disabled: t('Sharing with groups is not allowed'),
+    no_such_group: t('This group does not exist'),
+    not_group_member: t('You can only share with groups you are a member of'),
+    not_team_member: t('You can only share with teams you are a member of'),
+  }
+  return messages[reason] ?? ''
 }
 
 export const SearchApi = {
@@ -187,6 +212,7 @@ export const SearchApi = {
       return {
         saved: (data.saved ?? []).map(restoredSearch),
         recents: (data.recents ?? []).map(restoredSearch),
+        shared: (data.shared ?? []).map(restoredSearch),
       }
     } catch (error) {
       throw describe(error)
@@ -277,6 +303,111 @@ export const SearchApi = {
       await axios.post(url(`/searches/${id}/run`))
     } catch {
       // ignored on purpose — see above
+    }
+  },
+
+  /**
+   * Users, groups and teams matching a typed name, under the same rules the
+   * Files share dialog applies.
+   * @param term what was typed
+   */
+  async sharees(term: string): Promise<Sharee[]> {
+    try {
+      const { data } = await axios.get<{ sharees: Sharee[] }>(url('/sharees'), { params: { search: term } })
+      return data.sharees ?? []
+    } catch (error) {
+      throw describe(error)
+    }
+  },
+
+  /**
+   * Whether the user may share with this recipient — asked when they are
+   * picked, before there is a search to share.
+   * @param type what kind of recipient
+   * @param withId the recipient's id
+   * @return '' when allowed; otherwise why not, in the reader's language
+   */
+  async checkSharee(type: ShareType, withId: string): Promise<string> {
+    try {
+      const { data } = await axios.get<{ allowed: boolean, reason?: string, error?: string }>(
+        url('/sharees/check'),
+        { params: { type, with: withId } },
+      )
+      return data.allowed ? '' : (refusalMessage(data.reason ?? '') || data.error || useI18n().t('Sharing failed'))
+    } catch (error) {
+      throw describe(error)
+    }
+  },
+
+  /**
+   * @param id the saved search
+   */
+  async shares(id: number): Promise<SearchShare[]> {
+    try {
+      const { data } = await axios.get<{ shares: SearchShare[] }>(url(`/searches/${id}/shares`))
+      return data.shares ?? []
+    } catch (error) {
+      throw describe(error)
+    }
+  },
+
+  /**
+   * Shares a saved search; sharing again with the same recipient changes what
+   * the existing share allows.
+   * @param id the saved search
+   * @param type what kind of recipient
+   * @param withId the recipient's id
+   * @param canEdit whether they may rename it and replace its query
+   */
+  async share(id: number, type: ShareType, withId: string, canEdit: boolean): Promise<SearchShare> {
+    try {
+      const { data } = await axios.post<SearchShare>(url(`/searches/${id}/shares`), {
+        type,
+        with: withId,
+        can_edit: canEdit,
+      })
+      return data
+    } catch (error) {
+      throw describe(error)
+    }
+  },
+
+  /**
+   * @param id the saved search
+   * @param shareId the share
+   * @param canEdit whether they may rename it and replace its query
+   */
+  async updateShare(id: number, shareId: number, canEdit: boolean): Promise<SearchShare> {
+    try {
+      const { data } = await axios.put<SearchShare>(url(`/searches/${id}/shares/${shareId}`), { can_edit: canEdit })
+      return data
+    } catch (error) {
+      throw describe(error)
+    }
+  },
+
+  /**
+   * @param id the saved search
+   * @param shareId the share
+   */
+  async unshare(id: number, shareId: number): Promise<void> {
+    try {
+      await axios.delete(url(`/searches/${id}/shares/${shareId}`))
+    } catch (error) {
+      throw describe(error)
+    }
+  },
+
+  /**
+   * Removes a search someone shared with the reader from their own list. The
+   * owner and everyone else it is shared with keep it.
+   * @param id the shared search
+   */
+  async hide(id: number): Promise<void> {
+    try {
+      await axios.post(url(`/searches/${id}/hide`))
+    } catch (error) {
+      throw describe(error)
     }
   },
 
