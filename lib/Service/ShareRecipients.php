@@ -89,7 +89,7 @@ class ShareRecipients
         }
 
         /** @var array{0: array{exact?: array<string, list<array<string, mixed>>>, ...<string, list<array<string, mixed>>>}, 1: bool} $answer */
-        $answer = $this->collaborators->search($term, $types, false, self::SEARCH_LIMIT, 0);
+        $answer = $this->collaboratorSearch($term, $types);
         $found = $answer[0];
 
         $out = [];
@@ -118,6 +118,26 @@ class ShareRecipients
         }
 
         return $out;
+    }
+
+    /**
+     * Nextcloud's collaborator search, as the Files share dialog runs it.
+     *
+     * NC35 replaced search() with filteredSearch(), which also lets other apps
+     * narrow the result through AutoCompleteFilterEvent; NC35's search() skips
+     * that event. NC33 and NC34 have only search().
+     *
+     * @param list<int> $types IShare::TYPE_*
+     * @return array
+     */
+    private function collaboratorSearch(string $term, array $types): array
+    {
+        if (method_exists($this->collaborators, 'filteredSearch')) {
+            return $this->collaborators->filteredSearch($term, $types, false, null, null, self::SEARCH_LIMIT, 0);
+        }
+
+        /** @psalm-suppress DeprecatedMethod the only search NC33 and NC34 have */
+        return $this->collaborators->search($term, $types, false, self::SEARCH_LIMIT, 0);
     }
 
     /**
