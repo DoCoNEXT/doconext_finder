@@ -53,13 +53,17 @@ import {
 import { RefreshCw, Star } from '@lucide/vue'
 import { useI18n } from '../composables/useI18n'
 import { SearchApi } from '../services/SearchApi'
+import { useSearchStore } from '../stores/searchStore'
 import { useSelectionStore } from '../stores/selectionStore'
+import { sortStartsDescending } from '../filters/columns'
 import FileTable from '../components/FileTable.vue'
 import ViewOptions from '../components/ViewOptions.vue'
 import type { FileResult } from '../types/Search'
 
 const { t } = useI18n()
 const selection = useSelectionStore()
+// Its metadata registry tells a figure from a word when a column starts sorting.
+const search = useSearchStore()
 
 const files = ref<FileResult[]>([])
 const sort = ref('mtime')
@@ -108,7 +112,7 @@ function sortBy(field: string) {
     descending.value = !descending.value
   } else {
     sort.value = field
-    descending.value = true
+    descending.value = sortStartsDescending(field, search.metadata)
   }
   load()
 }

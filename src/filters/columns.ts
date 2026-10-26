@@ -98,6 +98,22 @@ export function columnSortField(id: string, metadata: MetadataField[] = []): str
 }
 
 /**
+ * Which way a column sorts on its first click. Words run A→Z; dates and
+ * figures run newest or largest first, since that is what a click on Modified
+ * or Size is nearly always after. Metadata has no date type, so a number
+ * counts as a figure and anything else as words.
+ * @param field a sort field, as {@link columnSortField} names it
+ * @param metadata the server's metadata registry, for the type of a `meta:` field
+ */
+export function sortStartsDescending(field: string, metadata: MetadataField[] = []): boolean {
+  if (isMetadataField(field)) {
+    const type = metadata.find((f) => f.field === field)?.type
+    return type === 'int' || type === 'float' || type === 'int[]'
+  }
+  return field === 'size' || field === 'mtime' || field === 'creation_time'
+}
+
+/**
  * Right-aligned columns: only figures, where the digits should line up.
  * @param id column id
  */

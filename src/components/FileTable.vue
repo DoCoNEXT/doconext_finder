@@ -12,11 +12,13 @@
           <th v-for="column in columns"
               :key="column.id"
               :class="cellClass(column.id)"
-              :style="sizeOf(column)">
+              :style="sizeOf(column)"
+              :aria-sort="ariaSortOf(column.id)">
             <SortHeader v-if="sortableAs(column.id)"
                         :field="sortableAs(column.id)!"
                         :sort="sort"
                         :descending="descending"
+                        :starts-descending="sortStartsDescending(sortableAs(column.id)!, metadata)"
                         @sort="$emit('sort', $event)">
               {{ headerOf(column) }}
             </SortHeader>
@@ -131,6 +133,7 @@ import {
   columnSortField,
   columnValue,
   isNumericColumn,
+  sortStartsDescending,
 } from '../filters/columns'
 import { buildRows } from '../filters/grouping'
 import FileCommands from './FileCommands.vue'
@@ -278,6 +281,14 @@ function headerOf(column: ColumnPref): string {
 
 function sortableAs(id: string): string | null {
   return columnSortField(id, metadata.value)
+}
+
+function ariaSortOf(id: string): 'ascending' | 'descending' | undefined {
+  const field = sortableAs(id)
+  if (field === null || field !== props.sort) {
+    return undefined
+  }
+  return props.descending ? 'descending' : 'ascending'
 }
 
 function cellClass(id: string): string {

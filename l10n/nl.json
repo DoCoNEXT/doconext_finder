@@ -294,7 +294,11 @@
         "You already have a search called \"{name}\". Saving replaces it.": "Je hebt al een zoekopdracht met de naam \"{name}\". Opslaan vervangt hem.",
         "You already have a search with this name.": "Je hebt al een zoekopdracht met deze naam.",
         "Sharing failed": "Delen mislukt",
-        "Resize the {column} column": "Kolom {column} breder of smaller maken"
+        "Resize the {column} column": "Kolom {column} breder of smaller maken",
+        "Click to sort descending": "Klik om aflopend te sorteren",
+        "Sorted ascending — click to sort descending": "Oplopend gesorteerd — klik om aflopend te sorteren",
+        "Sorted descending — click to sort ascending": "Aflopend gesorteerd — klik om oplopend te sorteren",
+        "Click to sort ascending": "Klik om oplopend te sorteren"
     },
     "pluralForm": "nplurals=2; plural=(n != 1);"
 }
