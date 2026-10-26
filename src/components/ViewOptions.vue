@@ -128,7 +128,7 @@
       </label>
 
       <template #actions>
-        <NcButton variant="secondary" @click="preferences.reset()">
+        <NcButton variant="secondary" @click="resetColumns">
           {{ t('Reset to defaults') }}
         </NcButton>
         <NcButton variant="primary" @click="columnsOpen = false">
@@ -149,6 +149,7 @@ import {
 } from '@nextcloud/vue'
 import { ArrowDown, ArrowUp, Columns3, X } from '@lucide/vue'
 import { useI18n } from '../composables/useI18n'
+import { useColumnWidths } from '../composables/useColumnWidths'
 import { MAX_GROUPING_LEVELS, usePreferencesStore } from '../stores/preferencesStore'
 import { useSearchStore } from '../stores/searchStore'
 import { groupLabel } from '../filters/grouping'
@@ -158,6 +159,17 @@ import type { ColumnPref, GroupScope } from '../types/Search'
 
 const { t } = useI18n()
 const preferences = usePreferencesStore()
+const { clearWidths } = useColumnWidths()
+
+/**
+ * Back to the default columns, at the widths they size themselves to. The
+ * widths are kept in this browser rather than with the rest, so they are
+ * cleared here too or a reset would leave them standing.
+ */
+function resetColumns() {
+  clearWidths()
+  preferences.reset()
+}
 const search = useSearchStore()
 
 const props = defineProps<{

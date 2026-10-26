@@ -15,6 +15,7 @@ import { anyTime, anyType, canonicalModifiedPreset, fileTypePresets, modifiedPre
 import type { Translate } from '../filters/presets'
 import { labelledFor, realmOfScope } from '../filters/metadata'
 import { isUsable } from '../filters/fields'
+import { sortStartsDescending } from '../filters/columns'
 import type { Condition, FieldsResponse, FileResult, MetadataField, SearchState } from '../types/Search'
 
 /**
@@ -275,7 +276,7 @@ export const useSearchStore = defineStore('search', {
         this.query.descending = !this.query.descending
       } else {
         this.query.sort = field
-        this.query.descending = true
+        this.query.descending = sortStartsDescending(field, this.metadata)
       }
       await this.run(t, 0, false)
     },
