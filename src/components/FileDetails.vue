@@ -17,7 +17,8 @@
       <NcActionLink v-for="command in linkCommands"
                     :key="command.id"
                     :href="command.href"
-                    :target="command.target">
+                    :target="command.target"
+                    close-after-click>
         <template #icon>
           <component :is="command.icon" :size="20" />
         </template>
@@ -25,6 +26,7 @@
       </NcActionLink>
       <NcActionButton v-for="command in buttonCommands"
                       :key="command.id"
+                      close-after-click
                       @click="command.run?.()">
         <template #icon>
           <component :is="command.icon" :size="20" />

@@ -65,7 +65,7 @@
                       :aria-label="t('Shared')"
                       :title="t('Shared')" />
               <NcActions :aria-label="t('Actions')">
-                <NcActionButton @click="run(entry)">
+                <NcActionButton close-after-click @click="run(entry)">
                   <template #icon>
                     <Play :size="20" />
                   </template>
@@ -77,7 +77,7 @@
                   </template>
                   {{ t('Edit or share…') }}
                 </NcActionButton>
-                <NcActionButton @click="remove(entry)">
+                <NcActionButton close-after-click @click="remove(entry)">
                   <template #icon>
                     <Trash2 :size="20" />
                   </template>
@@ -111,7 +111,7 @@
                   <span class="muted">{{ t('Shared by {owner}', { owner: entry.ownerDisplayName ?? entry.owner ?? '' }) }}</span>
                 </button>
                 <NcActions :aria-label="t('Actions')">
-                  <NcActionButton @click="run(entry)">
+                  <NcActionButton close-after-click @click="run(entry)">
                     <template #icon>
                       <Play :size="20" />
                     </template>
@@ -123,7 +123,7 @@
                     </template>
                     {{ t('Edit…') }}
                   </NcActionButton>
-                  <NcActionButton @click="copy(entry)">
+                  <NcActionButton close-after-click @click="copy(entry)">
                     <template #icon>
                       <Copy :size="20" />
                     </template>
@@ -135,7 +135,7 @@
                     </template>
                     {{ t('Copy link') }}
                   </NcActionButton>
-                  <NcActionButton @click="hide(entry)">
+                  <NcActionButton close-after-click @click="hide(entry)">
                     <template #icon>
                       <EyeOff :size="20" />
                     </template>
@@ -181,19 +181,19 @@
                 <span class="muted" :title="describe(entry)">{{ describe(entry) || t('No filters') }}</span>
               </button>
               <NcActions :aria-label="t('Actions')">
-                <NcActionButton @click="run(entry)">
+                <NcActionButton close-after-click @click="run(entry)">
                   <template #icon>
                     <Play :size="20" />
                   </template>
                   {{ t('Run search') }}
                 </NcActionButton>
-                <NcActionButton @click="keep(entry)">
+                <NcActionButton close-after-click @click="keep(entry)">
                   <template #icon>
                     <Save :size="20" />
                   </template>
                   {{ t('Save this search') }}
                 </NcActionButton>
-                <NcActionButton @click="remove(entry)">
+                <NcActionButton close-after-click @click="remove(entry)">
                   <template #icon>
                     <Trash2 :size="20" />
                   </template>
