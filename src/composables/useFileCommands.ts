@@ -57,6 +57,24 @@ export function fileLink(file: FileResult): string {
 }
 
 /**
+ * A file in Files, in its folder and selected, but not opened; a folder opened.
+ *
+ * `/f/{id}` sends a file on with `openfile=true`, which puts it straight into
+ * Viewer or its editor, and "Open in Files" then did the same as editing. This
+ * asks for `openfile=false`, as DoCoNEXT Core's Show in Files does. Copy link
+ * keeps the short `/f/{id}` permalink: whoever receives it wants the file.
+ * @param file the row to show
+ */
+export function showInFilesLink(file: FileResult): string {
+  if (file.isFolder) {
+    return fileLink(file)
+  }
+  const dir = folderOf(file)
+
+  return `${generateUrl('/apps/files/files')}/${file.fileid}?dir=${encodeURIComponent(dir.startsWith('/') ? dir : `/${dir}`)}&openfile=false`
+}
+
+/**
  * @param file the row whose folder to link to
  */
 export function folderLink(file: FileResult): string {
@@ -210,9 +228,9 @@ export function useFileCommands(onChanged?: (_file: FileResult) => void) {
     const commands: FileCommand[] = [
       {
         id: 'open',
-        label: t('Open in Files'),
+        label: file.isFolder ? t('Open in Files') : t('Show in Files'),
         icon: ExternalLink,
-        href: fileLink(file),
+        href: showInFilesLink(file),
         target: '_blank',
       },
     ]
