@@ -19,6 +19,7 @@ numbers are the ones in `appinfo/info.xml`.
 - A notification when someone shares a search with you, and a link that opens
   a saved search straight away.
 - A description for a saved search.
+- Edit a file from its menu, in the editor the Files app would open it in.
 
 ### Changed
 - Saving, renaming and sharing a search happen in one dialog instead of the
@@ -27,6 +28,10 @@ numbers are the ones in `appinfo/info.xml`.
   of reporting no files found.
 - On the Searches page, a search without filters says "No filters", so the
   rows line up.
+- Show in Files opens the file's folder with the file selected, instead of
+  opening the file itself; a folder still opens. The full preview has the
+  layout of DoCoNEXT Core's.
+- An action menu closes once an item in it is picked.
 
 ## [0.9.2] - 2026-10-14
 
