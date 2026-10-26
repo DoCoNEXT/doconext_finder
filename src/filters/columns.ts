@@ -17,6 +17,20 @@ import type { FileResult, MetadataField } from '../types/Search'
  * @param id column id, or a `meta:` field
  * @param metadata the server's metadata registry, for labelling `meta:` ids
  */
+/**
+ * How narrow and how wide a dragged column may be, in pixels. Narrower and not
+ * even a heading fits; wider and one column pushes every other off a laptop
+ * screen.
+ */
+export const COLUMN_WIDTH = { min: 60, max: 800 } as const
+
+/**
+ * @param width a width in pixels, as dragged
+ */
+export function clampColumnWidth(width: number): number {
+  return Math.round(Math.min(COLUMN_WIDTH.max, Math.max(COLUMN_WIDTH.min, width)))
+}
+
 export function columnLabel(t: Translate, id: string, metadata: MetadataField[] = []): string {
   if (isMetadataField(id)) {
     return metadata.find((f) => f.field === id)?.label ?? metadataKeyOf(id)
@@ -81,6 +95,22 @@ export function columnSortField(id: string, metadata: MetadataField[] = []): str
     case 'created': return 'creation_time'
     default: return null
   }
+}
+
+/**
+ * Which way a column sorts on its first click. Words run A→Z; dates and
+ * figures run newest or largest first, since that is what a click on Modified
+ * or Size is nearly always after. Metadata has no date type, so a number
+ * counts as a figure and anything else as words.
+ * @param field a sort field, as {@link columnSortField} names it
+ * @param metadata the server's metadata registry, for the type of a `meta:` field
+ */
+export function sortStartsDescending(field: string, metadata: MetadataField[] = []): boolean {
+  if (isMetadataField(field)) {
+    const type = metadata.find((f) => f.field === field)?.type
+    return type === 'int' || type === 'float' || type === 'int[]'
+  }
+  return field === 'size' || field === 'mtime' || field === 'creation_time'
 }
 
 /**
