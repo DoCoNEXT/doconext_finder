@@ -157,6 +157,12 @@ export interface MetadataField {
    * DoCoNEXT Core, which is the only app that knows.
    */
   principal: { type: string | null, multi: boolean } | null
+  /**
+   * Whether the field holds a calendar day or a moment, so it can be asked
+   * on, before or after a day. Null on every other field, and on all of them
+   * without DoCoNEXT Core. Absent from a server older than the question.
+   */
+  dateKind?: 'date' | 'datetime' | null
 }
 
 /**
@@ -183,6 +189,8 @@ export interface FieldsResponse {
   /** Whatever this server's apps registered — Core's fields appear here. */
   metadata: MetadataField[]
   metadataOperators: Operator[]
+  /** For a metadata field with a `dateKind`. Absent from an older server. */
+  metadataDateOperators?: Operator[]
 }
 
 export interface SearchRequest {

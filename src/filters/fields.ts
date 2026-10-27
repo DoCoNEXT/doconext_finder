@@ -100,15 +100,6 @@ export function operatorLabel(t: Translate, field: string, operator: string): st
     return t('is set')
   }
 
-  if (kind === 'date') {
-    switch (operator) {
-      case 'lt': return t('before')
-      case 'lte': return t('on or before')
-      case 'gt': return t('after')
-      case 'gte': return t('on or after')
-    }
-  }
-
   if (kind === 'size') {
     switch (operator) {
       case 'lt': return t('smaller than')
@@ -116,6 +107,15 @@ export function operatorLabel(t: Translate, field: string, operator: string): st
       case 'gt': return t('larger than')
       case 'gte': return t('at least')
     }
+  }
+
+  // Every other field that is ordered at all is ordered by a day: the file
+  // dates, and a metadata field holding a date or a moment.
+  switch (operator) {
+    case 'lt': return t('before')
+    case 'lte': return t('on or before')
+    case 'gt': return t('after')
+    case 'gte': return t('on or after')
   }
 
   switch (operator) {

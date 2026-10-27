@@ -63,6 +63,8 @@ class SearchController extends ApiController
             // installed its fields appear here without Finder knowing about it.
             'metadata'          => $this->metadataFields->all(),
             'metadataOperators' => FileCondition::METADATA_OPERATORS,
+            // For a key whose `dateKind` says it holds a day or a moment.
+            'metadataDateOperators' => FileCondition::METADATA_DATE_OPERATORS,
         ]);
     }
 

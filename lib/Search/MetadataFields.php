@@ -43,6 +43,9 @@ class MetadataFields
     /** The principal-holding keys and what they hold, asked once per request. @var array<string, array{type: ?string, multi: bool}>|null */
     private ?array $principalFields = null;
 
+    /** @var array<string, 'date'|'datetime'>|null the keys holding a day or a moment, asked once per request */
+    private ?array $dateKinds = null;
+
     public function __construct(
         private IFilesMetadataManager $metadataManager,
         private CoreScope $core,
@@ -69,7 +72,7 @@ class MetadataFields
      * has answered with labels at all: without Core, or with one too old to
      * name its fields, every key still names itself as before.
      *
-     * @return list<array{key: string, field: string, label: string, labels: array<int, string>, type: string, filterable: bool, principal: array{type: ?string, multi: bool}|null}>
+     * @return list<array{key: string, field: string, label: string, labels: array<int, string>, type: string, filterable: bool, principal: array{type: ?string, multi: bool}|null, dateKind: 'date'|'datetime'|null}>
      */
     public function all(): array
     {
@@ -92,12 +95,26 @@ class MetadataFields
                 'type'       => $known->getType($key),
                 'filterable' => in_array($key, $indexed, true),
                 'principal'  => $principals[$key] ?? null,
+                'dateKind'   => $this->dateKind($key),
             ];
         }
 
         usort($fields, static fn (array $a, array $b) => strcmp($a['label'], $b['label']));
 
         return $fields;
+    }
+
+    /**
+     * Whether a key holds a calendar day ('date'), a moment ('datetime') or
+     * neither (null). Both are text to Nextcloud; only Core knows which,
+     * and a day is compared differently from a moment ({@see MetadataDay}).
+     *
+     * @return 'date'|'datetime'|null
+     */
+    public function dateKind(string $key): ?string
+    {
+        $this->dateKinds ??= $this->core->fieldDateKinds();
+        return $this->dateKinds[$key] ?? null;
     }
 
     /** True when the field name addresses metadata rather than a file column. */

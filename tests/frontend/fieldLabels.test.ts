@@ -72,3 +72,15 @@ describe('realmOfScope', () => {
 		expect(realmOfScope(null)).toBeNull()
 	})
 })
+
+describe('a metadata field holding a day or a moment', () => {
+	const sent: MetadataField = { ...field('dcn_core_email_sent_at', 'Sent'), dateKind: 'datetime' }
+
+	it('reads "before" a day rather than the operator it is sent as', () => {
+		const line = describeQuery(t, query({
+			conditions: [{ field: 'meta:dcn_core_email_sent_at', operator: 'lt', value: '2026-06-24' }],
+		}), [sent])
+
+		expect(line).toContain('Sent before 2026-06-24')
+	})
+})

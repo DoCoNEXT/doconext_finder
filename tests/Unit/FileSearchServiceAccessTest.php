@@ -15,6 +15,7 @@ use OCP\Files\Folder;
 use OCP\Files\IRootFolder;
 use OCP\Files\NotFoundException;
 use OCP\FilesMetadata\IFilesMetadataManager;
+use OCP\IDateTimeZone;
 use OCP\IDBConnection;
 use OCP\ITagManager;
 use OCP\IUserManager;
@@ -61,6 +62,7 @@ class FileSearchServiceAccessTest extends TestCase
             $this->coreScope,
             $this->createMock(ContentSearchService::class),
             $this->createMock(IDBConnection::class),
+            $this->createMock(IDateTimeZone::class),
         );
     }
 
