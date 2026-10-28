@@ -42,11 +42,13 @@ final class DbConstants
     private const SEARCHES = 'searches';
     private const SHARES = 'shares';
     private const SHARE_STATE = 'share_state';
+    private const SCHEDULES = 'schedules';
 
     // Resolve all table names from the central prefix constant.
     public const DB_TABLENAME_SEARCHES = self::DB_TABLE_PREFIX . self::SEARCHES;
     public const DB_TABLENAME_SHARES = self::DB_TABLE_PREFIX . self::SHARES;
     public const DB_TABLENAME_SHARE_STATE = self::DB_TABLE_PREFIX . self::SHARE_STATE;
+    public const DB_TABLENAME_SCHEDULES = self::DB_TABLE_PREFIX . self::SCHEDULES;
 
     /**
      * The example table the app template shipped, dropped by the migration that

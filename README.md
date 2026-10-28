@@ -19,6 +19,8 @@ Other DoCoNEXT apps add to it when they are there — see
   runs, when the Full text search app is installed and indexing.
 - **Saved searches** — name a search you run often and share it with people,
   groups or teams; recent searches are kept automatically.
+- **Notifications** — have a saved search run every morning or every week and
+  be told how many files are new or changed since you last looked.
 - **Configurable columns** — choose which columns the result grid shows, in
   which order, and rename them to your own vocabulary.
 - **Grouping** — by type, folder or date, stacked in several levels.

@@ -7,6 +7,7 @@ namespace OCA\DcnFinder\Listener;
 use OCA\DcnFinder\AppInfo\AppConstants;
 use OCA\DcnFinder\Db\SavedSearch;
 use OCA\DcnFinder\Db\SavedSearchMapper;
+use OCA\DcnFinder\Service\ScheduleService;
 use OCA\DcnFinder\Service\SearchHistoryService;
 use OCA\DcnFinder\Service\SearchShareService;
 use OCP\EventDispatcher\Event;
@@ -34,6 +35,7 @@ class UserDeletedListener implements IEventListener
     public function __construct(
         private SavedSearchMapper $mapper,
         private SearchShareService $shares,
+        private ScheduleService $schedules,
         private LoggerInterface $logger,
     ) {
     }
@@ -50,7 +52,9 @@ class UserDeletedListener implements IEventListener
         try {
             // Shares first: they are found through the searches they point at.
             $own = $this->mapper->findByKind($userId, SavedSearch::KIND_SAVED, SearchHistoryService::MAX_SAVED);
-            $this->shares->forgetUser($userId, array_map(static fn (SavedSearch $s) => $s->getId(), $own));
+            $ownIds = array_map(static fn (SavedSearch $s) => $s->getId(), $own);
+            $this->shares->forgetUser($userId, $ownIds);
+            $this->schedules->forgetUser($userId, $ownIds);
             $removed = $this->mapper->deleteByUser($userId);
         } catch (\Throwable $e) {
             // The account is already gone; failing loudly here would only break

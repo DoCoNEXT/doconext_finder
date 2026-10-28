@@ -82,6 +82,33 @@ class FileSearchService
     }
 
     /**
+     * Files written or uploaded after a moment.
+     *
+     * Two columns, because neither says it alone. `mtime` moves with every
+     * save, and with every file an app writes through the PHP API — a mail
+     * the emailfiler files included. But a WebDAV client sends its own mtime,
+     * so a document from three years ago dragged in today arrives three years
+     * old; `upload_time` is what catches that, and core sets it only on a
+     * WebDAV upload, so it complements mtime rather than replacing it.
+     *
+     * Folders are left out. Core propagates a change up the tree, so every
+     * folder above an edited file has a new mtime too, and "12 new or changed
+     * files" would count the dossier, its parent and theirs.
+     */
+    private static function changedSince(int $since): ISearchOperator
+    {
+        return CoreSearch::combine(ISearchBinaryOperator::OPERATOR_AND, [
+            CoreSearch::combine(ISearchBinaryOperator::OPERATOR_OR, [
+                CoreSearch::compare(ISearchComparison::COMPARE_GREATER_THAN, 'mtime', $since),
+                CoreSearch::compare(ISearchComparison::COMPARE_GREATER_THAN, 'upload_time', $since),
+            ]),
+            CoreSearch::combine(ISearchBinaryOperator::OPERATOR_NOT, [
+                CoreSearch::compare(ISearchComparison::COMPARE_EQUAL, 'mimetype', FileInfo::MIMETYPE_FOLDER),
+            ]),
+        ]);
+    }
+
+    /**
      * @return array{results: list<array<string,mixed>>, hasMore: bool, offset: int, limit: int, truncated: bool, scopeUnavailable: bool}
      * @throws NotFoundException when the user has no accessible home folder
      */
@@ -472,6 +499,10 @@ class FileSearchService
             if ($bound !== null) {
                 $parts[] = CoreSearch::compare($operator, 'mtime', $bound);
             }
+        }
+
+        if ($query->changedSince !== null) {
+            $parts[] = self::changedSince($query->changedSince);
         }
 
         $conditions = array_map(fn (FileCondition $c) => $this->toComparison($c), $query->conditions);

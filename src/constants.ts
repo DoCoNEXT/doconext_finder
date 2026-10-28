@@ -125,3 +125,9 @@ export function productName(fallback: string = DEFAULT_PRODUCT_NAME): string {
 }
 
 export const PRODUCT_NAME = productName()
+
+/** ScheduleService::MAX_SCHEDULES: how many searches one user may be notified about. */
+export const SCHEDULE_LIMIT = 20
+
+/** ScheduleService::COUNT_LIMIT: an unseen count above it means "more than this". */
+export const SCHEDULE_COUNT_LIMIT = 100

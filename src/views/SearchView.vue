@@ -189,6 +189,18 @@
     </NcNoteCard>
     <p v-if="aiMessage" class="muted finder__dropped">{{ aiMessage }}</p>
 
+    <!--
+      What a scheduled search found: opened with something new in it, the page
+      shows only that, as the notification counted it. Not a filter in the
+      panel — it has no control there and is never saved with the search — so
+      it gets a line of its own, always visible, and closing it shows the rest.
+    -->
+    <div v-if="store.since" class="finder__chips">
+      <NcChip :text="sinceChip"
+              :aria-label-close="t('Show all results')"
+              @close="showAll" />
+    </div>
+
     <NcNoteCard v-if="message" :type="messageType">{{ message }}</NcNoteCard>
 
     <ViewOptions v-if="store.results.length"
@@ -274,6 +286,7 @@ import { useDistiller } from '../composables/useDistiller'
 import { AiApi } from '../services/AiApi'
 import { anyTime, anyType, canonicalModifiedPreset, fileTypePresets, modifiedPresets } from '../filters/presets'
 import { activeFilters } from '../filters/describe'
+import { sinceLabel } from '../filters/schedule'
 import ConditionRow from '../components/ConditionRow.vue'
 import FolderScope from '../components/FolderScope.vue'
 import ScopeSelector from '../components/ScopeSelector.vue'
@@ -546,6 +559,16 @@ function search() {
   store.run(t, 0)
 }
 
+const sinceChip = computed(() => (store.since
+  ? t('New or changed since {since}', { since: sinceLabel(store.since) })
+  : ''))
+
+/** Drops the "new since" narrowing; unlike a filter chip it has no Search to wait for. */
+function showAll() {
+  store.since = null
+  store.run(t, 0, false)
+}
+
 /**
  * Clears the search and everything said about it.
  *
@@ -574,7 +597,7 @@ function refresh() {
  */
 function runSuggestion(entry: StoredSearch) {
   history.markRun(entry)
-  store.apply(entry.query)
+  store.open(entry)
   // Re-running a stored search is not itself a new search worth recording.
   store.run(t, 0, entry.kind !== 'saved')
 }

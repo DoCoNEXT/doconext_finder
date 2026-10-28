@@ -208,6 +208,11 @@ export interface SearchRequest {
    * would reach forward into today.
    */
   modifiedBefore?: number
+  /**
+   * Unix seconds; only files written or uploaded after this, folders left out.
+   * What a scheduled search counts — never part of a stored query.
+   */
+  changedSince?: number
   /** Where the search starts. Not a condition — see FileScope on the server. */
   scope?: { level: ScopeLevel, id: number }
   matchAny?: boolean
@@ -278,6 +283,31 @@ export interface StoredSearch {
    * open, and its label was withheld.
    */
   scopeUnavailable?: boolean
+  /** The reader's own schedule on a saved search; null when there is none. */
+  schedule?: SearchSchedule | null
+}
+
+export type ScheduleFrequency = 'daily' | 'weekdays' | 'weekly'
+
+/**
+ * When the reader is told what is new in a saved search. Theirs alone, also on
+ * a search someone shared with them.
+ */
+export interface SearchSchedule {
+  frequency: ScheduleFrequency
+  /** ISO day of the week for 'weekly', 1 = Monday; 0 otherwise. */
+  weekday: number
+  /** HH:MM on the reader's own clock. */
+  time: string
+  /** Unix seconds. */
+  nextRun: number
+  /** Unix seconds: what changed after this is new. */
+  seenAt: number
+  /**
+   * How many the last run found since seenAt; 0 once seen. More than
+   * SCHEDULE_COUNT_LIMIT means "more than that".
+   */
+  unseen: number
 }
 
 export interface SearchHistory {

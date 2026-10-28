@@ -266,6 +266,33 @@ class SearchShareService
     }
 
     /**
+     * A search shared with this user and still in their list — not hidden
+     * through every share that reaches them.
+     *
+     * @throws DoesNotExistException when it is not shared with them, or hidden
+     */
+    public function visibleTo(string $userId, int $searchId): SavedSearch
+    {
+        $reached = $this->reachedBy($userId, $searchId)[$searchId] ?? null;
+        if ($reached === null) {
+            throw new DoesNotExistException('Not shared with this user');
+        }
+
+        $states = $this->states->findForUser(
+            $userId,
+            array_map(static fn (SearchShare $s) => $s->getId(), $reached['shares']),
+        );
+        foreach ($reached['shares'] as $share) {
+            $state = $states[$share->getId()] ?? null;
+            if ($state === null || $state->getHidden() === 0) {
+                return $reached['search'];
+            }
+        }
+
+        throw new DoesNotExistException('Hidden by this user');
+    }
+
+    /**
      * The search shared with this user that carries this exact query, if any —
      * so that running it by hand is a run of that search rather than a new
      * recent beside it.

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OCA\DcnFinder\Controller;
 
 use OCA\DcnFinder\Db\SearchShare;
+use OCA\DcnFinder\Service\ScheduleService;
 use OCA\DcnFinder\Service\SearchShareService;
 use OCA\DcnFinder\Service\ShareRecipients;
 use OCA\DcnFinder\Service\ShareRefusedException;
@@ -33,6 +34,7 @@ class SearchShareController extends ApiController
         IRequest $request,
         private SearchShareService $service,
         private ShareRecipients $recipients,
+        private ScheduleService $schedules,
         private IUserSession $userSession,
     ) {
         parent::__construct($appName, $request);
@@ -112,6 +114,8 @@ class SearchShareController extends ApiController
     {
         return $this->withUser(fn (string $uid) => $this->answer(function () use ($uid, $id) {
             $this->service->hide($uid, $id);
+            // Out of the list, so nothing more to hear about either.
+            $this->schedules->remove($uid, $id);
 
             return null;
         }));

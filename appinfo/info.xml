@@ -12,6 +12,9 @@ things up all day.
 - **Saved searches** — name a search you run often and get back to it in one
   click, and share it with people, groups or teams. Recent searches are kept
   automatically.
+- **Notifications** — have a saved search run on its own every morning or
+  every week, and be told how many files are new or changed since you last
+  looked.
 - **Configurable columns** — choose which columns the result grid shows, in
   which order, and rename them to your own vocabulary.
 - **Grouping** — group results by type, folder or date to see the shape of a
@@ -46,6 +49,9 @@ Finder additionally filters and groups on Core's metadata fields.
 	<dependencies>
 		<nextcloud min-version="33" max-version="35"/>
 	</dependencies>
+	<background-jobs>
+		<job>OCA\DcnFinder\BackgroundJob\RunScheduledSearches</job>
+	</background-jobs>
 	<settings>
 		<admin>OCA\DcnFinder\Settings\AdminSettings</admin>
 		<admin-section>OCA\DcnFinder\Settings\AdminSection</admin-section>

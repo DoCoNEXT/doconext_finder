@@ -7,7 +7,7 @@
  */
 import axios from '@nextcloud/axios'
 import { generateUrl } from '@nextcloud/router'
-import { API_BASE } from '../constants'
+import { API_BASE, SCHEDULE_LIMIT } from '../constants'
 import { RETIRED_FIELDS } from '../filters/fields'
 import { useI18n } from '../composables/useI18n'
 import type {
@@ -19,6 +19,7 @@ import type {
   SearchHistory,
   SearchRequest,
   SearchResponse,
+  SearchSchedule,
   SearchShare,
   SearchState,
   Sharee,
@@ -101,6 +102,7 @@ function refusalMessage(reason: string): string {
     no_such_group: t('This group does not exist'),
     not_group_member: t('You can only share with groups you are a member of'),
     not_team_member: t('You can only share with teams you are a member of'),
+    max_schedules: t('You can be notified about at most {count} searches. Stop one to start another.', { count: SCHEDULE_LIMIT }),
   }
   return messages[reason] ?? ''
 }
@@ -393,6 +395,34 @@ export const SearchApi = {
   async unshare(id: number, shareId: number): Promise<void> {
     try {
       await axios.delete(url(`/searches/${id}/shares/${shareId}`))
+    } catch (error) {
+      throw describe(error)
+    }
+  },
+
+  /**
+   * Sets when the reader is told what is new in a saved search, or changes it.
+   * @param id the saved search, theirs or shared with them
+   * @param schedule frequency, day of the week (weekly) and time
+   * @param schedule.frequency
+   * @param schedule.weekday
+   * @param schedule.time
+   */
+  async setSchedule(id: number, schedule: Pick<SearchSchedule, 'frequency' | 'weekday' | 'time'>): Promise<SearchSchedule> {
+    try {
+      const { data } = await axios.put<SearchSchedule>(url(`/searches/${id}/schedule`), schedule)
+      return data
+    } catch (error) {
+      throw describe(error)
+    }
+  },
+
+  /**
+   * @param id the saved search to stop hearing about
+   */
+  async removeSchedule(id: number): Promise<void> {
+    try {
+      await axios.delete(url(`/searches/${id}/schedule`))
     } catch (error) {
       throw describe(error)
     }

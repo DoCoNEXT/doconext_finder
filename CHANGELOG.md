@@ -6,6 +6,14 @@ numbers are the ones in `appinfo/info.xml`.
 
 ## [Unreleased]
 
+### Added
+- Be notified about a saved search: every day, every weekday or once a week at
+  a time you choose, Finder runs it and tells you how many files are new or
+  changed since you last opened it. The notification names the search, never
+  the files. Opening the search shows only what is new, until you close that
+  filter. Works on searches shared with you too; the schedule is yours alone.
+  Needs Nextcloud's background jobs running from cron to be on time.
+
 ## [0.11.0] - 2026-10-26
 
 ### Added

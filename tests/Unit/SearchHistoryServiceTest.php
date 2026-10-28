@@ -6,6 +6,7 @@ namespace OCA\DcnFinder\Tests\Unit;
 
 use OCA\DcnFinder\Db\SavedSearch;
 use OCA\DcnFinder\Db\SavedSearchMapper;
+use OCA\DcnFinder\Service\ScheduleService;
 use OCA\DcnFinder\Service\SearchHistoryService;
 use OCA\DcnFinder\Service\SearchShareService;
 use OCP\AppFramework\Db\DoesNotExistException;
@@ -162,7 +163,7 @@ class SearchHistoryServiceTest extends TestCase
             $shares->method('sharedAmong')->willReturn([]);
         }
 
-        return new SearchHistoryService($mapper, $shares);
+        return new SearchHistoryService($mapper, $shares, $this->createMock(ScheduleService::class));
     }
 
     private static function saved(int $id, string $owner): SavedSearch

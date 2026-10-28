@@ -29,6 +29,12 @@ namespace OCA\DcnFinder\Search;
  * emptied the result set. The union costs the ranked order the index gives:
  * see {@see SORT_RELEVANCE}, which is why that sort is refused once a term is
  * present.
+ *
+ * {@see $changedSince} is what a scheduled search adds: only what was written
+ * or uploaded after a moment. It is never part of a stored query — a moment
+ * frozen into a saved search would be wrong the day after — but a request
+ * field, so the page that shows what a schedule found asks the same question
+ * the background job counted.
  */
 final class FileQuery
 {
@@ -58,6 +64,7 @@ final class FileQuery
         public readonly array $mimetypes,
         public readonly ?int $modifiedAfter,
         public readonly ?int $modifiedBefore,
+        public readonly ?int $changedSince,
         public readonly ?FileScope $scope,
         public readonly bool $matchAny,
         public readonly int $limit,
@@ -133,6 +140,11 @@ final class FileQuery
             $modifiedBefore = null;
         }
 
+        $changedSince = isset($body['changedSince']) ? (int)$body['changedSince'] : null;
+        if ($changedSince !== null && $changedSince <= 0) {
+            $changedSince = null;
+        }
+
         // A scope narrows *where* rather than *what*, so it counts as a filter:
         // "everything in this dossier" is a search a user may reasonably run
         // without typing a term.
@@ -140,7 +152,7 @@ final class FileQuery
             ? FileScope::fromArray($body['scope'])
             : null;
 
-        if ($term === '' && $content === '' && $conditions === [] && $mimetypes === [] && $modifiedAfter === null && $modifiedBefore === null && $scope === null) {
+        if ($term === '' && $content === '' && $conditions === [] && $mimetypes === [] && $modifiedAfter === null && $modifiedBefore === null && $changedSince === null && $scope === null) {
             throw new \InvalidArgumentException('provide a search term or at least one filter');
         }
 
@@ -173,6 +185,7 @@ final class FileQuery
             mimetypes: $mimetypes,
             modifiedAfter: $modifiedAfter,
             modifiedBefore: $modifiedBefore,
+            changedSince: $changedSince,
             scope: $scope,
             matchAny: (bool)($body['matchAny'] ?? false),
             limit: $limit,

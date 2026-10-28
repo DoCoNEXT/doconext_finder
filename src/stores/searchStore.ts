@@ -16,7 +16,7 @@ import type { Translate } from '../filters/presets'
 import { labelledFor, realmOfScope } from '../filters/metadata'
 import { isUsable } from '../filters/fields'
 import { sortStartsDescending } from '../filters/columns'
-import type { Condition, FieldsResponse, FileResult, MetadataField, SearchState } from '../types/Search'
+import type { Condition, FieldsResponse, FileResult, MetadataField, SearchState, StoredSearch } from '../types/Search'
 
 /**
  * How many rows "Load all" will fetch before stopping. A row cap rather than a
@@ -43,6 +43,16 @@ export function emptyState(): SearchState {
 interface State {
   query: SearchState
   /**
+   * Unix seconds: show only what was written or uploaded after this. Set when
+   * a scheduled search is opened with something new in it, so the page shows
+   * what the notification counted.
+   *
+   * Held apart from `query` on purpose: a moment frozen into a saved search
+   * would be wrong the day after, and nothing that stores a query — saving,
+   * recents — may carry it along.
+   */
+  since: number | null
+  /**
    * The words the search that produced these results looked for, for the
    * preview to mark in the document. Held apart from `query`, which changes
    * with every keystroke in the search box: the marks belong to the search that
@@ -62,6 +72,7 @@ interface State {
 export const useSearchStore = defineStore('search', {
   state: (): State => ({
     query: emptyState(),
+    since: null,
     highlight: '',
     schema: null,
     results: [],
@@ -116,6 +127,7 @@ export const useSearchStore = defineStore('search', {
     reset() {
       const preferences = usePreferencesStore()
       this.query = { ...emptyState(), sort: preferences.sort, descending: preferences.descending }
+      this.since = null
       this.highlight = ''
       this.results = []
       this.searched = false
@@ -130,6 +142,18 @@ export const useSearchStore = defineStore('search', {
      */
     apply(query: SearchState) {
       this.query = { ...emptyState(), ...query, conditions: [...(query.conditions ?? [])] }
+      this.since = null
+    },
+
+    /**
+     * Loads a stored search, and — when its schedule found something the user
+     * has not seen — narrows it to that, from anywhere it is opened.
+     * @param entry the saved or recent search to open
+     */
+    open(entry: StoredSearch) {
+      this.apply(entry.query)
+      const schedule = entry.schedule
+      this.since = schedule && schedule.unseen > 0 ? schedule.seenAt : null
     },
 
     /**
@@ -165,6 +189,7 @@ export const useSearchStore = defineStore('search', {
         mimetypes: type.mimetypes,
         modifiedAfter: period.after ?? undefined,
         modifiedBefore: period.before ?? undefined,
+        changedSince: this.since ?? undefined,
         // Only the level and the id travel; the label is ours to display, and
         // sending it back would invite the server to trust a client's wording.
         scope: this.query.scope

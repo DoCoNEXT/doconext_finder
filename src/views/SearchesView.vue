@@ -64,6 +64,21 @@
                       class="history__mark"
                       :aria-label="t('Shared')"
                       :title="t('Shared')" />
+              <!--
+                What the schedule found and has not been looked at, or else
+                that there is a schedule at all. Counts only: the names are on
+                the page the search opens, never in anything sent.
+              -->
+              <span v-if="(entry.schedule?.unseen ?? 0) > 0"
+                    class="history__new"
+                    :title="scheduleTitle(entry)">
+                {{ unseenLabel(t, entry.schedule?.unseen ?? 0) }}
+              </span>
+              <BellRing v-else-if="entry.schedule"
+                        :size="18"
+                        class="history__mark"
+                        :aria-label="scheduleTitle(entry)"
+                        :title="scheduleTitle(entry)" />
               <NcActions :aria-label="t('Actions')">
                 <NcActionButton close-after-click @click="run(entry)">
                   <template #icon>
@@ -76,6 +91,12 @@
                     <Pencil :size="20" />
                   </template>
                   {{ t('Edit or share…') }}
+                </NcActionButton>
+                <NcActionButton close-after-click @click="schedule(entry)">
+                  <template #icon>
+                    <Bell :size="20" />
+                  </template>
+                  {{ entry.schedule ? t('Change notification…') : t('Notify me…') }}
                 </NcActionButton>
                 <NcActionButton close-after-click @click="remove(entry)">
                   <template #icon>
@@ -110,6 +131,21 @@
                   <span class="muted" :title="describe(entry)">{{ describe(entry) || t('No filters') }}</span>
                   <span class="muted">{{ t('Shared by {owner}', { owner: entry.ownerDisplayName ?? entry.owner ?? '' }) }}</span>
                 </button>
+                <!--
+                  What the schedule found and has not been looked at, or else
+                  that there is a schedule at all. Counts only: the names are on
+                  the page the search opens, never in anything sent.
+                -->
+                <span v-if="(entry.schedule?.unseen ?? 0) > 0"
+                      class="history__new"
+                      :title="scheduleTitle(entry)">
+                  {{ unseenLabel(t, entry.schedule?.unseen ?? 0) }}
+                </span>
+                <BellRing v-else-if="entry.schedule"
+                          :size="18"
+                          class="history__mark"
+                          :aria-label="scheduleTitle(entry)"
+                          :title="scheduleTitle(entry)" />
                 <NcActions :aria-label="t('Actions')">
                   <NcActionButton close-after-click @click="run(entry)">
                     <template #icon>
@@ -122,6 +158,12 @@
                       <Pencil :size="20" />
                     </template>
                     {{ t('Edit…') }}
+                  </NcActionButton>
+                  <NcActionButton close-after-click @click="schedule(entry)">
+                    <template #icon>
+                      <Bell :size="20" />
+                    </template>
+                    {{ entry.schedule ? t('Change notification…') : t('Notify me…') }}
                   </NcActionButton>
                   <NcActionButton close-after-click @click="copy(entry)">
                     <template #icon>
@@ -220,6 +262,8 @@ import {
   NcNoteCard,
 } from '@nextcloud/vue'
 import {
+  Bell,
+  BellRing,
   Copy,
   EyeOff,
   Link as LinkIcon,
@@ -231,6 +275,7 @@ import {
   Trash2,
 } from '@lucide/vue'
 import { spawnDialog } from '@nextcloud/vue/functions/dialog'
+import ScheduleDialog from '../components/ScheduleDialog.vue'
 import SearchDialog from '../components/SearchDialog.vue'
 import { useClipboard } from '../composables/useClipboard'
 import { searchLink } from '../services/links'
@@ -239,6 +284,7 @@ import { useHistoryStore } from '../stores/historyStore'
 import { useSearchStore } from '../stores/searchStore'
 import { useSaveSearch } from '../composables/useSaveSearch'
 import { describeStored } from '../filters/describe'
+import { describeSchedule, sinceLabel, unseenLabel } from '../filters/schedule'
 import type { StoredSearch } from '../types/Search'
 
 const { t } = useI18n()
@@ -286,6 +332,33 @@ async function edit(entry: StoredSearch) {
   if (await spawnDialog(SearchDialog, { entry })) {
     await guard(() => history.load(true))
   }
+}
+
+/**
+ * When the user hears what is new in this search — theirs or shared with
+ * them; either way the schedule is theirs alone.
+ * @param entry a saved search
+ */
+async function schedule(entry: StoredSearch) {
+  if (await spawnDialog(ScheduleDialog, { entry })) {
+    await guard(() => history.load(true))
+  }
+}
+
+/**
+ * The tooltip on a scheduled search's mark: when it runs, and — with
+ * something new — since when.
+ * @param entry a saved search with a schedule
+ */
+function scheduleTitle(entry: StoredSearch): string {
+  const schedule = entry.schedule
+  if (!schedule) {
+    return ''
+  }
+  const when = describeSchedule(t, schedule)
+  return schedule.unseen > 0
+    ? t('{when}. New or changed since {since}.', { when, since: sinceLabel(schedule.seenAt) })
+    : when
 }
 
 /**
@@ -475,10 +548,23 @@ async function guard(action: () => Promise<unknown>) {
     margin: 12px 4px;
   }
 
-  // Says a search of the user's own is shared, beside its menu.
+  // Says a search of the user's own is shared, or scheduled, beside its menu.
   &__mark {
     flex: none;
     color: var(--color-text-maxcontrast);
+  }
+
+  // What a schedule found and the user has not opened: the one thing in the
+  // row that asks to be looked at, so it carries the primary colour.
+  &__new {
+    flex: none;
+    padding: 2px 8px;
+    border-radius: var(--border-radius-pill);
+    background: var(--color-primary-element);
+    color: var(--color-primary-element-text);
+    font-size: 90%;
+    font-weight: 600;
+    white-space: nowrap;
   }
 
   // Pushed to the far end of its heading so it never sits against the count.

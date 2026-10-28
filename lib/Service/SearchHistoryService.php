@@ -44,12 +44,14 @@ class SearchHistoryService
     public function __construct(
         private SavedSearchMapper $mapper,
         private SearchShareService $shares,
+        private ScheduleService $schedules,
     ) {
     }
 
     /**
      * The user's own searches of one kind. Each says whether it is shared with
-     * anyone, so the list can show it.
+     * anyone, so the list can show it, and — a saved one — when the user is
+     * told what is new in it.
      *
      * @return array<string,mixed>[]
      */
@@ -60,16 +62,19 @@ class SearchHistoryService
             $kind,
             $kind === SavedSearch::KIND_RECENT ? self::KEEP_RECENTS : self::MAX_SAVED,
         );
-        $shared = $kind === SavedSearch::KIND_SAVED
+        $saved = $kind === SavedSearch::KIND_SAVED;
+        $shared = $saved
             ? array_flip($this->shares->sharedAmong(array_map(static fn (SavedSearch $s) => $s->getId(), $entries)))
             : [];
+        $schedules = $saved ? $this->schedules->forUser($userId) : [];
 
         return array_map(
             static fn (SavedSearch $s) => [
                 ...$s->toArray(),
-                'mine'    => true,
-                'shared'  => isset($shared[$s->getId()]),
-                'canEdit' => true,
+                'mine'     => true,
+                'shared'   => isset($shared[$s->getId()]),
+                'canEdit'  => true,
+                'schedule' => isset($schedules[$s->getId()]) ? $schedules[$s->getId()]->toArray() : null,
             ],
             $entries,
         );
@@ -82,7 +87,15 @@ class SearchHistoryService
      */
     public function listShared(string $userId): array
     {
-        return $this->shares->sharedWith($userId);
+        $schedules = $this->schedules->forUser($userId);
+
+        return array_map(
+            static fn (array $entry) => [
+                ...$entry,
+                'schedule' => isset($schedules[$entry['id']]) ? $schedules[$entry['id']]->toArray() : null,
+            ],
+            $this->shares->sharedWith($userId),
+        );
     }
 
     /**
@@ -256,6 +269,9 @@ class SearchHistoryService
      * Records that a stored search was run. One shared with the user moves in
      * their own list only.
      *
+     * Opening it is also looking at what its schedule found: that is seen now,
+     * and the notification about it goes.
+     *
      * @throws DoesNotExistException
      */
     public function touch(string $userId, int $id): void
@@ -268,11 +284,13 @@ class SearchHistoryService
             } catch (DoesNotExistException) {
                 throw $notOwn;
             }
+            $this->schedules->markSeen($userId, $id);
 
             return;
         }
         $entry->setLastRun(time());
         $this->mapper->update($entry);
+        $this->schedules->markSeen($userId, $id);
     }
 
     /**
@@ -286,6 +304,7 @@ class SearchHistoryService
         $entry = $this->mapper->findOwned($id, $userId);
         if ($entry->getKind() === SavedSearch::KIND_SAVED) {
             $this->shares->forgetSearch($id);
+            $this->schedules->forgetSearch($id);
         }
         $this->mapper->delete($entry);
     }

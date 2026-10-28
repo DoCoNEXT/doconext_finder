@@ -48,6 +48,15 @@
             -->
             <TextSearch :size="20" />
           </template>
+          <!--
+            How many scheduled searches found something not yet looked at —
+            the one place in the app that says so wherever you are in it.
+          -->
+          <template v-if="unseenSearches" #counter>
+            <NcCounterBubble :count="unseenSearches"
+                             type="highlighted"
+                             :title="unseenTitle" />
+          </template>
         </NcAppNavigationItem>
       </template>
 
@@ -112,6 +121,7 @@ import {
   NcAppNavigationItem,
   NcButton,
   NcContent,
+  NcCounterBubble,
 } from '@nextcloud/vue'
 import { generateUrl } from '@nextcloud/router'
 import { showError } from '@nextcloud/dialogs'
@@ -133,7 +143,7 @@ import type { FileResult, StoredSearch } from './types/Search'
 
 type Page = 'search' | 'favorites' | 'searches'
 
-const { t } = useI18n()
+const { t, n } = useI18n()
 const store = useSearchStore()
 
 const preferences = usePreferencesStore()
@@ -143,6 +153,17 @@ const history = useHistoryStore()
 const { railed, canRail, railClass, toggleRail } = useNavigationRail()
 
 const railToggleLabel = computed(() => (railed.value ? t('Expand menu') : t('Collapse menu')))
+
+/** Scheduled searches whose last run found something the user has not opened. */
+const unseenSearches = computed(() => (
+  [...history.saved, ...history.shared].filter((entry) => (entry.schedule?.unseen ?? 0) > 0).length
+))
+
+const unseenTitle = computed(() => n(
+  '%n scheduled search found something new',
+  '%n scheduled searches found something new',
+  unseenSearches.value,
+))
 
 const appId = APP_ID
 const productName = PRODUCT_NAME
@@ -155,6 +176,8 @@ onMounted(async () => {
     // Loaded here rather than per page: Favorites needs the metadata labels too.
     store.loadSchema(),
   ])
+  // For the count beside Searches, which is there on every page.
+  history.load()
   if (linked !== null) {
     // A linked search runs with the user's page size and the field names in
     // hand, as one picked from the list would.
@@ -247,7 +270,7 @@ async function toggleFavorite(file: FileResult) {
  * @param entry the saved or recent search to run
  */
 function runStored(entry: StoredSearch) {
-  store.apply(entry.query)
+  store.open(entry)
   go('search')
   // Re-running from history is not itself a new search worth recording; the
   // entry already exists and its timestamp was just bumped.
