@@ -15,7 +15,7 @@
     <NcNoteCard v-if="history.error" type="error">
       {{ t('Your saved and recent searches could not be loaded. Reload the page to try again.') }}
     </NcNoteCard>
-    <NcLoadingIcon v-if="history.loading" :size="28" class="history__loading" />
+    <DcnLoading v-if="history.loading" class="history__loading" />
 
     <!--
       The two lists sit next to each other rather than stacked: they are the
@@ -251,6 +251,7 @@
 </template>
 
 <script setup lang="ts">
+import { DcnLoading } from '@doconext/nc-ui'
 import { onMounted, ref } from 'vue'
 import { showConfirmation, showError, showSuccess } from '@nextcloud/dialogs'
 import {
@@ -258,7 +259,6 @@ import {
   NcActions,
   NcButton,
   NcEmptyContent,
-  NcLoadingIcon,
   NcNoteCard,
 } from '@nextcloud/vue'
 import {

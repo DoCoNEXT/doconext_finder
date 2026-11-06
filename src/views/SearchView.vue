@@ -219,7 +219,7 @@
     </p>
 
     <DcnCard class="finder__results">
-      <NcLoadingIcon v-if="store.loading" class="finder__loading" :size="32" />
+      <DcnLoading v-if="store.loading" class="finder__loading" :label="t('Searching…')" />
 
       <!--
         Not when the scope reached nowhere: "loosen the filters" would send
@@ -264,7 +264,7 @@
 </template>
 
 <script setup lang="ts">
-import { DcnCard } from '@doconext/nc-ui'
+import { DcnCard, DcnLoading } from '@doconext/nc-ui'
 import { computed, onMounted, ref, watch } from 'vue'
 import {
   NcButton,

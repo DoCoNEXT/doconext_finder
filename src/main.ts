@@ -14,9 +14,10 @@ import './styles/filter-set.scss'
 import '@doconext/nc-ui/styles'
 import { configure } from '@doconext/nc-ui'
 import { APP_ID } from './constants'
+import { useI18n } from './composables/useI18n'
 import App from './App.vue'
 
-configure({ appId: APP_ID })
+configure({ appId: APP_ID, t: useI18n().t })
 
 // Mounts into templates/index.php's #doconext_finder div.
 createApp(App).use(createPinia()).mount('#doconext_finder')

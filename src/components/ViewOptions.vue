@@ -4,24 +4,32 @@
     <span class="muted">{{ t('Group by:') }}</span>
 
     <div v-if="levels.length" class="view-options__levels">
-      <span v-for="(level, index) in levels" :key="level" class="chip">
-        <span class="chip__label">{{ levelLabel(level) }}</span>
-        <!--
-          Bare <button>s, not NcButton: three glyph-sized controls inside one
-          chip, where an NcButton's 34px box would make the chip a toolbar.
-        -->
-        <button v-if="index > 0"
-                class="chip__button"
-                :aria-label="t('Move outward')"
-                @click="preferences.moveGrouping(scope, level, -1)">‹</button>
-        <button v-if="index < levels.length - 1"
-                class="chip__button"
-                :aria-label="t('Move inward')"
-                @click="preferences.moveGrouping(scope, level, 1)">›</button>
-        <button class="chip__button"
-                :aria-label="t('Remove level')"
-                @click="preferences.removeGrouping(scope, level)">✕</button>
-      </span>
+      <!--
+        NcChip, as the filter chips above: one kind of chip on the page. A lone
+        level closes with its cross; with more than one, the menu also moves
+        it outward or inward, as the desktop app's grouping does.
+      -->
+      <NcChip v-for="(level, index) in levels"
+              :key="level"
+              variant="secondary"
+              :text="levelLabel(level)"
+              :aria-label-close="t('Remove level')"
+              @close="preferences.removeGrouping(scope, level)">
+        <template v-if="levels.length > 1" #actions>
+          <NcActionButton v-if="index > 0" @click="preferences.moveGrouping(scope, level, -1)">
+            <template #icon>
+              <ChevronLeft :size="20" />
+            </template>
+            {{ t('Move outward') }}
+          </NcActionButton>
+          <NcActionButton v-if="index < levels.length - 1" @click="preferences.moveGrouping(scope, level, 1)">
+            <template #icon>
+              <ChevronRight :size="20" />
+            </template>
+            {{ t('Move inward') }}
+          </NcActionButton>
+        </template>
+      </NcChip>
       <NcButton variant="tertiary" @click="preferences.clearGrouping(scope)">
         {{ t('Clear') }}
       </NcButton>
@@ -141,9 +149,9 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { NcButton, NcCheckboxRadioSwitch, NcInputField } from '@nextcloud/vue'
+import { NcActionButton, NcButton, NcCheckboxRadioSwitch, NcChip, NcInputField } from '@nextcloud/vue'
 import { DcnDialog } from '@doconext/nc-ui'
-import { ArrowDown, ArrowUp, Columns3, X } from '@lucide/vue'
+import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight, Columns3, X } from '@lucide/vue'
 import { useI18n } from '../composables/useI18n'
 import { useColumnWidths } from '../composables/useColumnWidths'
 import { MAX_GROUPING_LEVELS, usePreferencesStore } from '../stores/preferencesStore'
@@ -264,32 +272,6 @@ function onAddColumn(event: Event) {
 
   &__hint {
     font-size: 90%;
-  }
-}
-
-.chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 2px;
-  padding: 2px 4px 2px 10px;
-  border-radius: var(--border-radius-pill, 16px);
-  background: var(--color-primary-element-light);
-
-  &__label {
-    font-size: 90%;
-  }
-
-  &__button {
-    background: none;
-    border: none;
-    cursor: pointer;
-    padding: 0 4px;
-    color: inherit;
-    line-height: 1;
-
-    &:hover {
-      color: var(--color-primary-element);
-    }
   }
 }
 

@@ -15,7 +15,7 @@
     </div>
 
     <NcNoteCard v-if="error" type="error">{{ error }}</NcNoteCard>
-    <NcLoadingIcon v-if="loading && !loaded" :size="32" class="favorites__loading" />
+    <DcnLoading v-if="loading && !loaded" class="favorites__loading" />
 
     <NcEmptyContent v-else-if="loaded && files.length === 0"
                     :name="t('No favorites yet')"
@@ -43,7 +43,7 @@
 </template>
 
 <script setup lang="ts">
-import { DcnCard } from '@doconext/nc-ui'
+import { DcnCard, DcnLoading } from '@doconext/nc-ui'
 import { onActivated, onMounted, ref } from 'vue'
 import {
   NcButton,
