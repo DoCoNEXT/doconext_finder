@@ -219,7 +219,7 @@
       The list's own toolbar — grouping, columns — sits in the card, on top of
       the list it arranges, rather than loose on the page above it.
     -->
-    <DcnCard class="finder__results">
+    <DcnCard v-if="hasList" class="finder__results">
       <ViewOptions v-if="store.results.length"
                    class="finder__toolbar"
                    scope="search"
@@ -307,6 +307,15 @@ import type { StoredSearch } from '../types/Search'
 
 const { t } = useI18n()
 const store = useSearchStore()
+
+/**
+ * Whether the results card has anything to hold: a search running, its
+ * results, or the word that it found none. Before the first search it is not
+ * drawn at all; an empty card there was a large white block with nothing in it.
+ */
+const hasList = computed(() => store.loading
+  || store.results.length > 0
+  || (store.searched && store.error !== 'scope-unavailable'))
 
 /**
  * Whether the term is looked for inside the files as well as in their names.
