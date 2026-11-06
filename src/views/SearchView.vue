@@ -38,6 +38,7 @@
         </template>
         {{ t('New search') }}
       </NcButton>
+      <DetailsPanelToggle />
     </div>
 
     <!--
@@ -203,10 +204,6 @@
 
     <NcNoteCard v-if="message" :type="messageType">{{ message }}</NcNoteCard>
 
-    <ViewOptions v-if="store.results.length"
-                 scope="search"
-                 :partial="store.hasMore && !store.loadedAll" />
-
     <!--
       Reading inside the files is the one part of a search here that is not
       exhaustive: the index answers with its best matches, and the filters
@@ -218,7 +215,15 @@
       {{ t('Every matching name is listed. Files that only mention the term are the index’s best matches, so there may be more of those.') }}
     </p>
 
+    <!--
+      The list's own toolbar — grouping, columns — sits in the card, on top of
+      the list it arranges, rather than loose on the page above it.
+    -->
     <DcnCard class="finder__results">
+      <ViewOptions v-if="store.results.length"
+                   class="finder__toolbar"
+                   scope="search"
+                   :partial="store.hasMore && !store.loadedAll" />
       <DcnLoading v-if="store.loading" class="finder__loading" :label="t('Searching…')" />
 
       <!--
@@ -294,6 +299,7 @@ import ScopeSelector from '../components/ScopeSelector.vue'
 import FileTable from '../components/FileTable.vue'
 import SearchBox from '../components/SearchBox.vue'
 import ViewOptions from '../components/ViewOptions.vue'
+import DetailsPanelToggle from '../components/DetailsPanelToggle.vue'
 import type { ActiveFilter } from '../filters/describe'
 import type { FileTypePreset, ModifiedPreset } from '../filters/presets'
 import type { ScopeChip } from '../filters/distilled'
@@ -764,7 +770,22 @@ async function save() {
   &__results {
     flex: 1 1 auto;
     min-height: 0;
-    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+
+    // The table scrolls itself, below the toolbar, which stays in view.
+    > :not(.finder__toolbar) {
+      flex: 1 1 auto;
+      min-height: 0;
+    }
+  }
+
+  &__toolbar {
+    flex: 0 0 auto;
+    margin: 0;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--color-border);
   }
 
   &__paging {

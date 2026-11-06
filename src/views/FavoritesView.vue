@@ -12,6 +12,7 @@
           <RefreshCw v-else :size="20" />
         </template>
       </NcButton>
+      <DetailsPanelToggle />
     </div>
 
     <NcNoteCard v-if="error" type="error">{{ error }}</NcNoteCard>
@@ -26,8 +27,8 @@
     </NcEmptyContent>
 
     <template v-else-if="files.length">
-      <ViewOptions scope="favorites" />
       <DcnCard class="favorites__results">
+        <ViewOptions class="favorites__toolbar" scope="favorites" />
         <FileTable :files="files"
                    scope="favorites"
                    :sort="sort"
@@ -59,6 +60,7 @@ import { useSelectionStore } from '../stores/selectionStore'
 import { sortStartsDescending } from '../filters/columns'
 import FileTable from '../components/FileTable.vue'
 import ViewOptions from '../components/ViewOptions.vue'
+import DetailsPanelToggle from '../components/DetailsPanelToggle.vue'
 import type { FileResult } from '../types/Search'
 
 const { t } = useI18n()
@@ -171,7 +173,21 @@ async function unfavorite(file: FileResult) {
   &__results {
     flex: 1 1 auto;
     min-height: 0;
-    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+
+    > :not(.favorites__toolbar) {
+      flex: 1 1 auto;
+      min-height: 0;
+    }
+  }
+
+  &__toolbar {
+    flex: 0 0 auto;
+    margin: 0;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--color-border);
   }
 }
 </style>
