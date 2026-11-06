@@ -4,6 +4,7 @@ OC.L10N.register(
         " or ": " of ",
         "(no search term)": "(geen zoekterm)",
         "(not set)": "(niet ingesteld)",
+        "Level": "Niveau",
         "Loading…": "Laden…",
         "Searching…": "Zoeken…",
         "“{term}”": "‘{term}’",

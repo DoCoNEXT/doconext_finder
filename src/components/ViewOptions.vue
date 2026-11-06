@@ -35,22 +35,39 @@
       </NcButton>
     </div>
 
-    <select v-if="addableLevels.length" value="" @change="onAddLevel">
-      <option value="">
-        {{ levels.length ? t('Add a level…') : t('Nothing') }}
-      </option>
-      <optgroup :label="t('File')">
-        <option v-for="level in addableBuiltins" :key="level" :value="level">
-          {{ groupLabel(t, level) }}
-        </option>
-      </optgroup>
-      <optgroup v-if="addableMetadata.length" :label="t('Metadata')">
-        <option v-for="field in addableMetadata" :key="field.field" :value="field.field">
+    <span v-else class="muted">{{ t('Nothing') }}</span>
+
+    <!--
+      Adding a level is an action, not a value: what is chosen shows in the
+      chips. So a button with a menu, beside "Columns" and looking like it, the
+      menu keeping the file fields and the metadata apart as the select's
+      groups did. At the maximum the button stays, switched off, and says why.
+    -->
+    <NcActions :menu-name="t('Level')"
+               variant="secondary"
+               :disabled="addableLevels.length === 0"
+               :title="addableLevels.length === 0 ? t('Maximum levels reached') : t('Add a level…')"
+               force-name>
+      <template #icon>
+        <Plus :size="20" />
+      </template>
+      <NcActionCaption :name="t('File')" />
+      <NcActionButton v-for="level in addableBuiltins"
+                      :key="level"
+                      close-after-click
+                      @click="preferences.addGrouping(scope, level)">
+        {{ groupLabel(t, level) }}
+      </NcActionButton>
+      <template v-if="addableMetadata.length">
+        <NcActionCaption :name="t('Metadata')" />
+        <NcActionButton v-for="field in addableMetadata"
+                        :key="field.field"
+                        close-after-click
+                        @click="preferences.addGrouping(scope, field.field)">
           {{ field.label }}
-        </option>
-      </optgroup>
-    </select>
-    <span v-else class="muted">{{ t('Maximum levels reached') }}</span>
+        </NcActionButton>
+      </template>
+    </NcActions>
 
     <NcButton variant="secondary" @click="columnsOpen = true">
       <template #icon>
@@ -149,9 +166,9 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { NcActionButton, NcButton, NcCheckboxRadioSwitch, NcChip, NcInputField } from '@nextcloud/vue'
+import { NcActionButton, NcActionCaption, NcActions, NcButton, NcCheckboxRadioSwitch, NcChip, NcInputField } from '@nextcloud/vue'
 import { DcnDialog } from '@doconext/nc-ui'
-import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight, Columns3, X } from '@lucide/vue'
+import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight, Columns3, Plus, X } from '@lucide/vue'
 import { useI18n } from '../composables/useI18n'
 import { useColumnWidths } from '../composables/useColumnWidths'
 import { MAX_GROUPING_LEVELS, usePreferencesStore } from '../stores/preferencesStore'
@@ -244,10 +261,6 @@ function consume(event: Event, apply: (value: string) => void) {
     apply(select.value)
   }
   select.value = ''
-}
-
-function onAddLevel(event: Event) {
-  consume(event, (value) => preferences.addGrouping(props.scope, value))
 }
 
 function onAddColumn(event: Event) {
