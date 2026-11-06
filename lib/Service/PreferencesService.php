@@ -116,6 +116,8 @@ class PreferencesService
                 ? (string)$raw['doubleClick']
                 : 'open',
             'sidebarPinned' => (bool)($raw['sidebarPinned'] ?? false),
+            // Whether a new search starts with "search file contents too" on.
+            'searchContent' => (bool)($raw['searchContent'] ?? false),
             'highlightColor' => $this->sanitiseColour($raw['highlightColor'] ?? ''),
         ];
     }

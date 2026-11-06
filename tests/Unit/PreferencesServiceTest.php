@@ -48,6 +48,17 @@ class PreferencesServiceTest extends TestCase
         $this->assertSame('', $this->serviceReading([])->get('alice')['highlightColor']);
     }
 
+    /**
+     * Do:     read the preferences of someone who never chose, and of someone who did.
+     * Expect: contents are not searched by default; a stored choice is kept.
+     * Why:    a content search is slower and wider, so it is the user's to switch on.
+     */
+    public function testSearchingContentsByDefaultIsTheUsersChoice(): void
+    {
+        $this->assertFalse($this->serviceReading([])->get('alice')['searchContent']);
+        $this->assertTrue($this->serviceReading(['searchContent' => true])->get('alice')['searchContent']);
+    }
+
     public function testNameColumnComesFirstWhateverWasStored(): void
     {
         // Stored before the grid pinned its first column, when name could move.

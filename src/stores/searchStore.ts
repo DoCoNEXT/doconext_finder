@@ -143,7 +143,7 @@ export const useSearchStore = defineStore('search', {
     /** A fresh search starts from the user's default sort. */
     reset() {
       const preferences = usePreferencesStore()
-      this.query = { ...emptyState(), sort: preferences.sort, descending: preferences.descending }
+      this.query = { ...emptyState(), sort: preferences.sort, descending: preferences.descending, searchContent: preferences.searchContent }
       this.since = null
       this.highlight = ''
       this.results = []

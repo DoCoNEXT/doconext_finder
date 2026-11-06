@@ -42,6 +42,8 @@ interface State {
   doubleClick: string
   /** Whether the details panel is on screen; see `Preferences.sidebarPinned`. */
   sidebarPinned: boolean
+  /** Whether a new search also looks inside files; see `Preferences.searchContent`. */
+  searchContent: boolean
   /** Colour for the marked search terms in a preview; '' for the default. */
   highlightColor: string
   loaded: boolean
@@ -63,6 +65,7 @@ export const usePreferencesStore = defineStore('preferences', {
     descending: true,
     doubleClick: 'open',
     sidebarPinned: false,
+    searchContent: false,
     highlightColor: '',
     loaded: false,
     revision: 0,
@@ -104,6 +107,7 @@ export const usePreferencesStore = defineStore('preferences', {
       this.descending = preferences.descending
       this.doubleClick = preferences.doubleClick
       this.sidebarPinned = preferences.sidebarPinned
+      this.searchContent = preferences.searchContent ?? false
       this.highlightColor = preferences.highlightColor ?? ''
       this.loaded = true
       this.stored = detached(preferences)
@@ -121,6 +125,7 @@ export const usePreferencesStore = defineStore('preferences', {
           descending: this.descending,
           doubleClick: this.doubleClick,
           sidebarPinned: this.sidebarPinned,
+          searchContent: this.searchContent,
           highlightColor: this.highlightColor,
         })
         // Adopt only while this is still the newest save in flight; a later edit
@@ -280,6 +285,16 @@ export const usePreferencesStore = defineStore('preferences', {
      */
     setSidebarPinned(pinned: boolean) {
       this.sidebarPinned = pinned
+      this.save()
+    },
+
+    /**
+     * Whether a new search starts with "search file contents too" on. Only the
+     * start: the switch on the search page still turns it off for one search.
+     * @param on whether contents are searched by default
+     */
+    setSearchContent(on: boolean) {
+      this.searchContent = on
       this.save()
     },
 

@@ -47,6 +47,17 @@
       <p class="muted settings__hint">
         {{ t('A single click selects a result; its details appear in the panel when the panel is open.') }}
       </p>
+
+      <template v-if="contentSearch">
+        <NcCheckboxRadioSwitch :model-value="preferences.searchContent"
+                               type="switch"
+                               @update:model-value="preferences.setSearchContent($event)">
+          {{ t('Search file contents too, by default') }}
+        </NcCheckboxRadioSwitch>
+        <p class="muted settings__hint">
+          {{ t('Where a new search starts. The switch under the search box still changes it for one search.') }}
+        </p>
+      </template>
     </section>
 
     <!--
@@ -101,7 +112,7 @@ import { useColumnWidths } from '../composables/useColumnWidths'
 import { usePreferencesStore } from '../stores/preferencesStore'
 import { useSearchStore } from '../stores/searchStore'
 import { readableTextOn } from '../filters/colors'
-import { HAS_RICH_PREVIEW, PRODUCT_NAME } from '../constants'
+import { HAS_CONTENT_SEARCH, HAS_RICH_PREVIEW, PRODUCT_NAME } from '../constants'
 
 const { t } = useI18n()
 const preferences = usePreferencesStore()
@@ -115,6 +126,7 @@ onMounted(() => {
 })
 
 const richPreview = HAS_RICH_PREVIEW
+const contentSearch = HAS_CONTENT_SEARCH
 
 /** Mirrors the server's list; anything else is refused and falls back to 50. */
 const PAGE_SIZES = [25, 50, 100, 200]

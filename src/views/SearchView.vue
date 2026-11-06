@@ -309,6 +309,7 @@ import ScopeSelector from '../components/ScopeSelector.vue'
 import FileTable from '../components/FileTable.vue'
 import SearchBox from '../components/SearchBox.vue'
 import ViewOptions from '../components/ViewOptions.vue'
+import { usePreferencesStore } from '../stores/preferencesStore'
 import DetailsPanelToggle from '../components/DetailsPanelToggle.vue'
 import type { ActiveFilter } from '../filters/describe'
 import type { FileTypePreset, ModifiedPreset } from '../filters/presets'
@@ -326,6 +327,17 @@ const store = useSearchStore()
 const hasList = computed(() => store.loading
   || store.results.length > 0
   || (store.searched && store.error !== 'scope-unavailable'))
+
+const preferences = usePreferencesStore()
+
+// A new page starts with contents searched or not as the user chose in the
+// settings, once those have arrived — and only while nothing was searched or
+// typed yet, so a page in use never flips under someone's hands.
+watch(() => preferences.loaded, (loaded) => {
+  if (loaded && !store.searched && store.query.term === '') {
+    store.query.searchContent = preferences.searchContent
+  }
+}, { immediate: true })
 
 /**
  * Whether the term is looked for inside the files as well as in their names.

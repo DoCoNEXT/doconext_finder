@@ -400,6 +400,8 @@ export interface Preferences {
    * stays on until you close the panel, and while it is off a click selects a
    * row without a panel appearing.
    */
+  /** Whether a new search starts with file contents switched on. */
+  searchContent?: boolean
   sidebarPinned: boolean
   /**
    * The colour the searched-for words are marked in inside a preview, as
