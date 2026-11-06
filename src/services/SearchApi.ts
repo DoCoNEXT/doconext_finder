@@ -185,11 +185,19 @@ export const SearchApi = {
     }
   },
 
-  async search(request: SearchRequest): Promise<SearchResponse> {
+  /**
+   * @param request what to search for
+   * @param signal aborts the request when the search is stopped; it then
+   *               rejects with an error named 'AbortError'
+   */
+  async search(request: SearchRequest, signal?: AbortSignal): Promise<SearchResponse> {
     try {
-      const { data } = await axios.post<SearchResponse>(url('/search'), request)
+      const { data } = await axios.post<SearchResponse>(url('/search'), request, { signal })
       return data
     } catch (error) {
+      if (signal?.aborted) {
+        throw new DOMException('Search stopped', 'AbortError')
+      }
       throw describe(error)
     }
   },

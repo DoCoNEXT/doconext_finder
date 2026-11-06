@@ -25,6 +25,23 @@ import type { Condition, FieldsResponse, FileResult, MetadataField, SearchState,
  */
 const MAX_LOADED_ROWS = 2000
 
+/**
+ * The search in flight, if any: stopping it aborts its request. One at a time —
+ * a new search stops the one before, whose answer would otherwise land late
+ * over the newer one. Outside the store's state: it is not something to show.
+ */
+let inFlight: AbortController | null = null
+
+function begin(): AbortSignal {
+  inFlight?.abort()
+  inFlight = new AbortController()
+  return inFlight.signal
+}
+
+function stopped(error: unknown): boolean {
+  return error instanceof DOMException && error.name === 'AbortError'
+}
+
 export function emptyState(): SearchState {
   return {
     term: '',
@@ -217,8 +234,9 @@ export const useSearchStore = defineStore('search', {
       this.loading = true
       this.error = ''
       this.loadedAll = false
+      const signal = begin()
       try {
-        const response = await SearchApi.search(this.request(t, offset, this.pageSize))
+        const response = await SearchApi.search(this.request(t, offset, this.pageSize), signal)
         this.results = response.results
         this.hasMore = response.hasMore
         this.offset = response.offset
@@ -242,11 +260,17 @@ export const useSearchStore = defineStore('search', {
             .then(() => useHistoryStore().load(true))
         }
       } catch (e) {
+        // Stopped: what was on screen stays, as it was before Search was pressed.
+        if (stopped(e)) {
+          return
+        }
         this.error = (e as Error).message
         this.results = []
         this.hasMore = false
       } finally {
-        this.loading = false
+        if (!signal.aborted || inFlight?.signal === signal) {
+          this.loading = false
+        }
       }
     },
 
@@ -264,11 +288,12 @@ export const useSearchStore = defineStore('search', {
 
       this.loading = true
       this.error = ''
+      const signal = begin()
       try {
         const all: FileResult[] = []
         let more = true
         while (more && all.length < MAX_LOADED_ROWS) {
-          const response = await SearchApi.search(this.request(t, all.length, this.pageSize))
+          const response = await SearchApi.search(this.request(t, all.length, this.pageSize), signal)
           all.push(...response.results)
           more = response.hasMore
           if (response.results.length === 0) {
@@ -285,10 +310,25 @@ export const useSearchStore = defineStore('search', {
           this.error = 'capped'
         }
       } catch (e) {
+        if (stopped(e)) {
+          return
+        }
         this.error = (e as Error).message
       } finally {
-        this.loading = false
+        if (!signal.aborted || inFlight?.signal === signal) {
+          this.loading = false
+        }
       }
+    },
+
+    /**
+     * Stops the search that is running. Its request is aborted, so its answer
+     * never arrives; the list keeps what it showed before.
+     */
+    stop() {
+      inFlight?.abort()
+      inFlight = null
+      this.loading = false
     },
 
     /**

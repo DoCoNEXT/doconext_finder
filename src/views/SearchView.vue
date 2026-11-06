@@ -14,7 +14,17 @@
                  @pick="runSuggestion"
                  @understand="askAi" />
 
-      <NcButton variant="primary" :disabled="store.loading" @click="search">
+      <!--
+        While a search runs, its button stops it: a search inside many files
+        can take a while, and waiting it out was the only way back.
+      -->
+      <NcButton v-if="store.loading" variant="secondary" @click="store.stop()">
+        <template #icon>
+          <Square :size="20" />
+        </template>
+        {{ t('Stop') }}
+      </NcButton>
+      <NcButton v-else variant="primary" @click="search">
         {{ t('Search') }}
       </NcButton>
       <NcButton variant="secondary" :disabled="!store.hasCriteria" @click="save">
@@ -281,7 +291,7 @@ import {
   NcNoteCard,
   NcSelect,
 } from '@nextcloud/vue'
-import { ChevronDown, ChevronRight, Plus, Save, Search, X } from '@lucide/vue'
+import { ChevronDown, ChevronRight, Plus, Save, Search, Square, X } from '@lucide/vue'
 import { HAS_CONTENT_SEARCH, HAS_ENTITY_SCOPE } from '../constants'
 import { useI18n } from '../composables/useI18n'
 import { useSearchStore } from '../stores/searchStore'
