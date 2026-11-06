@@ -16,5 +16,12 @@ export default createAppConfig(
 		createEmptyCSSEntryPoints: true,
 		extractLicenseInformation: true,
 		thirdPartyLicense: false,
+		config: {
+			resolve: {
+				// @doconext/nc-ui is linked from a folder with a node_modules of
+				// its own; without this its components would get a second Vue.
+				dedupe: ['vue', '@nextcloud/vue', '@lucide/vue'],
+			},
+		},
 	},
 )

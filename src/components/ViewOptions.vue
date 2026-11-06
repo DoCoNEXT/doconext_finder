@@ -65,10 +65,10 @@
 
     <span v-if="hint" class="view-options__hint muted">{{ hint }}</span>
 
-    <NcDialog v-if="columnsOpen"
-              :name="t('Columns')"
-              size="normal"
-              @closing="columnsOpen = false">
+    <DcnDialog v-if="columnsOpen"
+               :name="t('Columns')"
+               size="normal"
+               @closing="columnsOpen = false">
       <p class="muted">
         {{ t('Choose which columns the results show, in which order, and under which name.') }}
       </p>
@@ -135,18 +135,14 @@
           {{ t('Done') }}
         </NcButton>
       </template>
-    </NcDialog>
+    </DcnDialog>
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import {
-  NcButton,
-  NcCheckboxRadioSwitch,
-  NcDialog,
-  NcInputField,
-} from '@nextcloud/vue'
+import { NcButton, NcCheckboxRadioSwitch, NcInputField } from '@nextcloud/vue'
+import { DcnDialog } from '@doconext/nc-ui'
 import { ArrowDown, ArrowUp, Columns3, X } from '@lucide/vue'
 import { useI18n } from '../composables/useI18n'
 import { useColumnWidths } from '../composables/useColumnWidths'

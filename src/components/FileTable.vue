@@ -678,34 +678,40 @@ function nudge(event: KeyboardEvent, column: ColumnPref) {
 // While columns are hidden under the pinned ones, a soft edge says so — the
 // same one the CRM's lists draw. A strip just outside the cell, full height,
 // rather than a box-shadow, which fades out at the top and bottom of every
-// cell and turns into a dashed bar down the grid.
+// cell and turns into a dashed bar down the grid. Faint and wide: on a card it
+// should read as depth, the columns sliding under, not as a line that cuts the
+// menu off from its row. Drawn from the text colour, so it holds in the dark.
+.results-scroll {
+  --results-edge: color-mix(in srgb, var(--color-main-text) 7%, transparent);
+}
+
 .results-scroll--under-start .results__name-cell::after,
 .results-scroll--under-end .results__actions::before {
   content: '';
   position: absolute;
   top: 0;
   bottom: 0;
-  width: 8px;
+  width: 16px;
   pointer-events: none;
 }
 
 .results-scroll--under-start .results__name-cell::after {
   inset-inline-start: 100%;
-  background: linear-gradient(to right, rgba(0, 0, 0, 0.12), transparent);
+  background: linear-gradient(to right, var(--results-edge), transparent);
 }
 
 .results-scroll--under-end .results__actions::before {
   inset-inline-end: 100%;
-  background: linear-gradient(to left, rgba(0, 0, 0, 0.12), transparent);
+  background: linear-gradient(to left, var(--results-edge), transparent);
 }
 
 // The edges fade away from the pinned column, which is mirrored right-to-left.
 .results-scroll--under-start .results__name-cell:dir(rtl)::after {
-  background: linear-gradient(to left, rgba(0, 0, 0, 0.12), transparent);
+  background: linear-gradient(to left, var(--results-edge), transparent);
 }
 
 .results-scroll--under-end .results__actions:dir(rtl)::before {
-  background: linear-gradient(to right, rgba(0, 0, 0, 0.12), transparent);
+  background: linear-gradient(to right, var(--results-edge), transparent);
 }
 
 .numeric {

@@ -1,5 +1,5 @@
 <template>
-  <NcContent :app-name="appId" :class="railClass">
+  <NcContent :app-name="appId" class="dcn-app" :class="railClass">
     <NcAppNavigation :aria-label="productName">
       <!--
         The navigation's header row. The toggle lives in it rather than floating

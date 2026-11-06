@@ -218,7 +218,7 @@
       {{ t('Every matching name is listed. Files that only mention the term are the index’s best matches, so there may be more of those.') }}
     </p>
 
-    <div class="finder__results">
+    <DcnCard class="finder__results">
       <NcLoadingIcon v-if="store.loading" class="finder__loading" :size="32" />
 
       <!--
@@ -244,7 +244,7 @@
                    @changed="refresh"
                    @select="selection.select($event)" />
       </template>
-    </div>
+    </DcnCard>
 
     <div v-if="store.results.length" class="finder__paging">
       <template v-if="!store.loadedAll">
@@ -264,6 +264,7 @@
 </template>
 
 <script setup lang="ts">
+import { DcnCard } from '@doconext/nc-ui'
 import { computed, onMounted, ref, watch } from 'vue'
 import {
   NcButton,

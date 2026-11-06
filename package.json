@@ -21,6 +21,7 @@
     "extends @nextcloud/browserslist-config"
   ],
   "dependencies": {
+    "@doconext/nc-ui": "file:../doconext-nc-ui",
     "@lucide/vue": "^1.49.0",
     "@nextcloud/auth": "^2.6.0",
     "@nextcloud/axios": "^2.5.2",

@@ -9,7 +9,14 @@ import './styles/action-icons.scss'
 // Global for the opposite reason: it reaches into Nc components several levels
 // below the ones that know whether their filter is set.
 import './styles/filter-set.scss'
+// The DoCoNEXT apps' shared look (cards, dialogs and the rest), and which app
+// this is, so its layout preferences are kept apart from the other apps'.
+import '@doconext/nc-ui/styles'
+import { configure } from '@doconext/nc-ui'
+import { APP_ID } from './constants'
 import App from './App.vue'
+
+configure({ appId: APP_ID })
 
 // Mounts into templates/index.php's #doconext_finder div.
 createApp(App).use(createPinia()).mount('#doconext_finder')

@@ -1,7 +1,7 @@
 <template>
-  <NcDialog :name="title"
-            size="normal"
-            @closing="emit('close', changed)">
+  <DcnDialog :name="title"
+             size="normal"
+             @closing="emit('close', changed)">
     <div class="search-dialog">
       <NcTextField ref="nameField"
                    v-model="name"
@@ -73,18 +73,13 @@
         {{ submitLabel }}
       </NcButton>
     </template>
-  </NcDialog>
+  </DcnDialog>
 </template>
 
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
-import {
-  NcButton,
-  NcDialog,
-  NcNoteCard,
-  NcTextArea,
-  NcTextField,
-} from '@nextcloud/vue'
+import { NcButton, NcNoteCard, NcTextArea, NcTextField } from '@nextcloud/vue'
+import { DcnDialog } from '@doconext/nc-ui'
 import { Link as LinkIcon } from '@lucide/vue'
 import { showError, showSuccess } from '@nextcloud/dialogs'
 import ShareRecipientsEditor from './ShareRecipientsEditor.vue'

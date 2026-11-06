@@ -1,7 +1,7 @@
 <template>
-  <NcDialog :name="title"
-            size="normal"
-            @closing="emit('close', changed)">
+  <DcnDialog :name="title"
+             size="normal"
+             @closing="emit('close', changed)">
     <div class="schedule-dialog">
       <p class="muted">
         {{ t('The search runs on its own at the time you choose. If it finds files that are new or changed since you last opened this search, you get a notification.') }}
@@ -56,18 +56,13 @@
         {{ entry.schedule ? t('Save') : t('Notify me') }}
       </NcButton>
     </template>
-  </NcDialog>
+  </DcnDialog>
 </template>
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import {
-  NcButton,
-  NcDateTimePickerNative,
-  NcDialog,
-  NcNoteCard,
-  NcSelect,
-} from '@nextcloud/vue'
+import { NcButton, NcDateTimePickerNative, NcNoteCard, NcSelect } from '@nextcloud/vue'
+import { DcnDialog } from '@doconext/nc-ui'
 import { useI18n } from '../composables/useI18n'
 import { SearchApi } from '../services/SearchApi'
 import { DEFAULT_SCHEDULE, frequencyOptions, weekdayOptions } from '../filters/schedule'

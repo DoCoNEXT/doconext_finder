@@ -27,7 +27,7 @@
 
     <template v-else-if="files.length">
       <ViewOptions scope="favorites" />
-      <div class="favorites__results">
+      <DcnCard class="favorites__results">
         <FileTable :files="files"
                    scope="favorites"
                    :sort="sort"
@@ -37,12 +37,13 @@
                    @toggle-favorite="unfavorite"
                    @changed="load"
                    @select="selection.select($event)" />
-      </div>
+      </DcnCard>
     </template>
   </div>
 </template>
 
 <script setup lang="ts">
+import { DcnCard } from '@doconext/nc-ui'
 import { onActivated, onMounted, ref } from 'vue'
 import {
   NcButton,
