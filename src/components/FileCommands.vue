@@ -15,7 +15,7 @@
     -->
     <NcActionButton close-after-click @click="$emit('details', file)">
       <template #icon>
-        <PanelRightOpen :size="20" />
+        <PanelRight :size="20" />
       </template>
       {{ t('Show in details panel') }}
     </NcActionButton>
@@ -41,7 +41,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { NcActionButton, NcActionLink, NcActionSeparator, NcActions } from '@nextcloud/vue'
-import { PanelRightOpen } from '@lucide/vue'
+import { PanelRight } from '@lucide/vue'
 import { useI18n } from '../composables/useI18n'
 import { useFileCommands } from '../composables/useFileCommands'
 import type { FileResult } from '../types/Search'
