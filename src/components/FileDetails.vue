@@ -40,49 +40,46 @@
         <Info :size="20" />
       </template>
 
-      <dl class="details">
-        <dt>{{ t('Type') }}</dt>
-        <dd>{{ typeName(t, file) }}</dd>
-
-        <dt>{{ t('Media type') }}</dt>
-        <dd class="details__mime">{{ file.isFolder ? t('Folder') : file.mimetype }}</dd>
-
-        <dt>{{ t('Size') }}</dt>
-        <dd>{{ file.isFolder ? t('Folder') : formatSize(file.size) }}</dd>
-
-        <dt>{{ t('Modified') }}</dt>
-        <dd>{{ formatDate(file.mtime) }}</dd>
-
-        <template v-if="file.modifiedBy">
-          <dt>{{ t('Modified by') }}</dt>
-          <dd>{{ file.modifiedBy }}</dd>
-        </template>
-
-        <template v-if="file.creationTime > 0">
-          <dt>{{ t('Created') }}</dt>
-          <dd>{{ formatDate(file.creationTime) }}</dd>
-        </template>
-
-        <template v-if="file.createdBy">
-          <dt>{{ t('Created by') }}</dt>
-          <dd>{{ file.createdBy }}</dd>
-        </template>
-
-        <dt>{{ t('Folder') }}</dt>
-        <dd>{{ folderOf(file) || '/' }}</dd>
-      </dl>
+      <!--
+        Drawn the way Core draws a file's metadata (its sidebar tab and a
+        record's Details tab): a small-caps heading per group, and every field a
+        grey label with its icon above the value. A two-column table squeezed
+        long labels against their values, and a field read differently here than
+        it did one click away in Core.
+      -->
+      <section class="details">
+        <h4 class="details__heading">
+          <Info :size="14" />
+          {{ t('Details') }}
+        </h4>
+        <div class="details__fields">
+          <div v-for="entry in general" :key="entry.key" class="details__field">
+            <span class="details__label">
+              <component :is="entry.icon" :size="14" />
+              <span>{{ entry.label }}</span>
+            </span>
+            <span class="details__value" :class="{ 'details__value--mono': entry.mono }">{{ entry.value }}</span>
+          </div>
+        </div>
+      </section>
 
       <!--
         Everything the server holds for this file, whichever app put it there —
         Core's fields when Core is installed. Labels come from the same registry
         the columns use, so a field reads the same wherever it appears.
       -->
-      <template v-if="metadata.length">
-        <h4 class="details__heading">{{ t('Metadata') }}</h4>
-        <dl class="details">
-          <template v-for="entry in metadata" :key="entry.key">
-            <dt>{{ entry.label }}</dt>
-            <dd class="details__copyable">
+      <section v-if="metadata.length" class="details details--ruled">
+        <h4 class="details__heading">
+          <Tag :size="14" />
+          {{ t('Metadata') }}
+        </h4>
+        <div class="details__fields">
+          <div v-for="entry in metadata" :key="entry.key" class="details__field">
+            <span class="details__label">
+              <component :is="entry.icon" :size="14" />
+              <span>{{ entry.label }}</span>
+            </span>
+            <span class="details__value details__copyable">
               <span>{{ entry.value }}</span>
               <NcButton class="details__copy"
                         variant="tertiary"
@@ -90,14 +87,14 @@
                         :title="copiedKey === entry.key ? t('Copied') : t('Copy {field}', { field: entry.label })"
                         @click="copyValue(entry.key, entry.value)">
                 <template #icon>
-                  <Check v-if="copiedKey === entry.key" :size="16" />
-                  <Copy v-else :size="16" />
+                  <Check v-if="copiedKey === entry.key" :size="14" />
+                  <Copy v-else :size="14" />
                 </template>
               </NcButton>
-            </dd>
-          </template>
-        </dl>
-      </template>
+            </span>
+          </div>
+        </div>
+      </section>
     </NcAppSidebarTab>
 
     <!--
@@ -183,7 +180,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, ref, watch, type Component } from 'vue'
 import {
   NcActionButton,
   NcActionLink,
@@ -192,7 +189,24 @@ import {
   NcButton,
   NcEmptyContent,
 } from '@nextcloud/vue'
-import { Check, Copy, Eye, Info } from '@lucide/vue'
+import {
+  CalendarPlus,
+  Check,
+  CircleCheck,
+  Clock,
+  Copy,
+  Eye,
+  File,
+  FileCode,
+  FileText,
+  Folder,
+  HardDrive,
+  Hash,
+  Info,
+  Tag,
+  User,
+  UserPen,
+} from '@lucide/vue'
 import { generateUrl } from '@nextcloud/router'
 import { showError } from '@nextcloud/dialogs'
 import { useI18n } from '../composables/useI18n'
@@ -243,20 +257,73 @@ const commands = computed(() => (props.file ? commandsFor(props.file) : []))
 const linkCommands = computed(() => commands.value.filter((c) => c.href))
 const buttonCommands = computed(() => commands.value.filter((c) => !c.href))
 
+interface DetailRow {
+  key: string
+  label: string
+  value: string
+  icon: Component
+  mono?: boolean
+}
+
+/** What every file has, whatever app put metadata on it. */
+const general = computed<DetailRow[]>(() => {
+  const file = props.file
+  if (!file) {
+    return []
+  }
+  const rows: DetailRow[] = [
+    { key: 'type', label: t('Type'), value: typeName(t, file), icon: File },
+    { key: 'mimetype', label: t('Media type'), value: file.isFolder ? t('Folder') : file.mimetype, icon: FileCode, mono: !file.isFolder },
+    { key: 'size', label: t('Size'), value: file.isFolder ? t('Folder') : formatSize(file.size), icon: HardDrive },
+    { key: 'modified', label: t('Modified'), value: formatDate(file.mtime), icon: Clock },
+  ]
+  if (file.modifiedBy) {
+    rows.push({ key: 'modifiedBy', label: t('Modified by'), value: file.modifiedBy, icon: UserPen })
+  }
+  if (file.creationTime > 0) {
+    rows.push({ key: 'created', label: t('Created'), value: formatDate(file.creationTime), icon: CalendarPlus })
+  }
+  if (file.createdBy) {
+    rows.push({ key: 'createdBy', label: t('Created by'), value: file.createdBy, icon: User })
+  }
+  rows.push({ key: 'folder', label: t('Folder'), value: folderOf(file) || '/', icon: Folder })
+  return rows
+})
+
+/**
+ * Core marks each label with its field type. Finder knows only how a value is
+ * stored, which is enough to tell a number or a yes/no from text.
+ *
+ * @param type the stored type, as the metadata registry reports it
+ */
+function iconForType(type: string | undefined): Component {
+  if (type === 'int' || type === 'float' || type === 'int[]') {
+    return Hash
+  }
+  if (type === 'bool') {
+    return CircleCheck
+  }
+  return FileText
+}
+
 /**
  * Only the keys this file actually carries, labelled and sorted, so the panel
  * shows what is there rather than a hundred mostly-empty rows.
  */
-const metadata = computed(() => {
+const metadata = computed<DetailRow[]>(() => {
   const values = props.file?.metadata ?? {}
   const known = search.metadata
 
   return Object.entries(values)
-    .map(([key, value]) => ({
-      key,
-      value,
-      label: known.find((f) => f.key === key)?.label ?? key,
-    }))
+    .map(([key, value]) => {
+      const field = known.find((f) => f.key === key)
+      return {
+        key,
+        value,
+        label: field?.label ?? key,
+        icon: iconForType(field?.type),
+      }
+    })
     .sort((a, b) => a.label.localeCompare(b.label))
 })
 
@@ -309,63 +376,83 @@ const previewUrl = computed(() => {
 </script>
 
 <style scoped lang="scss">
+// The measures of Core's metadata tab (DcnCoreFileSidebarTab), so a field
+// looks the same in both apps.
 .details {
-  display: grid;
-  // Nextcloud's sidebar gives every <dt> a fixed 130px with `white-space:
-  // nowrap`, so a longer label than that does not wrap — it paints straight
-  // over its own value ("Advocaat wederpartij" across "mr. J. Sanders").
-  // fit-content lets the label column take what it needs and no more than
-  // nearly half the panel; the dt rule below undoes the nowrap.
-  grid-template-columns: fit-content(45%) 1fr;
-  gap: 4px 12px;
-  margin: 12px 0;
+  margin: 12px 0 16px;
 
-  // Nextcloud's own stylesheet right-aligns every <dt>, which left the labels
-  // ragged down their left edge while their values ran down a straight one.
-  // Both columns start at the same edge instead.
-  dt {
-    text-align: start;
+  // Groups are told apart by a rule and their icon, as in Core.
+  &--ruled {
+    padding-top: 12px;
+    border-top: 1px solid var(--color-border);
+  }
+
+  &__heading {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin: 0 0 10px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--color-main-text);
+  }
+
+  &__fields {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  &__field {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    min-width: 0;
+  }
+
+  &__label {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 12px;
+    font-weight: 500;
     color: var(--color-text-maxcontrast);
-    // Both from Nextcloud's own sidebar stylesheet; see the grid above.
-    width: auto;
-    white-space: normal;
-    overflow-wrap: anywhere;
+
+    svg {
+      flex: 0 0 auto;
+    }
   }
 
-  dd {
-    margin: 0;
+  // Indented past the label's icon, so values run down the label text's edge.
+  &__value {
+    padding-inline-start: 19px;
+    font-size: 14px;
+    color: var(--color-main-text);
     overflow-wrap: anywhere;
+
+    &--mono {
+      font-family: monospace;
+      font-size: 13px;
+    }
   }
 
-  // A value and its copy button share the row; the button only appears for the
-  // row being pointed at or tabbed to, so a list of a dozen fields is not a
-  // list of a dozen buttons.
+  // The button sits right after the value, not pinned to the far edge a
+  // column away from what it copies.
   &__copyable {
     display: flex;
-    align-items: start;
-    gap: 4px;
+    align-items: center;
+    gap: 2px;
   }
 
   &__copy {
-    opacity: 0;
     flex: 0 0 auto;
     // NcButton's own 34px would set the height of every metadata row.
     min-height: 24px !important;
     min-width: 24px !important;
     height: 24px;
     width: 24px;
-  }
-
-  &__copyable:hover &__copy,
-  &__copy:focus-visible {
-    opacity: 1;
-  }
-
-  // Touch has no hover, so there is nothing to reveal the button — show it.
-  @media (hover: none) {
-    &__copy {
-      opacity: 1;
-    }
   }
 
   // The thumbnail gets the whole tab rather than a fixed 320px box: the panel
@@ -378,16 +465,6 @@ const previewUrl = computed(() => {
     object-fit: contain;
     border-radius: var(--border-radius-large);
     background: var(--color-background-dark);
-  }
-
-  &__heading {
-    margin: 20px 0 4px;
-    font-weight: 700;
-  }
-
-  &__mime {
-    font-family: monospace;
-    font-size: 90%;
   }
 }
 
