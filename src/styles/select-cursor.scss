@@ -1,0 +1,29 @@
+// One cursor over a whole dropdown: the hand, from edge to edge.
+
+// Nextcloud's reset sheet gives every div and span `cursor: default`, so a
+// cursor set on a control does not reach the parts drawn inside it. Moving
+// across an NcSelect therefore switched between arrow and hand several times:
+// the arrow on the wrapper around the input and in the gaps around the ▾, and,
+// in a multiple select, also on the picked text and an I-beam on the box edge,
+// which vue-select gives every searchable select. An option drawn through the
+// `option` slot showed the arrow over the whole of its label.
+
+// Every part gets the hand, because a click anywhere on the box opens the list.
+// A disabled select or option keeps the library's not-allowed cursor.
+
+// Global, and loaded from the entry point: the list is teleported to <body>,
+// where no component's scope id reaches. The mount point's id outranks both the
+// reset and vue-select's `.vs--searchable .vs__dropdown-toggle`.
+#doconext_finder .v-select:not(.vs--disabled) .vs__dropdown-toggle {
+  &,
+  * {
+    cursor: pointer;
+  }
+}
+
+.vs__dropdown-menu .vs__dropdown-option:not(.vs__dropdown-option--disabled) {
+  &,
+  * {
+    cursor: pointer;
+  }
+}

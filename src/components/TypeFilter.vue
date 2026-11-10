@@ -86,12 +86,14 @@ function isPicked(option: FileTypePreset): boolean {
   // The toggle's own 2px border goes around this: 30 + 4 = the single one's 34.
   // Its own no-wrap, not the library's: that one scrolls the row to keep the
   // search input in view, which slid the start of the line out of sight.
+  // `clip`, not `hidden`: a hidden overflow is still a scroll container, and
+  // focusing the input when the list opens scrolled it all the same.
   :deep(.vs__selected-options) {
     flex-wrap: nowrap;
     align-items: center;
     height: 30px;
     min-width: 0;
-    overflow: hidden;
+    overflow: clip;
   }
 
   .type-filter__summary {

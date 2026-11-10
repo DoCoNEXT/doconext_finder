@@ -9,6 +9,7 @@ import './styles/action-icons.scss'
 // Global for the opposite reason: it reaches into Nc components several levels
 // below the ones that know whether their filter is set.
 import './styles/filter-set.scss'
+import './styles/select-cursor.scss'
 // The DoCoNEXT apps' shared look (cards, dialogs and the rest), and which app
 // this is, so its layout preferences are kept apart from the other apps'.
 import '@doconext/nc-ui/styles'
