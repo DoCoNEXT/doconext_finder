@@ -6,7 +6,7 @@
  * the user picked ("Last 7 days") instead of the timestamp it resolves to.
  */
 import { fieldLabel, isUsable, operatorLabel, toDateInput, toMegabytes } from './fields'
-import { canonicalModifiedPreset, fileTypePresets, modifiedPresets } from './presets'
+import { canonicalModifiedPreset, modifiedPresets, selectedTypes } from './presets'
 import type { FileTypePreset, ModifiedPreset, Translate } from './presets'
 import { isMetadataField, labelledFor, metadataKeyOf, realmOfScope } from './metadata'
 import type { Condition, MetadataField, SearchState, StoredSearch } from '../types/Search'
@@ -48,9 +48,10 @@ export function describeQuery(t: Translate, query: SearchState, metadata: Metada
     parts.push(t('Contents too'))
   }
 
-  const type = typeOf(t, query)
-  if (type) {
-    parts.push(type.label)
+  const types = typesOf(t, query)
+  if (types.length > 0) {
+    // Alternatives, like "any" conditions: a file is one type or another.
+    parts.push(types.map((type) => type.label).join(t(' or ')))
   }
 
   const time = timeOf(t, query)
@@ -78,6 +79,8 @@ export interface ActiveFilter {
   label: string
   /** Which row of `query.conditions`, for a condition. */
   index?: number
+  /** Which of `query.typePresets`, for a type. */
+  id?: string
 }
 
 /**
@@ -100,9 +103,9 @@ export function activeFilters(t: Translate, query: SearchState, metadata: Metada
     filters.push({ key: 'scope', kind: 'scope', label: scopePhrase(t, query) })
   }
 
-  const type = typeOf(t, query)
-  if (type) {
-    filters.push({ key: 'type', kind: 'type', label: type.label })
+  // One chip per picked type, so closing one takes back just that type.
+  for (const type of typesOf(t, query)) {
+    filters.push({ key: `type-${type.id}`, kind: 'type', id: type.id, label: type.label })
   }
 
   const time = timeOf(t, query)
@@ -121,17 +124,13 @@ export function activeFilters(t: Translate, query: SearchState, metadata: Metada
 }
 
 /**
- * The Type filter in force, or null for "any type". A distilled type that is
- * not in the configured list is still a type in force.
+ * The Type filters in force; none for "any type". A distilled type that is not
+ * in the configured list is still a type in force.
  * @param t translation function
  * @param query the search
  */
-function typeOf(t: Translate, query: SearchState): FileTypePreset | null {
-  const type = query.customType?.id === query.typePreset
-    ? query.customType
-    : fileTypePresets(t).find((p) => p.id === query.typePreset)
-
-  return type && type.id !== 'any' ? type : null
+function typesOf(t: Translate, query: SearchState): FileTypePreset[] {
+  return selectedTypes(t, query.typePresets ?? [], query.customType)
 }
 
 /**

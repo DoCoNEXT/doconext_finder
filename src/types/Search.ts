@@ -240,13 +240,19 @@ export interface SearchState {
    * server has a full-text index; see HAS_CONTENT_SEARCH.
    */
   searchContent: boolean
-  typePreset: string
+  /**
+   * The Type filters picked, as ids. Several are alternatives — a file matches
+   * when it is any one of them — and an empty list leaves the type open.
+   * Stored searches from before this was a list carry a single `typePreset`
+   * instead; `restored()` in src/services/SearchApi.ts turns that into this.
+   */
+  typePresets: string[]
   /**
    * A file type the distiller chose that no configured Type filter matches —
    * "Word document", say, where this server only offers the broader
    * "Documents". Carried as a whole preset so it can sit in the Type dropdown
    * as an ordinary option, editable and visible, rather than as a hidden
-   * filter. Null whenever `typePreset` names a real one.
+   * filter. Null once it is no longer among `typePresets`.
    */
   customType: { id: string, label: string, mimetypes: string[] } | null
   modifiedPreset: string

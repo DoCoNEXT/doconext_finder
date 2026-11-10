@@ -16,7 +16,7 @@ const entry = (name: string | null, overrides: Partial<SearchState>): StoredSear
 	description: null,
 	lastRun: 0,
 	query: {
-		term: '', searchContent: false, typePreset: 'any', customType: null, modifiedPreset: 'any',
+		term: '', searchContent: false, typePresets: [], customType: null, modifiedPreset: 'any',
 		conditions: [], matchAny: false, scope: null, sort: 'mtime', descending: true,
 		...overrides,
 	},

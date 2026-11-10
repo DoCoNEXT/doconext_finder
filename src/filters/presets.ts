@@ -129,6 +129,36 @@ export function fileTypePresets(t: Translate): FileTypePreset[] {
 }
 
 /**
+ * The Type filters a search has picked, in the order they were picked. Several
+ * at once are alternatives — "PDFs or Images" — so empty, not a list holding
+ * "any", is what leaves the type open.
+ *
+ * The distilled type counts when it is among them; an id no configured filter
+ * answers to any more is skipped, as it is on the server (`StoredQuery`), so an
+ * admin retiring a filter widens the search in both places alike.
+ * @param t translation function
+ * @param ids the picked ids, as `SearchState.typePresets` holds them
+ * @param custom the distilled type, if the search carries one
+ */
+export function selectedTypes(t: Translate, ids: string[], custom: FileTypePreset | null): FileTypePreset[] {
+  const known = new Map(fileTypePresets(t).filter((p) => p.id !== 'any').map((p) => [p.id, p]))
+  if (custom) {
+    known.set(custom.id, custom)
+  }
+
+  return ids.map((id) => known.get(id)).filter((p): p is FileTypePreset => p !== undefined)
+}
+
+/**
+ * What the picked types send: every mimetype of each, once. The backend ORs a
+ * mimetype list, which is exactly what picking two types means.
+ * @param types the picked types
+ */
+export function mimetypesOf(types: FileTypePreset[]): string[] {
+  return [...new Set(types.flatMap((p) => p.mimetypes))]
+}
+
+/**
  * The window a preset stands for, in Unix seconds. Both ends are optional: most
  * presets are open-ended ("since last Tuesday"), and only a closed period — a
  * calendar year that has finished — needs an upper bound too.

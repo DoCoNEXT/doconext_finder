@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { canonicalModifiedPreset, modifiedPresets, modifiedRange } from '../../src/filters/presets'
+import { canonicalModifiedPreset, mimetypesOf, modifiedPresets, modifiedRange, selectedTypes } from '../../src/filters/presets'
 
 // The date presets are the one place in this app doing calendar arithmetic, and
 // the year boundaries are what a rolling-window implementation gets wrong: they
@@ -97,5 +97,19 @@ describe('canonicalModifiedPreset', () => {
 		for (const { id } of modifiedPresets(t)) {
 			expect(canonicalModifiedPreset(id)).toBe(id)
 		}
+	})
+})
+
+describe('several types at once', () => {
+	const cad = { id: 'distilled', label: 'CAD', mimetypes: ['application/acad', 'application/pdf'] }
+
+	it('sends every mimetype of the picked types once', () => {
+		expect(mimetypesOf([cad, { id: 'pdf', label: 'PDFs', mimetypes: ['application/pdf'] }]))
+			.toEqual(['application/acad', 'application/pdf'])
+	})
+
+	it('skips an id nothing answers to, and keeps the distilled type', () => {
+		expect(selectedTypes(t, ['retired', 'distilled'], cad)).toEqual([cad])
+		expect(selectedTypes(t, [], cad)).toEqual([])
 	})
 })

@@ -9,7 +9,7 @@ const t = (text: string, vars?: Record<string, unknown>) =>
 	text.replace(/\{(\w+)\}/g, (_match, key: string) => String(vars?.[key] ?? ''))
 
 const query = (overrides: Partial<SearchState>): SearchState => ({
-	term: '', searchContent: false, typePreset: 'any', customType: null, modifiedPreset: 'any',
+	term: '', searchContent: false, typePresets: [], customType: null, modifiedPreset: 'any',
 	conditions: [], matchAny: false, scope: null, sort: 'mtime', descending: true,
 	...overrides,
 })
@@ -44,10 +44,20 @@ describe('activeFilters', () => {
 
 	it('counts a distilled type that the configured list has no name for', () => {
 		const filters = activeFilters(t, query({
-			typePreset: 'distilled-cad',
+			typePresets: ['distilled-cad'],
 			customType: { id: 'distilled-cad', label: 'CAD drawings', mimetypes: ['application/acad'] },
 		}))
 
-		expect(filters).toEqual([{ key: 'type', kind: 'type', label: 'CAD drawings' }])
+		expect(filters).toEqual([{ key: 'type-distilled-cad', kind: 'type', id: 'distilled-cad', label: 'CAD drawings' }])
+	})
+
+	it('gives each picked type a chip of its own, so one can go without the others', () => {
+		const filters = activeFilters(t, query({
+			typePresets: ['distilled-cad', 'distilled-dwg'],
+			customType: { id: 'distilled-cad', label: 'CAD drawings', mimetypes: ['application/acad'] },
+		}))
+
+		// The second id is known to nothing, so it is not a filter in force.
+		expect(filters.map((f) => f.id)).toEqual(['distilled-cad'])
 	})
 })

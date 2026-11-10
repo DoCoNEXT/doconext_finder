@@ -71,7 +71,7 @@ export function applyDistilled(
     ...base,
     term: '',
     searchContent: false,
-    typePreset: 'any',
+    typePresets: [],
     customType: null,
     modifiedPreset: 'any',
     conditions,
@@ -112,14 +112,14 @@ function applyType(t: Translate, scope: DistilledFileScope, state: SearchState, 
   )
 
   if (preset) {
-    state.typePreset = preset.id
+    state.typePresets = [preset.id]
     chips.push({ label: preset.label, kind: 'type' })
 
     return
   }
 
   const label = scope.mimeLabel || scope.mimetypes.join(', ')
-  state.typePreset = DISTILLED_TYPE_ID
+  state.typePresets = [DISTILLED_TYPE_ID]
   state.customType = { id: DISTILLED_TYPE_ID, label, mimetypes: scope.mimetypes }
   chips.push({ label, kind: 'type' })
 }

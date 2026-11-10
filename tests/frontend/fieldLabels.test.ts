@@ -20,7 +20,7 @@ const registry = [
 ]
 
 const query = (overrides: Partial<SearchState>): SearchState => ({
-	term: '', searchContent: false, typePreset: 'any', modifiedPreset: 'any',
+	term: '', searchContent: false, typePresets: [], modifiedPreset: 'any',
 	conditions: [], matchAny: false, scope: null, sort: 'name', descending: false,
 	...overrides,
 } as SearchState)

@@ -13,6 +13,9 @@ numbers are the ones in `appinfo/info.xml`.
   the files. Opening the search shows only what is new, until you close that
   filter. Works on searches shared with you too; the schedule is yours alone.
   Needs Nextcloud's background jobs running from cron to be on time.
+- Pick several file types at once: "PDFs or Images" finds files that are
+  either. Each type gets a chip of its own, so one can go without the others.
+  Saved and recent searches with a single type open as they did.
 
 ## [0.11.0] - 2026-10-26
 

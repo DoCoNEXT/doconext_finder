@@ -48,13 +48,15 @@ const url = (path: string) => generateUrl(`${API_BASE}${path}`)
  * has to know the old shape existed.
  * @param query whatever the server had stored for this search
  */
-function restored(query: SearchState & { content?: string }): SearchState {
+function restored(query: SearchState & { content?: string, typePreset?: string }): SearchState {
   const phrase = (query.content ?? '').trim()
-  const rest: SearchState & { content?: string } = {
+  const rest: SearchState & { content?: string, typePreset?: string } = {
     ...query,
+    typePresets: typeIds(query),
     conditions: (query.conditions ?? []).filter((c) => !RETIRED_FIELDS.includes(c.field)),
   }
   delete rest.content
+  delete rest.typePreset
   if (phrase === '') {
     return rest
   }
@@ -65,6 +67,24 @@ function restored(query: SearchState & { content?: string }): SearchState {
     searchContent: true,
     sort: rest.sort === 'relevance' ? 'mtime' : rest.sort,
   }
+}
+
+/** The Type fields of a stored query, in either shape it may have been kept in. */
+type LegacyTypes = { typePresets?: unknown, typePreset?: string }
+
+/**
+ * The picked Type filters. A search stored before several could be picked holds
+ * one id in `typePreset`, "any" for none — the same rule as
+ * `StoredQuery::typeIds()` on the server.
+ * @param query whatever the server had stored for this search
+ */
+function typeIds(query: LegacyTypes): string[] {
+  if (Array.isArray(query.typePresets)) {
+    return query.typePresets.filter((id): id is string => typeof id === 'string' && id !== 'any')
+  }
+  const legacy = query.typePreset ?? 'any'
+
+  return legacy === 'any' ? [] : [legacy]
 }
 
 /**

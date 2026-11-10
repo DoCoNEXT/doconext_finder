@@ -70,6 +70,40 @@ class StoredQueryTest extends TestCase
         $this->assertSame(['application/msword'], $request['mimetypes']);
     }
 
+    public function testSeveralTypesAreAlternatives(): void
+    {
+        // Contracts is application/pdf, which Documents also holds: sent once.
+        $this->assertSame(
+            ['message/rfc822', 'application/vnd.ms-outlook', ...StoredQuery::BUILTIN_MIMETYPES['documents']],
+            $this->request(['typePresets' => ['email', 'contracts', 'documents']])['mimetypes'],
+        );
+    }
+
+    public function testARetiredTypeAmongSeveralAddsNothing(): void
+    {
+        $this->assertSame(
+            ['application/pdf'],
+            $this->request(['typePresets' => ['images', 'contracts']])['mimetypes'],
+        );
+    }
+
+    public function testTheDistilledTypeCountsAmongSeveral(): void
+    {
+        $request = $this->request([
+            'typePresets' => ['word', 'email'],
+            'customType' => ['id' => 'word', 'label' => 'Word', 'mimetypes' => ['application/msword']],
+        ]);
+
+        $this->assertSame(['application/msword', 'message/rfc822', 'application/vnd.ms-outlook'], $request['mimetypes']);
+    }
+
+    public function testTheListWinsOverASingleTypeLeftBehind(): void
+    {
+        $this->assertSame([], $this->request(['typePresets' => [], 'typePreset' => 'email'])['mimetypes']);
+        $this->assertSame([], StoredQuery::typeIds(['typePreset' => 'any']));
+        $this->assertSame(['email'], StoredQuery::typeIds(['typePreset' => 'email']));
+    }
+
     public function testDatePresetsAreTheUsersCalendar(): void
     {
         $zone = $this->now->getTimezone();

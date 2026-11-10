@@ -159,10 +159,33 @@ final class StoredQuery
     }
 
     /**
-     * The distilled type when it is the one selected, else the configured filter
-     * the id names. An id no configured filter answers to is "any type" — the
-     * page does the same, so an admin retiring a filter widens the search in
-     * both places alike.
+     * The picked Type filters, as ids — `typeIds()` in src/services/SearchApi.ts.
+     * A search stored before several could be picked holds one id in
+     * `typePreset`, "any" for none.
+     *
+     * @param array<string,mixed> $stored
+     * @return list<string>
+     */
+    public static function typeIds(array $stored): array
+    {
+        if (is_array($stored['typePresets'] ?? null)) {
+            return array_values(array_filter(
+                $stored['typePresets'],
+                static fn ($id): bool => is_string($id) && $id !== 'any',
+            ));
+        }
+
+        $legacy = (string)($stored['typePreset'] ?? 'any');
+
+        return $legacy === 'any' ? [] : [$legacy];
+    }
+
+    /**
+     * Every mimetype of every picked type, once — `selectedTypes()` and
+     * `mimetypesOf()` in src/filters/presets.ts. Each id is the distilled type
+     * when that is the one it names, else the configured filter. An id no
+     * configured filter answers to adds nothing — the page does the same, so an
+     * admin retiring a filter widens the search in both places alike.
      *
      * @param array<string,mixed> $stored
      * @param list<array<string,mixed>> $typeFilters
@@ -170,12 +193,23 @@ final class StoredQuery
      */
     private static function mimetypes(array $stored, array $typeFilters): array
     {
-        $preset = (string)($stored['typePreset'] ?? 'any');
-        if ($preset === 'any') {
-            return [];
+        $custom = is_array($stored['customType'] ?? null) ? $stored['customType'] : null;
+        $out = [];
+
+        foreach (self::typeIds($stored) as $preset) {
+            array_push($out, ...self::mimetypesOfType($preset, $custom, $typeFilters));
         }
 
-        $custom = is_array($stored['customType'] ?? null) ? $stored['customType'] : null;
+        return array_values(array_unique($out));
+    }
+
+    /**
+     * @param array<string,mixed>|null $custom
+     * @param list<array<string,mixed>> $typeFilters
+     * @return list<string>
+     */
+    private static function mimetypesOfType(string $preset, ?array $custom, array $typeFilters): array
+    {
         if ($custom !== null && ($custom['id'] ?? null) === $preset) {
             return self::strings($custom['mimetypes'] ?? []);
         }

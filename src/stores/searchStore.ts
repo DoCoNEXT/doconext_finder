@@ -11,7 +11,7 @@ import { SearchApi } from '../services/SearchApi'
 import { useI18n } from '../composables/useI18n'
 import { useHistoryStore } from './historyStore'
 import { usePreferencesStore } from './preferencesStore'
-import { anyTime, anyType, canonicalModifiedPreset, fileTypePresets, modifiedPresets, modifiedRange } from '../filters/presets'
+import { anyTime, canonicalModifiedPreset, mimetypesOf, modifiedPresets, modifiedRange, selectedTypes } from '../filters/presets'
 import type { Translate } from '../filters/presets'
 import { labelledFor, realmOfScope } from '../filters/metadata'
 import { isUsable } from '../filters/fields'
@@ -46,7 +46,7 @@ export function emptyState(): SearchState {
   return {
     term: '',
     searchContent: false,
-    typePreset: 'any',
+    typePresets: [],
     customType: null,
     modifiedPreset: 'any',
     conditions: [],
@@ -121,7 +121,7 @@ export const useSearchStore = defineStore('search', {
     hasCriteria(state): boolean {
       return state.query.term.trim() !== ''
         || state.query.conditions.length > 0
-        || state.query.typePreset !== 'any'
+        || state.query.typePresets.length > 0
         || state.query.modifiedPreset !== 'any'
         // "Everything in this dossier" is a search worth running on its own.
         || state.query.scope !== null
@@ -158,7 +158,12 @@ export const useSearchStore = defineStore('search', {
      * @param query
      */
     apply(query: SearchState) {
-      this.query = { ...emptyState(), ...query, conditions: [...(query.conditions ?? [])] }
+      this.query = {
+        ...emptyState(),
+        ...query,
+        typePresets: [...(query.typePresets ?? [])],
+        conditions: [...(query.conditions ?? [])],
+      }
       this.since = null
     },
 
@@ -182,11 +187,9 @@ export const useSearchStore = defineStore('search', {
      * @param limit how many rows to ask for
      */
     request(t: Translate, offset: number, limit: number) {
-      // The distilled type wins when it is the one selected: it exists precisely
-      // because no configured filter says what the question asked for.
-      const type = this.query.customType?.id === this.query.typePreset
-        ? this.query.customType
-        : fileTypePresets(t).find((p) => p.id === this.query.typePreset) ?? anyType(t)
+      // The distilled type counts when it is among those picked: it exists
+      // precisely because no configured filter says what the question asked for.
+      const types = selectedTypes(t, this.query.typePresets, this.query.customType)
       const time = modifiedPresets(t).find(
         (p) => p.id === canonicalModifiedPreset(this.query.modifiedPreset),
       ) ?? anyTime(t)
@@ -203,7 +206,7 @@ export const useSearchStore = defineStore('search', {
         // making the user delete it before searching. The display label goes no
         // further than this app, for the reason the scope's does not either.
         conditions: this.query.conditions.filter(isUsable).map(sendable),
-        mimetypes: type.mimetypes,
+        mimetypes: mimetypesOf(types),
         modifiedAfter: period.after ?? undefined,
         modifiedBefore: period.before ?? undefined,
         changedSince: this.since ?? undefined,

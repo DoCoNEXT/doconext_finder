@@ -122,12 +122,7 @@
         of their own.
       -->
       <div class="finder__grid">
-        <NcSelect v-model="typeOption"
-                  :class="{ 'finder-filter--set': store.query.typePreset !== 'any' }"
-                  label="label"
-                  :options="typeOptions"
-                  :clearable="false"
-                  :input-label="t('Type')" />
+        <TypeFilter v-model="typeSelection" :options="typeOptions" />
 
         <NcSelect v-model="timeOption"
                   :class="{ 'finder-filter--set': canonicalModifiedPreset(store.query.modifiedPreset) !== 'any' }"
@@ -300,11 +295,12 @@ import { useHistoryStore } from '../stores/historyStore'
 import { useSaveSearch } from '../composables/useSaveSearch'
 import { useDistiller } from '../composables/useDistiller'
 import { AiApi } from '../services/AiApi'
-import { anyTime, anyType, canonicalModifiedPreset, fileTypePresets, modifiedPresets } from '../filters/presets'
+import { anyTime, canonicalModifiedPreset, fileTypePresets, modifiedPresets, selectedTypes } from '../filters/presets'
 import { activeFilters } from '../filters/describe'
 import { sinceLabel } from '../filters/schedule'
 import ConditionRow from '../components/ConditionRow.vue'
 import FolderScope from '../components/FolderScope.vue'
+import TypeFilter from '../components/TypeFilter.vue'
 import ScopeSelector from '../components/ScopeSelector.vue'
 import FileTable from '../components/FileTable.vue'
 import SearchBox from '../components/SearchBox.vue'
@@ -423,7 +419,9 @@ const { saveSearch } = useSaveSearch()
  * kind nobody can correct.
  */
 const typeOptions = computed(() => {
-  const presets = fileTypePresets(t)
+  // No "Any type" to pick: with several to choose, picking none is what leaves
+  // the type open, and the placeholder says so.
+  const presets = fileTypePresets(t).filter((p) => p.id !== 'any')
   const custom = store.query.customType
 
   return custom ? [...presets, custom] : presets
@@ -441,13 +439,13 @@ watch(() => store.results, () => selection.onResults())
  * whole option objects. Translate between the two here rather than storing the
  * objects, so a stored search never carries a stale label.
  */
-const typeOption = computed<FileTypePreset>({
-  get: () => typeOptions.value.find((o) => o.id === store.query.typePreset) ?? anyType(t),
+const typeSelection = computed<FileTypePreset[]>({
+  get: () => selectedTypes(t, store.query.typePresets, store.query.customType),
   set: (next) => {
-    store.query.typePreset = next?.id ?? 'any'
-    // Picking any other option retires the distilled one: keeping it in the
-    // list would offer a type that belongs to a question already answered.
-    if (next?.id !== store.query.customType?.id) {
+    store.query.typePresets = (next ?? []).map((o) => o.id)
+    // Taking the distilled type out retires it: keeping it in the list would
+    // offer a type that belongs to a question already answered.
+    if (!store.query.typePresets.includes(store.query.customType?.id ?? '')) {
       store.query.customType = null
     }
   },
@@ -477,15 +475,20 @@ const conditionSchema = computed(() => store.schema && { ...store.schema, metada
 const filters = computed(() => activeFilters(t, store.query, store.schema?.metadata))
 
 /**
- * Whether an "or" goes before this chip: between two conditions, when any one
- * of them is enough.
+ * Whether an "or" goes before this chip: between two types, always, and between
+ * two conditions when any one of them is enough.
  * @param index position in {@link filters}
  */
 function orBefore(index: number): boolean {
-  return store.query.matchAny
-    && index > 0
-    && filters.value[index].kind === 'condition'
-    && filters.value[index - 1].kind === 'condition'
+  if (index === 0) {
+    return false
+  }
+  const kind = filters.value[index].kind
+  if (kind !== filters.value[index - 1].kind) {
+    return false
+  }
+
+  return kind === 'type' || (kind === 'condition' && store.query.matchAny)
 }
 
 /**
@@ -503,8 +506,10 @@ function clearFilter(filter: ActiveFilter) {
       store.query.scope = null
       break
     case 'type':
-      store.query.typePreset = 'any'
-      store.query.customType = null
+      store.query.typePresets = store.query.typePresets.filter((id) => id !== filter.id)
+      if (filter.id === store.query.customType?.id) {
+        store.query.customType = null
+      }
       break
     case 'time':
       store.query.modifiedPreset = 'any'
@@ -520,7 +525,7 @@ function clearFilter(filter: ActiveFilter) {
 /** Every filter at once; the term, and whether it looks inside files, stay. */
 function clearFilters() {
   store.query.scope = null
-  store.query.typePreset = 'any'
+  store.query.typePresets = []
   store.query.customType = null
   store.query.modifiedPreset = 'any'
   store.query.conditions = []
@@ -560,7 +565,7 @@ const message = computed(() => {
 const scopeChips = computed(() => distiller.chips.value.filter((chip) => {
   switch (chip.kind) {
     case 'type':
-      return store.query.typePreset !== 'any'
+      return store.query.typePresets.length > 0
     case 'topic':
       return store.query.term.trim() !== ''
     default:
@@ -573,7 +578,7 @@ const scopeChips = computed(() => distiller.chips.value.filter((chip) => {
  */
 function clearChip(chip: ScopeChip) {
   if (chip.kind === 'type') {
-    store.query.typePreset = 'any'
+    store.query.typePresets = []
     store.query.customType = null
   } else if (chip.kind === 'topic') {
     store.query.term = ''

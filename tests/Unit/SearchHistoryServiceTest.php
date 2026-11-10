@@ -149,6 +149,33 @@ class SearchHistoryServiceTest extends TestCase
         $this->service($mapper, $shares)->delete('alice', 7);
     }
 
+    public function testAFingerprintKeptBeforeSeveralTypesStillMatches(): void
+    {
+        // The hash is in the table; a search with one type or none must keep it.
+        $this->assertSame(self::fingerprint(['typePreset' => 'pdf']), self::fingerprint(['typePresets' => ['pdf']]));
+        $this->assertSame(self::fingerprint(['typePreset' => 'any']), self::fingerprint(['typePresets' => []]));
+    }
+
+    public function testTheOrderTypesArePickedInDoesNotMakeANewSearch(): void
+    {
+        $this->assertSame(
+            self::fingerprint(['typePresets' => ['pdf', 'images']]),
+            self::fingerprint(['typePresets' => ['images', 'pdf']]),
+        );
+        $this->assertNotSame(
+            self::fingerprint(['typePresets' => ['pdf', 'images']]),
+            self::fingerprint(['typePresets' => ['pdf']]),
+        );
+    }
+
+    /** @param array<string,mixed> $query */
+    private static function fingerprint(array $query): string
+    {
+        $method = new \ReflectionMethod(SearchHistoryService::class, 'fingerprint');
+
+        return (string)$method->invoke(null, $query);
+    }
+
     /**
      * Without a share service told otherwise, nothing is shared with anyone:
      * every lookup through it answers "not found", as the owner check does.

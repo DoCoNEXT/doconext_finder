@@ -6,6 +6,7 @@ namespace OCA\DcnFinder\Service;
 
 use OCA\DcnFinder\Db\SavedSearch;
 use OCA\DcnFinder\Db\SavedSearchMapper;
+use OCA\DcnFinder\Search\StoredQuery;
 use OCP\AppFramework\Db\DoesNotExistException;
 
 /**
@@ -354,7 +355,7 @@ class SearchHistoryService
             // The stored query holds preset *ids*, not the mimetypes they resolve
             // to — reading 'mimetypes' here always found nothing, which quietly
             // made two searches differing only by file type the same recent.
-            'typePreset' => $query['typePreset'] ?? null,
+            'typePreset' => self::typeIdentity($query),
             'modifiedPreset' => $query['modifiedPreset'] ?? null,
             'matchAny' => (bool)($query['matchAny'] ?? false),
             // Two searches for the same word, one of them reading inside the
@@ -371,6 +372,26 @@ class SearchHistoryService
         return hash('sha256', json_encode($identity) ?: '');
     }
 
+    /**
+     * The picked types, as the fingerprint holds them. No type and one type keep
+     * the shape they had while only one could be picked — "any", or the id — so
+     * the fingerprints already in the table still match; several are sorted,
+     * since "PDFs or Images" is the same search as "Images or PDFs".
+     *
+     * @param array<string,mixed> $query
+     * @return string|list<string>
+     */
+    private static function typeIdentity(array $query): string|array
+    {
+        $ids = StoredQuery::typeIds($query);
+        if (count($ids) < 2) {
+            return $ids[0] ?? 'any';
+        }
+        sort($ids);
+
+        return $ids;
+    }
+
     /** @param array<string,mixed> $query */
     private static function isEmpty(array $query): bool
     {
@@ -381,7 +402,7 @@ class SearchHistoryService
             // carries only that is still a search someone will want back.
             && trim((string)($query['content'] ?? '')) === ''
             && ($query['conditions'] ?? []) === []
-            && ($query['typePreset'] ?? 'any') === 'any'
+            && StoredQuery::typeIds($query) === []
             && ($query['modifiedPreset'] ?? 'any') === 'any'
             // "Everything in this dossier" is a search someone will want back.
             && ($query['scope'] ?? null) === null;
