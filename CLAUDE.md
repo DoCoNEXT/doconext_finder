@@ -60,6 +60,46 @@ lines are grepped by eye, and Oracle caps DB object names at 30 characters.
   (`dcn_finder_searches`, `dcn_finder_srch_*_idx`) — this was a refactor of who
   owns the string, never a schema change.
 
+## Look and shared components (`@doconext/nc-ui`)
+The DoCoNEXT apps share one look and a set of components, from the package
+`@doconext/nc-ui` (repository `DoCoNEXT/doconext-nc-ui`). It sits on top of
+Nextcloud's own controls rather than replacing them: buttons, fields, selects
+and switches stay `NcButton`, `NcTextField`, `NcSelect`, so theming, dark mode
+and keyboard handling keep working.
+
+- **Read `node_modules/@doconext/nc-ui/README.md` before building UI.** It
+  lists the components and their props (`DcnPageTitle`, `DcnCard`, `DcnBadge`,
+  `DcnSegmented`, `DcnStat`, `DcnDialog`, `DcnLoading`, `DcnPrincipalPicker`,
+  `DcnSettingsNavigation`, the navigation rail, `useSidebarResize`) and the
+  markup each expects. It ships with the package, so it matches the version
+  the app is on.
+- **Wiring**, as `src/main.ts` and the settings entry points show: every entry
+  point imports `@doconext/nc-ui/styles` and calls `configure({ appId, t })`
+  before mounting. `class="dcn-app"` goes on `NcContent` and on the root of
+  every other mount point; a settings page's root also takes
+  `dcn-settings-page`. An app with an `NcAppNavigation` adds the rail
+  (`useNavigationRail`, `DcnNavigationRailToggle`, and
+  `@doconext/nc-ui/navigation-rail.css` in the shell's scoped style).
+- **Don't restyle what the package already styles**: no page title, card,
+  table, badge or spinner CSS of the app's own. Tables are
+  `<table class="dcn-table">`. A change to the look belongs in the package,
+  so every app gets it; an app overrides only what is truly its own.
+- **Where settings go**: server matters (connections, keys, limits) on
+  Nextcloud's admin page; the app's functional configuration (types, lists,
+  templates) inside the app, behind a cog in the navigation footer, with
+  `DcnSettingsNavigation` in place of the app's navigation while it is open;
+  a user's own preferences on Nextcloud's personal page. The README's
+  "Functional settings" says more.
+- **Versions**: `package.json` pins a tag,
+  `"@doconext/nc-ui": "github:DoCoNEXT/doconext-nc-ui#v0.1.0"`, and CI installs
+  it from GitHub. A change to the package is a new tag (CHANGELOG.md in the
+  package says what changed); each app moves to it when it is ready. To try an
+  unreleased change, point the app at `file:../doconext-nc-ui` for a while and
+  add `resolve.dedupe: ['vue', '@nextcloud/vue', '@lucide/vue']` to
+  `vite.config.ts`; never push that, since CI has no folder beside the app.
+- The package says a few words itself ("Loading…", "Leave settings"), through
+  the `t` given to `configure()`; their keys go in the app's own catalogue.
+
 ## Frontend conventions
 - **Always** use the `useI18n` composable — never import `translate` from `@nextcloud/l10n` directly. Key = the English string.
 - **Always** use `<NcButton>` with `variant=` (`primary`|`secondary`|`tertiary`|`error`|`warning`) — never a plain `<button>`, never `type=`.
