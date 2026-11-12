@@ -6,6 +6,8 @@ numbers are the ones in `appinfo/info.xml`.
 
 ## [Unreleased]
 
+## [0.12.0] - 2026-11-12
+
 ### Added
 - Be notified about a saved search: every day, every weekday or once a week at
   a time you choose, Finder runs it and tells you how many files are new or
@@ -16,6 +18,26 @@ numbers are the ones in `appinfo/info.xml`.
 - Pick several file types at once: "PDFs or Images" finds files that are
   either. Each type gets a chip of its own, so one can go without the others.
   Saved and recent searches with a single type open as they did.
+- Stop a running search: while it runs, Search becomes Stop, and the list
+  keeps what it showed before. A new search also stops the one before it.
+- Choose under Behaviour whether a new search starts with "search file
+  contents too" on. Off by default, as before.
+
+### Changed
+- A refreshed look, in line with the other DoCoNEXT apps.
+- Grouping and columns sit at the top of the results card and stay in view
+  while the list scrolls. A grouping level is added from a "+ Level" button
+  and shown as a chip, like the filters above it.
+- The details panel opens and closes from an icon button beside New search,
+  and draws a file's fields as Core draws a record's metadata: a label with
+  its icon above each value.
+
+### Fixed
+- Opening Finder showed an empty white card before the first search.
+- A dropdown switched between arrow and hand cursors when moving across it,
+  and with the Type list open the first picked type was cut off.
+- On the admin and personal settings pages, Nextcloud's menu button covered
+  the start of the page.
 
 ## [0.11.0] - 2026-10-26
 
