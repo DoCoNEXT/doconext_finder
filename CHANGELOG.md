@@ -22,6 +22,12 @@ numbers are the ones in `appinfo/info.xml`.
   keeps what it showed before. A new search also stops the one before it.
 - Choose under Behaviour whether a new search starts with "search file
   contents too" on. Off by default, as before.
+- Filter a date or moment field from Core on, before or after a day picked
+  from a calendar. "Contains" stays, so "2026" still finds a year. Needs a
+  Core that says which fields hold dates; with an older one, every field
+  searches as text as before.
+- A question in plain language over a range of dates, say "September 2025 to
+  March 2026", becomes that range on a date field, not a single year.
 
 ### Changed
 - A refreshed look, in line with the other DoCoNEXT apps.
@@ -38,6 +44,8 @@ numbers are the ones in `appinfo/info.xml`.
   and with the Type list open the first picked type was cut off.
 - On the admin and personal settings pages, Nextcloud's menu button covered
   the start of the page.
+- A day on a moment field counts from your own midnight, not UTC's: a mail
+  sent at 00:16 in Amsterdam no longer falls on the day before.
 
 ## [0.11.0] - 2026-10-26
 
