@@ -125,13 +125,23 @@ function isPicked(option: FileTypePreset): boolean {
     overflow: clip;
   }
 
+  /*
+   * Placed where a single select puts its value, since Modified, Field and
+   * Condition beside and below it are single ones: 8px in from the outline
+   * (the toggle's 2px border + 4px inline padding + 2px), and a 22.5px line
+   * starting 6.75px below the outline's top, which is low of centre because
+   * the single select keeps room for its border label. Centred, the text sat
+   * 6px above its neighbours'; with 8px of its own padding, 6px right of them.
+   */
   .type-filter__summary {
     display: block;
     flex: 0 1 auto;
+    align-self: flex-start;
     min-width: 0;
     min-height: 0;
     margin: 0;
-    padding: 0 0 0 8px;
+    padding: 4.75px 0 0 2px;
+    line-height: 22.5px;
     overflow: hidden;
     border-radius: 0 !important;
     // The colour is left to filter-set.scss, which marks a filter in force.
