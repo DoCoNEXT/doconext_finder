@@ -83,4 +83,16 @@ describe('a metadata field holding a day or a moment', () => {
 
 		expect(line).toContain('Sent before 2026-06-24')
 	})
+
+	it('reads "on" a day where a text field reads "is"', () => {
+		const on = describeQuery(t, query({
+			conditions: [{ field: 'meta:dcn_core_email_sent_at', operator: 'eq', value: '2026-11-05' }],
+		}), [sent])
+		const is = describeQuery(t, query({
+			conditions: [{ field: 'meta:dcn_core_subject', operator: 'eq', value: 'Demo' }],
+		}), [field('dcn_core_subject', 'Subject')])
+
+		expect(on).toContain('Sent on 2026-11-05')
+		expect(is).toContain('Subject is Demo')
+	})
 })

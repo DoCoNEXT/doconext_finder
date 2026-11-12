@@ -137,7 +137,7 @@ const fieldOptions = computed<Option[]>(() => [
 /** Only the operators this field accepts — the server rejects the rest. */
 const operatorOptions = computed<Option[]>(() =>
   operatorsFor(props.condition.field)
-    .map((id) => ({ id, label: operatorLabel(t, props.condition.field, id) })))
+    .map((id) => ({ id, label: operatorLabel(t, props.condition.field, id, dateKindOf(props.condition.field) !== null) })))
 
 /**
  * Metadata accepts its own small set; a file column has its own whitelist.
@@ -228,7 +228,7 @@ const fieldOption = computed({
 const operatorOption = computed({
   get: () => ({
     id: props.condition.operator,
-    label: operatorLabel(t, props.condition.field, props.condition.operator),
+    label: operatorLabel(t, props.condition.field, props.condition.operator, dateKindOf(props.condition.field) !== null),
   }),
   set: (next: Option | null) => {
     if (!next) {

@@ -170,10 +170,11 @@ export function describeStored(t: Translate, entry: StoredSearch, metadata: Meta
 }
 
 function describeCondition(t: Translate, condition: Condition, metadata: MetadataField[]): string {
+  const known = isMetadataField(condition.field) ? metadata.find((f) => f.field === condition.field) : undefined
   const field = isMetadataField(condition.field)
-    ? metadata.find((f) => f.field === condition.field)?.label ?? metadataKeyOf(condition.field)
+    ? known?.label ?? metadataKeyOf(condition.field)
     : fieldLabel(t, condition.field)
-  const operator = operatorLabel(t, condition.field, condition.operator)
+  const operator = operatorLabel(t, condition.field, condition.operator, Boolean(known?.dateKind))
 
   if (condition.field === 'favorite') {
     return t('Favorite')
