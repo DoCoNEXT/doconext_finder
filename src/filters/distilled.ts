@@ -82,7 +82,7 @@ export function applyDistilled(
   }
 
   applyType(t, scope, state, chips)
-  applyDates(scope, conditions, chips, dropped)
+  applyDates(scope, schema, conditions, chips, dropped)
   applyMetadata(scope, schema, conditions, chips, dropped)
   applyTopic(scope, state, contentSearch, chips, dropped)
 
@@ -131,12 +131,13 @@ function applyType(t: Translate, scope: DistilledFileScope, state: SearchState, 
  */
 function applyDates(
   scope: DistilledFileScope,
+  schema: FieldsResponse | null,
   conditions: Condition[],
   chips: ScopeChip[],
   dropped: string[],
 ): void {
   if (scope.dateFieldKey !== null) {
-    applyMetadataDate(scope, conditions, chips, dropped)
+    applyMetadataDate(scope, schema, conditions, chips, dropped)
 
     return
   }
@@ -172,18 +173,38 @@ function applyDates(
  * A business date — a judgment date, a publication date — rather than the
  * file's own.
  *
- * Metadata lives in one indexed string column, so it compares as text: no
- * greater-than, no range. A year is therefore matched as a substring, which is
- * exactly what the desktop client does and works because these values are
- * written ISO-first. A range that is not a whole single year cannot be
- * expressed at all, and says so.
+ * Where this server says the field holds a date or a moment, the range is
+ * asked as days: on or after the first, on or before the last, each counted
+ * on the searcher's clock by the server. Elsewhere — no Core, an older one,
+ * or a field it does not describe — metadata compares only as text, so a year
+ * is matched as a substring, which works because these values are written
+ * ISO-first; a range that is not one whole year cannot be expressed then,
+ * and says so.
  */
 function applyMetadataDate(
   scope: DistilledFileScope,
+  schema: FieldsResponse | null,
   conditions: Condition[],
   chips: ScopeChip[],
   dropped: string[],
 ): void {
+  const field = META_PREFIX + CORE_KEY_PREFIX + scope.dateFieldKey
+  const known = schema?.metadata.find((f) => f.field === field)
+  const asDays = known?.dateKind && schema?.metadataDateOperators?.includes('gte')
+  const label = scope.dateLabel ?? undefined
+
+  if (asDays && (scope.dateFrom !== null || scope.dateTo !== null)) {
+    if (scope.dateFrom !== null) {
+      conditions.push({ field, operator: 'gte', value: scope.dateFrom, label })
+    }
+    if (scope.dateTo !== null) {
+      conditions.push({ field, operator: 'lte', value: scope.dateTo, label })
+    }
+    chips.push({ label: scope.dateLabel ?? '', kind: 'condition', field, value: scope.dateFrom ?? scope.dateTo ?? undefined })
+
+    return
+  }
+
   const year = sameYear(scope.dateFrom, scope.dateTo)
 
   if (year === null) {
@@ -192,8 +213,7 @@ function applyMetadataDate(
     return
   }
 
-  const field = META_PREFIX + CORE_KEY_PREFIX + scope.dateFieldKey
-  conditions.push({ field, operator: 'contains', value: year, label: scope.dateLabel ?? undefined })
+  conditions.push({ field, operator: 'contains', value: year, label })
   chips.push({ label: scope.dateLabel ?? year, kind: 'condition', field, value: year })
 }
 

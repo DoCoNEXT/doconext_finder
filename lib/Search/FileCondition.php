@@ -64,6 +64,13 @@ final class FileCondition
      */
     public const METADATA_OPERATORS = ['eq', 'contains'];
 
+    /**
+     * A key that holds a day or a moment is also asked before and after a
+     * day, as {@see MetadataDay} compares it. Which keys those are is the
+     * registry's to say, so the caller checks; this only bounds the words.
+     */
+    public const METADATA_DATE_OPERATORS = ['eq', 'lt', 'lte', 'gt', 'gte', 'contains'];
+
     /** Public operator name → ISearchComparison constant. */
     public const OPERATORS = [
         'eq'       => ISearchComparison::COMPARE_EQUAL,
@@ -97,10 +104,10 @@ final class FileCondition
         // since which keys exist depends on what apps are installed.
         if (MetadataFields::isMetadata($field)) {
             $operator = (string)($raw['operator'] ?? '');
-            if (!in_array($operator, self::METADATA_OPERATORS, true)) {
+            if (!in_array($operator, self::METADATA_DATE_OPERATORS, true)) {
                 throw new \InvalidArgumentException(
                     '"' . $field . '" does not support "' . $operator . '"; allowed: '
-                    . implode(', ', self::METADATA_OPERATORS)
+                    . implode(', ', self::METADATA_DATE_OPERATORS)
                 );
             }
             $value = trim((string)($raw['value'] ?? ''));

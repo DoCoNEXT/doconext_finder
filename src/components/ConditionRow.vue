@@ -137,7 +137,7 @@ const fieldOptions = computed<Option[]>(() => [
 /** Only the operators this field accepts — the server rejects the rest. */
 const operatorOptions = computed<Option[]>(() =>
   operatorsFor(props.condition.field)
-    .map((id) => ({ id, label: operatorLabel(t, props.condition.field, id) })))
+    .map((id) => ({ id, label: operatorLabel(t, props.condition.field, id, dateKindOf(props.condition.field) !== null) })))
 
 /**
  * Metadata accepts its own small set; a file column has its own whitelist.
@@ -150,7 +150,20 @@ function operatorsFor(field: string): Operator[] {
 
   // The picker hands over a whole id, so "contains" could only ever match one
   // by accident — `ann` sitting inside `joanne`.
-  return principalOf(field) ? ['eq'] : props.schema.metadataOperators
+  if (principalOf(field)) {
+    return ['eq']
+  }
+  return dateKindOf(field) ? (props.schema.metadataDateOperators ?? props.schema.metadataOperators) : props.schema.metadataOperators
+}
+
+/**
+ * Whether a metadata field holds a day or a moment — asked on, before or after
+ * a day — and null for every other field. Core says so; both are text to
+ * Nextcloud.
+ * @param field
+ */
+function dateKindOf(field: string) {
+  return props.schema.metadata.find((f) => f.field === field)?.dateKind ?? null
 }
 
 /**
@@ -165,13 +178,17 @@ function principalOf(field: string) {
 
 // Metadata is stored as one indexed string column whatever its declared type,
 // so it edits as text — except where it names people, who are picked rather
-// than typed.
+// than typed, and where it holds a date or a moment, which is asked about a
+// day picked from a calendar. "Contains" stays typed: "2026" finds a year.
 const input = computed<InputKind>(() => {
   if (!isMetadataField(props.condition.field)) {
     return fieldInput(props.condition.field)
   }
+  if (principalOf(props.condition.field)) {
+    return 'principal'
+  }
 
-  return principalOf(props.condition.field) ? 'principal' : 'text'
+  return dateKindOf(props.condition.field) && props.condition.operator !== 'contains' ? 'date' : 'text'
 })
 const hint = computed(() => fieldHint(t, props.condition.field))
 
@@ -211,9 +228,19 @@ const fieldOption = computed({
 const operatorOption = computed({
   get: () => ({
     id: props.condition.operator,
-    label: operatorLabel(t, props.condition.field, props.condition.operator),
+    label: operatorLabel(t, props.condition.field, props.condition.operator, dateKindOf(props.condition.field) !== null),
   }),
-  set: (next: Option | null) => next && patch({ operator: next.id as Operator }),
+  set: (next: Option | null) => {
+    if (!next) {
+      return
+    }
+    const operator = next.id as Operator
+    // On a date field "contains" takes typed text and the rest a day: the
+    // value of one means nothing to the other.
+    const changesInput = dateKindOf(props.condition.field) !== null
+      && (operator === 'contains') !== (props.condition.operator === 'contains')
+    patch(changesInput ? { operator, value: '', label: undefined } : { operator })
+  },
 })
 
 const textValue = computed({
@@ -274,9 +301,14 @@ function onPrincipalSearch(term: string, loading: (state: boolean) => void) {
   }, 250)
 }
 
+// A file date travels as Unix seconds; a metadata day as the day itself,
+// which the server places on the searcher's clock.
 const dateValue = computed({
   get: () => {
-    const iso = toDateInput(props.condition.value as number)
+    const value = props.condition.value
+    const iso = isMetadataField(props.condition.field)
+      ? (/^\d{4}-\d{2}-\d{2}$/.test(String(value ?? '')) ? String(value) : '')
+      : toDateInput(value as number)
     return iso ? new Date(`${iso}T00:00:00`) : null
   },
   set: (next: Date | null) => {
@@ -286,7 +318,7 @@ const dateValue = computed({
     }
     const pad = (n: number) => String(n).padStart(2, '0')
     const iso = `${next.getFullYear()}-${pad(next.getMonth() + 1)}-${pad(next.getDate())}`
-    patch({ value: toUnix(iso) })
+    patch({ value: isMetadataField(props.condition.field) ? iso : toUnix(iso) })
   },
 })
 </script>

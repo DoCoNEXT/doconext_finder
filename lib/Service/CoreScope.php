@@ -312,6 +312,23 @@ class CoreScope
         return $this->guard(static fn () => $core->labelsByRealm(), []);
     }
 
+    /**
+     * Which of Core's keys hold a calendar day and which a moment:
+     * `dcn_core_email_sent_at` → 'datetime'. Empty without Core, or with a Core
+     * that predates the question — those keys then search as text, as always.
+     *
+     * @return array<string, 'date'|'datetime'>
+     */
+    public function fieldDateKinds(): array
+    {
+        $core = $this->coreService(self::CORE_LABELS);
+        if ($core === null || !method_exists($core, 'dateKinds')) {
+            return [];
+        }
+
+        return $this->guard(static fn () => $core->dateKinds(), []);
+    }
+
     private function core(): ?object
     {
         return $this->coreService(self::CORE_VOCABULARY);

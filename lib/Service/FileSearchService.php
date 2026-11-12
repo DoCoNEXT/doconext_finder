@@ -10,6 +10,7 @@ use OCA\DcnFinder\Search\FileOwner;
 use OCA\DcnFinder\Search\FileQuery;
 use OCA\DcnFinder\Search\FileScope;
 use OCA\DcnFinder\Search\InvalidQueryException;
+use OCA\DcnFinder\Search\MetadataDay;
 use OCA\DcnFinder\Search\MetadataFields;
 use OCA\DcnFinder\Search\ResultOrder;
 use OCP\Files\FileInfo;
@@ -24,6 +25,7 @@ use OCP\Files\Search\ISearchOrder;
 use OCP\Files\Storage\ISharedStorage;
 use OCP\FilesMetadata\IFilesMetadataManager;
 use OCP\FilesMetadata\IMetadataQuery;
+use OCP\IDateTimeZone;
 use OCP\IDBConnection;
 use OCP\ITagManager;
 use OCP\IUser;
@@ -56,6 +58,7 @@ class FileSearchService
         private CoreScope $coreScope,
         private ContentSearchService $contentSearch,
         private IDBConnection $db,
+        private IDateTimeZone $dateTimeZone,
     ) {
     }
 
@@ -158,7 +161,7 @@ class FileSearchService
             }
         }
 
-        $operator = $this->buildOperator($query, $ranked['ids'] ?? []);
+        $operator = $this->buildOperator($query, $this->dateTimeZone->getTimeZone(false, $uid), $ranked['ids'] ?? []);
         $orders   = $this->order($query);
 
         if ($ranked !== null && $query->sort === FileQuery::SORT_RELEVANCE) {
@@ -442,7 +445,7 @@ class FileSearchService
      *
      * @param list<int> $contentIds file ids the full-text index matched, if any
      */
-    private function buildOperator(FileQuery $query, array $contentIds = []): ISearchOperator
+    private function buildOperator(FileQuery $query, \DateTimeZone $searchersZone, array $contentIds = []): ISearchOperator
     {
         $parts = [];
 
@@ -505,7 +508,7 @@ class FileSearchService
             $parts[] = self::changedSince($query->changedSince);
         }
 
-        $conditions = array_map(fn (FileCondition $c) => $this->toComparison($c), $query->conditions);
+        $conditions = array_map(fn (FileCondition $c) => $this->toComparison($c, $searchersZone), $query->conditions);
 
         if (count($conditions) === 1) {
             $parts[] = $conditions[0];
@@ -568,7 +571,8 @@ class FileSearchService
         return [$order, CoreSearch::orderBy(ISearchOrder::DIRECTION_ASCENDING, 'fileid')];
     }
 
-    private function toComparison(FileCondition $condition): ISearchOperator
+    /** @param \DateTimeZone $searchersZone the clock a day of a moment is counted on */
+    private function toComparison(FileCondition $condition, \DateTimeZone $searchersZone): ISearchOperator
     {
         if (MetadataFields::isMetadata($condition->field)) {
             $key = MetadataFields::key($condition->field);
@@ -581,6 +585,17 @@ class FileSearchService
                 throw new InvalidQueryException(
                     '"' . $key . '" is not indexed on this server and cannot be filtered on'
                 );
+            }
+
+            // A day, or before or after one, on a key that holds a date or a
+            // moment; anything else is only ever compared as text.
+            $dateKind = $this->metadataFields->dateKind($key);
+            if (in_array($condition->operator, MetadataDay::OPERATORS, true) && $dateKind !== null) {
+                return MetadataDay::operator($key, $dateKind, $condition->operator, (string)$condition->value, $condition->negate, $searchersZone);
+            }
+            if (!in_array($condition->operator, FileCondition::METADATA_OPERATORS, true)) {
+                throw new InvalidQueryException('"' . $key . '" does not support "' . $condition->operator . '"; allowed: '
+                    . implode(', ', FileCondition::METADATA_OPERATORS));
             }
 
             // A field that may name several people is one string holding all of

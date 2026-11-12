@@ -136,6 +136,20 @@ function clear() {
   margin-bottom: 4px;
 }
 
+/*
+ * An input centres its text; a single NcSelect beside it puts its value lower,
+ * keeping room for the label on its border, so "Anywhere" sat 3px above
+ * "Any time" in Modified (measured). 6px at the top moves the centred line
+ * down by half of it. The folder icon, centred on the box on its own, follows.
+ */
+.folder-scope__field :deep(.input-field__input) {
+  padding-top: 6px;
+}
+
+.folder-scope__field :deep(.input-field__icon--leading) {
+  translate: 0 3px;
+}
+
 /* A click opens the picker; the text cursor of an input would promise typing. */
 .folder-scope__field :deep(input:not(:disabled)) {
   cursor: pointer;

@@ -83,26 +83,65 @@ function isPicked(option: FileTypePreset): boolean {
     padding-block: 0;
   }
 
-  // The toggle's own 2px border goes around this: 30 + 4 = the single one's 34.
-  // Its own no-wrap, not the library's: that one scrolls the row to keep the
+  /*
+   * @doconext/nc-ui (design.scss) takes the room for a border label away from a
+   * select whose label sits outside, which it recognises by
+   * `.input-field--label-outside`. But NcSelect gives every multiple select's
+   * inner input that class, label on the border or not, so the rule reached
+   * this one too: 3px padding made it 40px tall, and without its 6px top margin
+   * it no longer lined up with Modified. `:has(.select__label)` — the label
+   * NcSelect draws on the border — says what this field is and outranks it.
+   * Drop this once nc-ui asks for the label instead.
+   */
+  &.vs--multiple:has(.select__label) {
+    margin-block: 6px 4px;
+
+    :deep(.vs__dropdown-toggle) {
+      padding-block: 0;
+    }
+  }
+
+  /*
+   * What lines up is the outline, not the box. A single select draws its
+   * outline on the 30px input inside a 34px box, 2px in from each edge; this
+   * one draws it on the toggle itself, so a 34px toggle read 4px taller than
+   * Modified beside it. 2px of margin and 26px of content (+ the 2px border
+   * on each side) put the outline on the same 30px, and keep the box at 34.
+   */
+  :deep(.vs__dropdown-toggle) {
+    margin-block: 2px;
+  }
+
+  // The toggle's own 2px border goes around this: 26 + 4 = the single one's
+  // 30px input, the part with the outline on it. Its own no-wrap, not the library's: that one scrolls the row to keep the
   // search input in view, which slid the start of the line out of sight.
   // `clip`, not `hidden`: a hidden overflow is still a scroll container, and
   // focusing the input when the list opens scrolled it all the same.
   :deep(.vs__selected-options) {
     flex-wrap: nowrap;
     align-items: center;
-    height: 30px;
+    height: 26px;
     min-width: 0;
     overflow: clip;
   }
 
+  /*
+   * Placed where a single select puts its value, since Modified, Field and
+   * Condition beside and below it are single ones: 8px in from the outline
+   * (the toggle's 2px border + 4px inline padding + 2px), and a 22.5px line
+   * starting 6.75px below the outline's top, which is low of centre because
+   * the single select keeps room for its border label. Centred, the text sat
+   * 6px above its neighbours'; with 8px of its own padding, 6px right of them.
+   */
   .type-filter__summary {
     display: block;
     flex: 0 1 auto;
+    align-self: flex-start;
     min-width: 0;
     min-height: 0;
     margin: 0;
-    padding: 0 0 0 8px;
+    padding: 4.75px 0 0 2px;
+    line-height: 22.5px;
     overflow: hidden;
     border-radius: 0 !important;
     // The colour is left to filter-set.scss, which marks a filter in force.

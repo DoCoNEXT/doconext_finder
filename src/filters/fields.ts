@@ -92,21 +92,14 @@ export function fieldHint(t: Translate, field: string): string {
  * @param t
  * @param field
  * @param operator
+ * @param holdsDay whether a metadata field holds a date or a moment: "is" a day
+ *   reads as "on" it, beside "on or before" and "on or after"
  */
-export function operatorLabel(t: Translate, field: string, operator: string): string {
+export function operatorLabel(t: Translate, field: string, operator: string, holdsDay = false): string {
   const kind = fieldInput(field)
 
   if (kind === 'none') {
     return t('is set')
-  }
-
-  if (kind === 'date') {
-    switch (operator) {
-      case 'lt': return t('before')
-      case 'lte': return t('on or before')
-      case 'gt': return t('after')
-      case 'gte': return t('on or after')
-    }
   }
 
   if (kind === 'size') {
@@ -118,8 +111,17 @@ export function operatorLabel(t: Translate, field: string, operator: string): st
     }
   }
 
+  // Every other field that is ordered at all is ordered by a day: the file
+  // dates, and a metadata field holding a date or a moment.
   switch (operator) {
-    case 'eq': return t('is')
+    case 'lt': return t('before')
+    case 'lte': return t('on or before')
+    case 'gt': return t('after')
+    case 'gte': return t('on or after')
+  }
+
+  switch (operator) {
+    case 'eq': return holdsDay ? t('on') : t('is')
     case 'contains': return t('contains')
     default: return operator
   }
