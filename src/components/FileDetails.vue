@@ -156,7 +156,8 @@
   <!--
     The panel's leading edge, as a control. A sibling of the panel rather than a
     child of it: NcAppSidebar has no slot at its own root. See
-    styles/sidebar-resize.scss for what this element's parent has to be.
+    the sidebar-resize stylesheet of @doconext/nc-ui for what this element's
+    parent has to be.
 
     `separator` with a value and limits is the ARIA window splitter, so the
     keyboard gets the control the pointer has rather than a div it cannot reach.
@@ -213,7 +214,7 @@ import { useI18n } from '../composables/useI18n'
 import { useClipboard } from '../composables/useClipboard'
 import { useSearchStore } from '../stores/searchStore'
 import { useFileCommands } from '../composables/useFileCommands'
-import { useSidebarResize } from '../composables/useSidebarResize'
+import { useSidebarResize } from '@doconext/nc-ui'
 import { folderOf, typeName } from '../filters/grouping'
 import { formatDate, formatSize } from '../filters/columns'
 import { canRead } from '../filters/access'
@@ -539,9 +540,8 @@ const previewUrl = computed(() => {
   — so a scope attribute would stop all of them matching.
 -->
 <style lang="scss">
-// The handle and the width it moves, shared with the other DoCoNEXT apps, so it
-// lives in a stylesheet of its own rather than in this component.
-@use '../styles/sidebar-resize.scss';
+// The handle and the width it moves come with @doconext/nc-ui/styles (main.ts),
+// shared with the other DoCoNEXT apps.
 
 // Where the panel opens. The library caps it at 500px, which is a fair width for
 // a column of key/value rows and a poor one for a document — a preview rendered
