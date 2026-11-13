@@ -84,24 +84,6 @@ function isPicked(option: FileTypePreset): boolean {
   }
 
   /*
-   * @doconext/nc-ui (design.scss) takes the room for a border label away from a
-   * select whose label sits outside, which it recognises by
-   * `.input-field--label-outside`. But NcSelect gives every multiple select's
-   * inner input that class, label on the border or not, so the rule reached
-   * this one too: 3px padding made it 40px tall, and without its 6px top margin
-   * it no longer lined up with Modified. `:has(.select__label)` — the label
-   * NcSelect draws on the border — says what this field is and outranks it.
-   * Drop this once nc-ui asks for the label instead.
-   */
-  &.vs--multiple:has(.select__label) {
-    margin-block: 6px 4px;
-
-    :deep(.vs__dropdown-toggle) {
-      padding-block: 0;
-    }
-  }
-
-  /*
    * What lines up is the outline, not the box. A single select draws its
    * outline on the 30px input inside a 34px box, 2px in from each edge; this
    * one draws it on the toggle itself, so a 34px toggle read 4px taller than
