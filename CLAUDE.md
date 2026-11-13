@@ -91,7 +91,7 @@ and keyboard handling keep working.
   a user's own preferences on Nextcloud's personal page. The README's
   "Functional settings" says more.
 - **Versions**: `package.json` pins a tag,
-  `"@doconext/nc-ui": "github:DoCoNEXT/doconext-nc-ui#v0.1.0"`, and CI installs
+  `"@doconext/nc-ui": "github:DoCoNEXT/doconext-nc-ui#vX.Y.Z"`, and CI installs
   it from GitHub. A change to the package is a new tag (CHANGELOG.md in the
   package says what changed); each app moves to it when it is ready. To try an
   unreleased change, point the app at `file:../doconext-nc-ui` for a while and
