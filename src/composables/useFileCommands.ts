@@ -194,11 +194,6 @@ export function useFileCommands(onChanged?: (_file: FileResult) => void) {
   }
 
   /**
-   * @param file the row the menu belongs to
-   * @param toggleFavorite called to star/unstar; omitted where the caller
-   *   handles the star itself
-   */
-  /**
    * Opens the entity a file belongs to, in DoCoNEXT Core.
    *
    * A file outside every managed folder simply has no entity, which is not a
@@ -223,6 +218,11 @@ export function useFileCommands(onChanged?: (_file: FileResult) => void) {
     }
   }
 
+  /**
+   * @param file the row the menu belongs to
+   * @param toggleFavorite called to star/unstar; omitted where the caller
+   *   handles the star itself
+   */
   function commandsFor(
     file: FileResult,
     toggleFavorite?: (_file: FileResult) => void,

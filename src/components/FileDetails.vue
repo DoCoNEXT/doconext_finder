@@ -3,8 +3,6 @@
                 :name="file.name"
                 :subname="folderOf(file) || '/'"
                 :active="activeTab"
-                :starred="file.favorite"
-                @update:starred="$emit('toggleFavorite', file)"
                 @close="$emit('close')"
                 @update:active="activeTab = $event">
     <!--
@@ -247,10 +245,13 @@ const emit = defineEmits<{
 const { commandsFor } = useFileCommands((file) => emit('changed', file))
 
 /**
- * The star lives in the sidebar header, so the favorite command is left out of
- * the menu — two controls for one flag read as two different things.
+ * The favorite is a command in the menu, as in the row menu, rather than the
+ * header's own star: that one sat in the corner beside the name, read as part
+ * of the title, and was the one command the two menus did not share.
  */
-const commands = computed(() => (props.file ? commandsFor(props.file) : []))
+const commands = computed(() => (props.file
+  ? commandsFor(props.file, (file) => emit('toggleFavorite', file))
+  : []))
 
 // NcActions renders links and buttons alike, but they are different components,
 // so the list is split rather than branched inside one v-for: a v-if/v-else

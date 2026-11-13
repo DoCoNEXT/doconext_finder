@@ -6,6 +6,10 @@ numbers are the ones in `appinfo/info.xml`.
 
 ## [Unreleased]
 
+### Changed
+- The details panel adds and removes a favorite from its menu, as the menu of
+  a search result does, instead of with a star beside the file's name.
+
 ## [0.12.0] - 2026-11-12
 
 ### Added
