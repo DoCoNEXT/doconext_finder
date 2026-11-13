@@ -10,6 +10,10 @@ numbers are the ones in `appinfo/info.xml`.
 - The details panel adds and removes a favorite from its menu, as the menu of
   a search result does, instead of with a star beside the file's name.
 
+### Fixed
+- A result's name is no longer underlined under the mouse, as if one click
+  would open it: one click selects it, a double click opens it.
+
 ## [0.12.0] - 2026-11-12
 
 ### Added

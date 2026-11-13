@@ -668,10 +668,6 @@ function nudge(event: KeyboardEvent, column: ColumnPref) {
       text-overflow: ellipsis;
       white-space: nowrap;
     }
-
-    &:hover span {
-      text-decoration: underline;
-    }
   }
 }
 
