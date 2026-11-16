@@ -46,6 +46,9 @@ class MetadataFields
     /** @var array<string, 'date'|'datetime'>|null the keys holding a day or a moment, asked once per request */
     private ?array $dateKinds = null;
 
+    /** @var list<string>|null the keys holding several choices, asked once per request */
+    private ?array $multiSelectKeys = null;
+
     public function __construct(
         private IFilesMetadataManager $metadataManager,
         private CoreScope $core,
@@ -115,6 +118,17 @@ class MetadataFields
     {
         $this->dateKinds ??= $this->core->fieldDateKinds();
         return $this->dateKinds[$key] ?? null;
+    }
+
+    /**
+     * Whether a key holds several choices of a multi-select, which Core stores
+     * as the choices joined by `, `. Only Core knows; false on every key
+     * without it, and with a Core that predates the question.
+     */
+    public function holdsSeveralChoices(string $key): bool
+    {
+        $this->multiSelectKeys ??= $this->core->multiSelectKeys();
+        return in_array($key, $this->multiSelectKeys, true);
     }
 
     /** True when the field name addresses metadata rather than a file column. */

@@ -329,6 +329,23 @@ class CoreScope
         return $this->guard(static fn () => $core->dateKinds(), []);
     }
 
+    /**
+     * Which of Core's keys hold several choices: `dcn_core_project_manager`.
+     * Empty without Core, or with a Core that predates the question — "is" on
+     * those keys then compares the whole value, as it always did.
+     *
+     * @return list<string>
+     */
+    public function multiSelectKeys(): array
+    {
+        $core = $this->coreService(self::CORE_LABELS);
+        if ($core === null || !method_exists($core, 'multiSelectKeys')) {
+            return [];
+        }
+
+        return $this->guard(static fn () => $core->multiSelectKeys(), []);
+    }
+
     private function core(): ?object
     {
         return $this->coreService(self::CORE_VOCABULARY);
