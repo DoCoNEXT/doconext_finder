@@ -598,21 +598,26 @@ class FileSearchService
                     . implode(', ', FileCondition::METADATA_OPERATORS));
             }
 
-            // A field that may name several people is one string holding all of
-            // them, so "is" has to find an id inside that list rather than equal
-            // it. See namesPrincipal().
+            // A field that may name several people or hold several choices is
+            // one string holding all of them, so "is" has to find one item
+            // inside that list rather than equal it. See namesItemInList().
             $principal = $this->metadataFields->principalField($key);
-            if ($principal !== null && $principal['multi'] && $condition->operator === 'eq') {
+            $holds = match (true) {
+                $principal !== null && $principal['multi'] => 'can name several people',
+                $this->metadataFields->holdsSeveralChoices($key) => 'can hold several choices',
+                default => null,
+            };
+            if ($holds !== null && $condition->operator === 'eq') {
                 if ($condition->negate) {
                     // It would become NOT(OR(...)), and SearchBuilder takes only a
                     // plain comparison inside "not". Say so rather than fail deep
                     // in the query builder.
                     throw new InvalidQueryException(
-                        '"' . $key . '" can name several people, and "is not" cannot be asked of such a field'
+                        '"' . $key . '" ' . $holds . ', and "is not" cannot be asked of such a field'
                     );
                 }
 
-                return $this->namesPrincipal($key, (string)$condition->value);
+                return $this->namesItemInList($key, (string)$condition->value);
             }
 
             $comparison = CoreSearch::compare(
@@ -641,35 +646,43 @@ class FileSearchService
     }
 
     /**
-     * "This field names <id>", where the field may name several people.
+     * "This field names <item>", where the field may hold several: people, or
+     * the choices of a multi-select.
      *
-     * Core writes those as one comma-separated string — `alice, bob` — because
-     * the index column is too narrow for the objects they come from. So the id
-     * has to be found *within* the value, and a plain "contains" would let `ann`
-     * match `joanne`. These are the four places an id can sit in such a list:
-     * alone, first, last, or between two others, each anchored on the separator
-     * Core writes.
+     * Core writes those as one comma-separated string — `alice, bob`,
+     * `nda, advies` — because the index column is too narrow for the list
+     * they come from. So the item has to be found *within* the value, and a
+     * plain "contains" would let `ann` match `joanne`.
      */
-    private function namesPrincipal(string $key, string $id): ISearchOperator
+    private function namesItemInList(string $key, string $item): ISearchOperator
     {
-        // The id is a pattern from here on: a literal % or _ in it would
-        // otherwise match anything.
-        $quoted = addcslashes($id, '%_\\');
-
-        $patterns = [
-            [ISearchComparison::COMPARE_EQUAL, $id],
-            [ISearchComparison::COMPARE_LIKE, $quoted . ', %'],
-            [ISearchComparison::COMPARE_LIKE, '%, ' . $quoted],
-            [ISearchComparison::COMPARE_LIKE, '%, ' . $quoted . ', %'],
-        ];
-
         return CoreSearch::combine(
             ISearchBinaryOperator::OPERATOR_OR,
             array_map(
                 fn (array $pattern) => CoreSearch::compare($pattern[0], $key, $pattern[1], IMetadataQuery::EXTRA),
-                $patterns,
+                self::itemInListPatterns($item),
             ),
         );
+    }
+
+    /**
+     * The four places an item can sit in such a list — alone, first, last, or
+     * between two others — each anchored on the separator Core writes.
+     *
+     * @return list<array{0: string, 1: string}> comparison type, value
+     */
+    public static function itemInListPatterns(string $item): array
+    {
+        // The item is a pattern from here on: a literal % or _ in it would
+        // otherwise match anything.
+        $quoted = addcslashes($item, '%_\\');
+
+        return [
+            [ISearchComparison::COMPARE_EQUAL, $item],
+            [ISearchComparison::COMPARE_LIKE, $quoted . ', %'],
+            [ISearchComparison::COMPARE_LIKE, '%, ' . $quoted],
+            [ISearchComparison::COMPARE_LIKE, '%, ' . $quoted . ', %'],
+        ];
     }
 
     /**
