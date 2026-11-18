@@ -48,11 +48,16 @@ class FilePeopleBackfill
         private IMimeTypeLoader $mimeTypes,
         private FileAuthorService $authors,
         private FilePeopleIndex $index,
+        private FilePeopleSettings $settings,
     ) {
     }
 
     public function start(): void
     {
+        if (!$this->settings->isEnabled()) {
+            return;
+        }
+
         $this->appConfig->setValueBool(AppConstants::APP_ID, self::CONFIG_RUNNING, true, lazy: true);
     }
 
@@ -68,7 +73,8 @@ class FilePeopleBackfill
 
     public function isRunning(): bool
     {
-        return !$this->isComplete()
+        return $this->settings->isEnabled()
+            && !$this->isComplete()
             && $this->appConfig->getValueBool(AppConstants::APP_ID, self::CONFIG_RUNNING, false, lazy: true);
     }
 
@@ -229,6 +235,10 @@ class FilePeopleBackfill
     /** Everything in a copied folder was made, and last written, by whoever copied it. */
     public function copiedFolder(int $folderId, string $uid): void
     {
+        if (!$this->settings->isEnabled()) {
+            return;
+        }
+
         $qb = $this->db->getQueryBuilder();
         $qb->select('storage', 'path')
             ->from('filecache')

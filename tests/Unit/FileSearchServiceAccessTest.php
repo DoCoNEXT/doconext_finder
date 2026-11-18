@@ -9,6 +9,7 @@ use OCA\DcnFinder\Search\MetadataFields;
 use OCA\DcnFinder\Service\ContentSearchService;
 use OCA\DcnFinder\Service\CoreScope;
 use OCA\DcnFinder\Service\FileAuthorService;
+use OCA\DcnFinder\Service\FilePeopleSettings;
 use OCA\DcnFinder\Service\FileSearchService;
 use OCP\Files\File;
 use OCP\Files\Folder;
@@ -63,6 +64,7 @@ class FileSearchServiceAccessTest extends TestCase
             $this->createMock(ContentSearchService::class),
             $this->createMock(IDBConnection::class),
             $this->createMock(IDateTimeZone::class),
+            $this->createMock(FilePeopleSettings::class),
         );
     }
 

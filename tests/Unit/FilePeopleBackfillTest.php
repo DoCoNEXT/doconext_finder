@@ -7,6 +7,7 @@ namespace OCA\DcnFinder\Tests\Unit;
 use OCA\DcnFinder\Service\FileAuthorService;
 use OCA\DcnFinder\Service\FilePeopleBackfill;
 use OCA\DcnFinder\Service\FilePeopleIndex;
+use OCA\DcnFinder\Service\FilePeopleSettings;
 use OCP\Files\IMimeTypeLoader;
 use OCP\IAppConfig;
 use OCP\IDBConnection;
@@ -22,6 +23,11 @@ class FilePeopleBackfillTest extends TestCase
         $this->assertFalse($backfill->isRunning());
         $this->assertFalse($backfill->isComplete());
         $this->assertSame('idle', $backfill->status()['state']);
+    }
+
+    public function testNothingRunsWhileTheFeatureIsOff(): void
+    {
+        $this->assertFalse($this->backfill(['step' => 1, 'after' => 5, 'running' => true], false)->isRunning());
     }
 
     public function testAStartedRunWaitsForTheBackgroundJobs(): void
@@ -121,8 +127,11 @@ class FilePeopleBackfillTest extends TestCase
     }
 
     /** @param array{step: int, after: int, running: bool} $state */
-    private function backfill(array $state): FilePeopleBackfill
+    private function backfill(array $state, bool $enabled = true): FilePeopleBackfill
     {
+        $settings = $this->createMock(FilePeopleSettings::class);
+        $settings->method('isEnabled')->willReturn($enabled);
+
         $config = $this->createMock(IAppConfig::class);
         $config->method('getValueInt')->willReturnCallback(
             static fn (string $app, string $key): int => str_ends_with($key, '_step') ? $state['step'] : $state['after'],
@@ -138,6 +147,7 @@ class FilePeopleBackfillTest extends TestCase
             $this->createMock(IMimeTypeLoader::class),
             $this->createMock(FileAuthorService::class),
             $this->createMock(FilePeopleIndex::class),
+            $settings,
         );
     }
 }

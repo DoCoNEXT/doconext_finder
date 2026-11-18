@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OCA\DcnFinder\Command;
 
 use OCA\DcnFinder\Service\FilePeopleBackfill;
+use OCA\DcnFinder\Service\FilePeopleSettings;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
@@ -27,6 +28,7 @@ class BackfillFilePeople extends Command
 {
     public function __construct(
         private FilePeopleBackfill $backfill,
+        private FilePeopleSettings $settings,
     ) {
         parent::__construct();
     }
@@ -47,6 +49,12 @@ class BackfillFilePeople extends Command
             $this->report($output);
 
             return self::SUCCESS;
+        }
+
+        if (!$this->settings->isEnabled()) {
+            $output->writeln('<error>Created by and Modified by are turned off. Turn them on in the Finder admin settings first.</error>');
+
+            return self::FAILURE;
         }
 
         $minutes = $input->getOption('max-minutes');
@@ -70,6 +78,12 @@ class BackfillFilePeople extends Command
     private function report(OutputInterface $output): void
     {
         $status = $this->backfill->status();
+        if (!$this->settings->isEnabled()) {
+            $output->writeln('turned off');
+
+            return;
+        }
+
         $output->writeln($status['state'] . ': ' . $status['percent'] . '%');
     }
 }

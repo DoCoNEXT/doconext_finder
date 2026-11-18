@@ -6,6 +6,7 @@ namespace OCA\DcnFinder\Controller;
 
 use OCA\DcnFinder\Service\BridgeSettings;
 use OCA\DcnFinder\Service\FilePeopleBackfill;
+use OCA\DcnFinder\Service\FilePeopleSettings;
 use OCA\DcnFinder\Service\FileTypeFilterSettings;
 use OCP\AppFramework\Controller;
 use OCP\AppFramework\Http\Attribute\FrontpageRoute;
@@ -26,6 +27,7 @@ class AdminController extends Controller
         private BridgeSettings $bridgeSettings,
         private FileTypeFilterSettings $fileTypeFilterSettings,
         private FilePeopleBackfill $filePeopleBackfill,
+        private FilePeopleSettings $filePeopleSettings,
     ) {
         parent::__construct($appName, $request);
     }
@@ -51,26 +53,43 @@ class AdminController extends Controller
         return new DataResponse(['filters' => $this->fileTypeFilterSettings->save($filters)]);
     }
 
-    /** How far filling in Created by and Modified by for existing files has got. */
-    #[FrontpageRoute(verb: 'GET', url: '/api/admin/file-people-backfill')]
-    public function filePeopleBackfill(): DataResponse
+    /** Whether Created by and Modified by are kept, and how far existing files have got. */
+    #[FrontpageRoute(verb: 'GET', url: '/api/admin/file-people')]
+    public function filePeople(): DataResponse
     {
-        return new DataResponse($this->filePeopleBackfill->status());
+        return $this->filePeopleResponse();
     }
 
-    #[FrontpageRoute(verb: 'POST', url: '/api/admin/file-people-backfill/start')]
+    /** Turning it off also stops the backfill; turning it on does not start one. */
+    #[FrontpageRoute(verb: 'PUT', url: '/api/admin/file-people')]
+    public function setFilePeople(bool $enabled = false): DataResponse
+    {
+        if (!$enabled) {
+            $this->filePeopleBackfill->pause();
+        }
+        $this->filePeopleSettings->setEnabled($enabled);
+
+        return $this->filePeopleResponse();
+    }
+
+    #[FrontpageRoute(verb: 'POST', url: '/api/admin/file-people/backfill/start')]
     public function startFilePeopleBackfill(): DataResponse
     {
         $this->filePeopleBackfill->start();
 
-        return new DataResponse($this->filePeopleBackfill->status());
+        return $this->filePeopleResponse();
     }
 
-    #[FrontpageRoute(verb: 'POST', url: '/api/admin/file-people-backfill/pause')]
+    #[FrontpageRoute(verb: 'POST', url: '/api/admin/file-people/backfill/pause')]
     public function pauseFilePeopleBackfill(): DataResponse
     {
         $this->filePeopleBackfill->pause();
 
-        return new DataResponse($this->filePeopleBackfill->status());
+        return $this->filePeopleResponse();
+    }
+
+    private function filePeopleResponse(): DataResponse
+    {
+        return new DataResponse(['enabled' => $this->filePeopleSettings->isEnabled()] + $this->filePeopleBackfill->status());
     }
 }

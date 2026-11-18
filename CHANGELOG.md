@@ -9,21 +9,22 @@ numbers are the ones in `appinfo/info.xml`.
 ## [0.13.0] - 2026-11-18
 
 ### Added
-- Filter on who made a file and on who last changed it: add a "Created by" or
-  "Modified by" condition and pick a person, yourself included. New files and
-  changes count at once. Existing files follow once an administrator starts
+- Filter on who made a file and on who last changed it, once an administrator
+  has turned this on in the settings; it is off by default. Add a "Created by"
+  or "Modified by" condition and pick a person, yourself included. New files and
+  changes count at once. Existing files follow when an administrator starts
   filling them in on the settings page, which can be paused and keeps to the
   server's maintenance window if it has one, or with
-  `occ dcn-finder:people:backfill` to do it in one go. People who have left can be
-  picked too: a disabled account by name, a deleted one by its exact account id,
-  if you can see a file the filter would find for it. Finder keeps this
+  `occ dcn-finder:people:backfill` to do it in one go. People who have left can
+  be picked too: a disabled account by name, a deleted one by its exact account
+  id, if you can see a file the filter would find for it. Finder keeps this
   information itself, in Nextcloud's file metadata: for each file a hash of the
   account that made it and of the account that last changed it, and the account
-  id of its maker. Changes made while Finder is disabled, or directly on
-  external storage, are not recorded.
+  id of its maker. Changes made while this is off, while Finder is disabled, or
+  directly on external storage, are not recorded.
 
 ### Changed
-- "Created by" now says who made a file. New files are recorded as they are
+- With that turned on, "Created by" says who made a file. New files are recorded as they are
   made. For existing files it is the author of the oldest version still kept,
   which can be off for a file edited soon after it was made because old versions
   get cleaned up. Where nobody is known it remains the owner.

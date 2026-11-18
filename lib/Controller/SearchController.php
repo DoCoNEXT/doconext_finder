@@ -13,6 +13,7 @@ use OCA\DcnFinder\Search\PersonField;
 use OCA\DcnFinder\Service\CoreScope;
 use OCA\DcnFinder\Service\FilePeopleBackfill;
 use OCA\DcnFinder\Service\FilePeoplePicker;
+use OCA\DcnFinder\Service\FilePeopleSettings;
 use OCA\DcnFinder\Service\FileSearchService;
 use OCP\AppFramework\ApiController;
 use OCP\AppFramework\Http;
@@ -45,6 +46,7 @@ class SearchController extends ApiController
         private CoreScope $coreScope,
         private FilePeoplePicker $filePeople,
         private FilePeopleBackfill $filePeopleBackfill,
+        private FilePeopleSettings $filePeopleSettings,
         private IUserSession $userSession,
         private LoggerInterface $logger,
     ) {
@@ -59,9 +61,13 @@ class SearchController extends ApiController
     #[FrontpageRoute(verb: 'GET', url: '/api/search/fields')]
     public function fields(): DataResponse
     {
+        // The person filters exist only where an admin has turned them on.
+        $enabled = $this->filePeopleSettings->isEnabled();
+        $hidden = $enabled ? [] : PersonField::METADATA_KEYS;
+
         return new DataResponse([
-            'fields'    => FileCondition::FIELDS,
-            'operators' => FileCondition::FIELD_OPERATORS,
+            'fields'    => array_diff_key(FileCondition::FIELDS, $hidden),
+            'operators' => array_diff_key(FileCondition::FIELD_OPERATORS, $hidden),
             'sorts'     => FileQuery::SORTS,
             'maxLimit'  => FileQuery::MAX_LIMIT,
             // Whatever this server's apps registered — when DoCoNEXT Core is
@@ -72,7 +78,7 @@ class SearchController extends ApiController
             'metadataDateOperators' => FileCondition::METADATA_DATE_OPERATORS,
             // Until this is true the person filters can miss older files, and
             // an empty result must not read as "this person did nothing".
-            'personFieldsComplete' => $this->filePeopleBackfill->isComplete(),
+            'personFieldsComplete' => !$enabled || $this->filePeopleBackfill->isComplete(),
         ]);
     }
 
@@ -102,6 +108,10 @@ class SearchController extends ApiController
 
         $field = (string)$this->request->getParam('field', '');
         if (PersonField::isPersonField($field)) {
+            if (!$this->filePeopleSettings->isEnabled()) {
+                return new DataResponse(['principals' => []]);
+            }
+
             return new DataResponse([
                 'principals' => $this->filePeople->search($field, (string)$this->request->getParam('q', ''), $user),
             ]);

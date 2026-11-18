@@ -8,6 +8,7 @@ use OCA\DcnFinder\AppInfo\AppConstants;
 use OCA\DcnFinder\BackgroundJob\RecordCopiedFolder;
 use OCA\DcnFinder\Search\FileOwner;
 use OCA\DcnFinder\Service\FilePeopleIndex;
+use OCA\DcnFinder\Service\FilePeopleSettings;
 use OCP\BackgroundJob\IJobList;
 use OCP\EventDispatcher\Event;
 use OCP\EventDispatcher\IEventListener;
@@ -38,6 +39,7 @@ class FilePeopleListener implements IEventListener
 {
     public function __construct(
         private FilePeopleIndex $index,
+        private FilePeopleSettings $settings,
         private IUserSession $userSession,
         private IJobList $jobs,
         private LoggerInterface $logger,
@@ -48,6 +50,10 @@ class FilePeopleListener implements IEventListener
     public function handle(Event $event): void
     {
         try {
+            if (!$this->settings->isEnabled()) {
+                return;
+            }
+
             match (true) {
                 $event instanceof NodeWrittenEvent => $this->written($event->getNode()),
                 $event instanceof NodeCreatedEvent => $this->created($event->getNode()),

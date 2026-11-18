@@ -61,6 +61,7 @@ class FileSearchService
         private ContentSearchService $contentSearch,
         private IDBConnection $db,
         private IDateTimeZone $dateTimeZone,
+        private FilePeopleSettings $filePeople,
     ) {
     }
 
@@ -226,7 +227,7 @@ class FileSearchService
                     $this->metadataFields->values($n->getId(), $metadata),
                     $editors[$n->getId()] ?? '',
                     $ranked['excerpts'][$n->getId()] ?? '',
-                    self::creatorIn($metadata[$n->getId()] ?? null),
+                    $this->filePeople->isEnabled() ? self::creatorIn($metadata[$n->getId()] ?? null) : '',
                 ),
                 $nodes
             ),
@@ -636,6 +637,10 @@ class FileSearchService
         }
 
         if (PersonField::isPersonField($condition->field)) {
+            if (!$this->filePeople->isEnabled()) {
+                throw new InvalidQueryException('"' . $condition->field . '" is turned off on this server');
+            }
+
             $key = PersonField::METADATA_KEYS[$condition->field];
             if (!$this->metadataFields->isFilterable($key)) {
                 throw new InvalidQueryException('"' . $condition->field . '" is not set up on this server yet');

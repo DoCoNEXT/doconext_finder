@@ -9,6 +9,7 @@ use OCA\DcnFinder\Listener\FilePeopleListener;
 use OCA\DcnFinder\Search\FileCondition;
 use OCA\DcnFinder\Search\PersonField;
 use OCA\DcnFinder\Service\FilePeopleIndex;
+use OCA\DcnFinder\Service\FilePeopleSettings;
 use OCA\DcnFinder\Service\ShareRecipients;
 use OCP\App\IAppManager;
 use OCP\BackgroundJob\IJobList;
@@ -75,6 +76,17 @@ class FilePeopleTest extends TestCase
 
         $this->assertSame(PersonField::token('bob'), $stored[PersonField::CREATED_BY_KEY]);
         $this->assertSame('bob', $stored[PersonField::CREATOR_ID_KEY]);
+    }
+
+    public function testNothingIsRecordedWhileTheFeatureIsOff(): void
+    {
+        $index = $this->createMock(FilePeopleIndex::class);
+        $index->expects($this->never())->method('recordCreator');
+        $index->expects($this->never())->method('recordEditor');
+
+        $listener = $this->listener($index, 'alice', null, false);
+        $listener->handle(new NodeCreatedEvent($this->file('', 'owner')));
+        $listener->handle(new NodeWrittenEvent($this->file('', 'owner')));
     }
 
     public function testANewFileRecordsItsMaker(): void
@@ -266,7 +278,7 @@ class FilePeopleTest extends TestCase
         $logger->expects($this->once())->method('warning');
 
         $session = $this->session('alice');
-        (new FilePeopleListener($index, $session, $this->createMock(IJobList::class), $logger))->handle(new NodeWrittenEvent($this->file('', 'owner')));
+        (new FilePeopleListener($index, $this->settings(true), $session, $this->createMock(IJobList::class), $logger))->handle(new NodeWrittenEvent($this->file('', 'owner')));
     }
 
     public function testYouCanPickYourselfThoughTheShareSearchLeavesYouOut(): void
@@ -305,9 +317,17 @@ class FilePeopleTest extends TestCase
         );
     }
 
-    private function listener(FilePeopleIndex $index, ?string $uid, ?IJobList $jobs = null): FilePeopleListener
+    private function listener(FilePeopleIndex $index, ?string $uid, ?IJobList $jobs = null, bool $enabled = true): FilePeopleListener
     {
-        return new FilePeopleListener($index, $this->session($uid), $jobs ?? $this->createMock(IJobList::class), $this->createMock(LoggerInterface::class));
+        return new FilePeopleListener($index, $this->settings($enabled), $this->session($uid), $jobs ?? $this->createMock(IJobList::class), $this->createMock(LoggerInterface::class));
+    }
+
+    private function settings(bool $enabled): FilePeopleSettings
+    {
+        $settings = $this->createMock(FilePeopleSettings::class);
+        $settings->method('isEnabled')->willReturn($enabled);
+
+        return $settings;
     }
 
     private function session(?string $uid): IUserSession
