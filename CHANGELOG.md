@@ -6,6 +6,8 @@ numbers are the ones in `appinfo/info.xml`.
 
 ## [Unreleased]
 
+## [0.13.0] - 2026-11-18
+
 ### Added
 - Filter on who made a file and on who last changed it: add a "Created by" or
   "Modified by" condition and pick a person, yourself included. New files and
