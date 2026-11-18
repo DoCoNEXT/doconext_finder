@@ -51,7 +51,11 @@ Finder additionally filters and groups on Core's metadata fields.
 	</dependencies>
 	<background-jobs>
 		<job>OCA\DcnFinder\BackgroundJob\RunScheduledSearches</job>
+		<job>OCA\DcnFinder\BackgroundJob\BackfillFilePeople</job>
 	</background-jobs>
+	<commands>
+		<command>OCA\DcnFinder\Command\BackfillFilePeople</command>
+	</commands>
 	<settings>
 		<admin>OCA\DcnFinder\Settings\AdminSettings</admin>
 		<admin-section>OCA\DcnFinder\Settings\AdminSection</admin-section>

@@ -9,7 +9,10 @@ use OCA\DcnFinder\Search\FileCondition;
 use OCA\DcnFinder\Search\FileQuery;
 use OCA\DcnFinder\Search\InvalidQueryException;
 use OCA\DcnFinder\Search\MetadataFields;
+use OCA\DcnFinder\Search\PersonField;
 use OCA\DcnFinder\Service\CoreScope;
+use OCA\DcnFinder\Service\FilePeopleBackfill;
+use OCA\DcnFinder\Service\FilePeoplePicker;
 use OCA\DcnFinder\Service\FileSearchService;
 use OCP\AppFramework\ApiController;
 use OCP\AppFramework\Http;
@@ -40,6 +43,8 @@ class SearchController extends ApiController
         private FileSearchService $service,
         private MetadataFields $metadataFields,
         private CoreScope $coreScope,
+        private FilePeoplePicker $filePeople,
+        private FilePeopleBackfill $filePeopleBackfill,
         private IUserSession $userSession,
         private LoggerInterface $logger,
     ) {
@@ -65,6 +70,9 @@ class SearchController extends ApiController
             'metadataOperators' => FileCondition::METADATA_OPERATORS,
             // For a key whose `dateKind` says it holds a day or a moment.
             'metadataDateOperators' => FileCondition::METADATA_DATE_OPERATORS,
+            // Until this is true the person filters can miss older files, and
+            // an empty result must not read as "this person did nothing".
+            'personFieldsComplete' => $this->filePeopleBackfill->isComplete(),
         ]);
     }
 
@@ -79,16 +87,26 @@ class SearchController extends ApiController
      *
      * A field that names nobody, or a server without Core, answers with an empty
      * list rather than an error: the interface offers a plain box there.
+     *
+     * "Created by" and "Modified by" are Finder's own and work without Core; see
+     * {@see FilePeoplePicker} for who they offer.
      */
     #[NoAdminRequired]
     #[FrontpageRoute(verb: 'GET', url: '/api/principals')]
     public function principals(): DataResponse
     {
-        if ($this->userSession->getUser() === null) {
+        $user = $this->userSession->getUser();
+        if ($user === null) {
             return new DataResponse(['error' => 'not authenticated'], Http::STATUS_UNAUTHORIZED);
         }
 
         $field = (string)$this->request->getParam('field', '');
+        if (PersonField::isPersonField($field)) {
+            return new DataResponse([
+                'principals' => $this->filePeople->search($field, (string)$this->request->getParam('q', ''), $user),
+            ]);
+        }
+
         $key = MetadataFields::isMetadata($field) ? MetadataFields::key($field) : $field;
 
         if ($this->metadataFields->principalField($key) === null) {

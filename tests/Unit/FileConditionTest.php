@@ -13,7 +13,7 @@ use PHPUnit\Framework\TestCase;
  */
 class FileConditionTest extends TestCase
 {
-    public function testCreatedByIsNotAFilter(): void
+    public function testOwnerIsNotAFilter(): void
     {
         // Core's `owner` field matches through the share table: once per share,
         // and never a file its owner did not share.

@@ -111,6 +111,8 @@
 
     <NcNoteCard v-if="filtersNotice" :type="filtersNoticeType">{{ filtersNotice }}</NcNoteCard>
   </NcSettingsSection>
+
+  <FilePeopleBackfillSettings />
 </template>
 
 <script setup lang="ts">
@@ -119,6 +121,7 @@ import { NcButton, NcNoteCard, NcSettingsSection, NcTextField } from '@nextcloud
 import { ArrowDown, ArrowUp, X } from '@lucide/vue'
 import axios from '@nextcloud/axios'
 import { generateUrl } from '@nextcloud/router'
+import FilePeopleBackfillSettings from '../components/FilePeopleBackfillSettings.vue'
 import { useI18n } from '../composables/useI18n'
 import { builtinFileTypeDefinitions } from '../filters/presets'
 import { BRIDGE_EXTENSIONS, FILE_TYPE_FILTERS, PRODUCT_NAME } from '../constants'

@@ -9,6 +9,7 @@ use OCA\DcnFinder\Db\SearchShare;
 use OCP\App\IAppManager;
 use OCP\Collaboration\Collaborators\ISearch;
 use OCP\IGroupManager;
+use OCP\IUser;
 use OCP\IUserManager;
 use OCP\Share\IManager as IShareManager;
 use OCP\Share\IShare;
@@ -118,6 +119,38 @@ class ShareRecipients
         }
 
         return $out;
+    }
+
+    /**
+     * Only the people among {@see search()}'s answer, under the same limits,
+     * and the one searching when the term fits them: the share dialog leaves
+     * you out, since you do not share with yourself, but you do ask what you
+     * changed yourself.
+     *
+     * @return list<array{type: string, id: string, displayName: string, subname: string}>
+     */
+    public function searchUsers(string $term, ?IUser $me = null): array
+    {
+        $people = array_values(array_filter(
+            $this->search($term),
+            static fn (array $found): bool => $found['type'] === SearchShare::TYPE_USER,
+        ));
+
+        $needle = mb_strtolower(trim($term));
+        if ($me === null || $needle === '' || in_array($me->getUID(), array_column($people, 'id'), true)) {
+            return $people;
+        }
+
+        $uid = $me->getUID();
+        $name = $me->getDisplayName();
+        if (!str_contains(mb_strtolower($uid), $needle) && !str_contains(mb_strtolower($name), $needle)) {
+            return $people;
+        }
+
+        return [
+            ['type' => SearchShare::TYPE_USER, 'id' => $uid, 'displayName' => $name, 'subname' => $uid === $name ? '' : $uid],
+            ...$people,
+        ];
     }
 
     /**

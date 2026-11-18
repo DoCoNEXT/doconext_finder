@@ -15,10 +15,10 @@ use OCP\IUserManager;
  * Nextcloud's filecache has no "author" and no "last editor" column, so both
  * answers are approximations — deliberately chosen ones:
  *
- * - **Created by** is the file's owner (`uid_owner` on its storage). That is the
- *   only creator-like identity Nextcloud keeps, and it is what the Files app
- *   shows as "Owner". In a group folder every file is owned by the folder, so it
- *   says less there — but it never lies about what it is.
+ * - **Created by** is recorded by Finder itself when a file is made, and for
+ *   older files is the author of the oldest revision still kept (see
+ *   {@see FilePeopleBackfill}). Where neither is known it is the file's owner,
+ *   the only creator-like identity Nextcloud keeps.
  * - **Modified by** is the author of the current revision, recorded by the
  *   Versions app: its VersionAuthorListener writes `{"author": uid}` onto the
  *   revision it creates on every write, and the newest revision row therefore
@@ -76,12 +76,33 @@ class FileAuthorService
      */
     public function lastEditors(array $fileIds): array
     {
+        return $this->revisionAuthors($fileIds, true);
+    }
+
+    /**
+     * The uid behind each file's oldest revision still kept, for the ids where
+     * that revision names one.
+     *
+     * @param list<int> $fileIds
+     * @return array<int,string> fileId => uid
+     */
+    public function firstAuthors(array $fileIds): array
+    {
+        return $this->revisionAuthors($fileIds, false);
+    }
+
+    /**
+     * @param list<int> $fileIds
+     * @return array<int,string> fileId => uid of the newest or the oldest revision
+     */
+    private function revisionAuthors(array $fileIds, bool $newest): array
+    {
         if ($fileIds === [] || !$this->appManager->isEnabledForUser(self::VERSIONS_APP_ID)) {
             return [];
         }
 
-        $editors = [];
-        $newest = [];
+        $authors = [];
+        $chosen = [];
 
         foreach (self::VERSION_TABLES as $table) {
             try {
@@ -97,17 +118,16 @@ class FileAuthorService
                     while ($row = $result->fetch()) {
                         $fileId = (int)$row['file_id'];
                         $timestamp = (int)$row['timestamp'];
-                        // Only the newest revision describes the content on disk now.
-                        if (isset($newest[$fileId]) && $newest[$fileId] >= $timestamp) {
+                        if (isset($chosen[$fileId]) && ($newest ? $chosen[$fileId] >= $timestamp : $chosen[$fileId] <= $timestamp)) {
                             continue;
                         }
                         $metadata = json_decode((string)($row['metadata'] ?? ''), true);
                         $author = is_array($metadata) ? (string)($metadata['author'] ?? '') : '';
-                        $newest[$fileId] = $timestamp;
+                        $chosen[$fileId] = $timestamp;
                         if ($author !== '') {
-                            $editors[$fileId] = $author;
+                            $authors[$fileId] = $author;
                         } else {
-                            unset($editors[$fileId]);
+                            unset($authors[$fileId]);
                         }
                     }
                     $result->closeCursor();
@@ -119,6 +139,6 @@ class FileAuthorService
             }
         }
 
-        return $editors;
+        return $authors;
     }
 }

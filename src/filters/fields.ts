@@ -20,7 +20,7 @@ import {
   FileVideoCamera,
   Folder,
 } from '@lucide/vue'
-import type { Condition } from '../types/Search'
+import type { Condition, Principal } from '../types/Search'
 
 /** How the value box behaves for a field. */
 export type InputKind = 'text' | 'date' | 'size' | 'principal' | 'none'
@@ -33,9 +33,8 @@ export type Translate = (_text: string, _vars?: Record<string, unknown>) => stri
  * they are dropped as the search is loaded, where the filter rows then show
  * what is really being asked.
  *
- * - `owner` ("Created by"): Nextcloud cannot search on who made a file. Its own
- *   `owner` field matches through the share table, and a team folder records
- *   no creator at all.
+ * - `owner` (the first "Created by"): Nextcloud's own `owner` field matches
+ *   through the share table. `created_by` asks the question properly.
  * - `path` ("Folder path"): the folder scope asks the same question.
  */
 export const RETIRED_FIELDS: readonly string[] = ['owner', 'path']
@@ -49,6 +48,8 @@ const FIELD_INPUTS: Record<string, InputKind> = {
   creation_time: 'date',
   favorite: 'none',
   tagname: 'text',
+  modified_by: 'principal',
+  created_by: 'principal',
 }
 
 export function fieldInput(field: string): InputKind {
@@ -75,6 +76,8 @@ export function fieldLabel(t: Translate, field: string): string {
     case 'creation_time': return t('Created')
     case 'favorite': return t('Favorite')
     case 'tagname': return t('Tag')
+    case 'modified_by': return t('Modified by')
+    case 'created_by': return t('Created by')
     default: return field
   }
 }
@@ -135,6 +138,34 @@ export function operatorLabel(t: Translate, field: string, operator: string, hol
  */
 export function isUsable(condition: Condition): boolean {
   return condition.value !== '' && condition.value !== null && condition.value !== undefined
+}
+
+/**
+ * The line under a person in the picker: whether they have left, and what tells
+ * them from others of the same name. A name that is unique gets no id, which is
+ * often a long hash.
+ * @param t translation function
+ * @param person the one being shown
+ * @param people everyone in the list
+ */
+export function personLine(t: Translate, person: Principal, people: Principal[]): string {
+  const namesake = people.some((other) => other.id !== person.id && other.displayName === person.displayName)
+  const status = person.status === 'disabled'
+    ? t('Disabled account')
+    : person.status === 'deleted' ? t('Deleted account') : ''
+
+  return [status, namesake ? person.subname || person.id : ''].filter((part) => part !== '').join(' · ')
+}
+
+/**
+ * How a picked person reads once the list is gone: in the box and in the filter.
+ * @param t translation function
+ * @param person the one picked
+ * @param people the list they were picked from
+ */
+export function pickedLabel(t: Translate, person: Principal, people: Principal[]): string {
+  const line = personLine(t, person, people)
+  return line ? `${person.displayName} (${line})` : person.displayName
 }
 
 /** Bytes ⇄ MB, so the size box takes a figure a person can type. */

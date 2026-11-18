@@ -6,7 +6,21 @@ numbers are the ones in `appinfo/info.xml`.
 
 ## [Unreleased]
 
+### Added
+- Filter on who made a file and on who last changed it: add a "Created by" or
+  "Modified by" condition and pick a person, yourself included. New files and
+  changes count at once. Existing files follow once an administrator starts
+  filling them in on the settings page, which can be paused and keeps to the
+  server's maintenance window if it has one, or with
+  `occ dcn-finder:people:backfill` to do it in one go. People who have left can be
+  picked too: a disabled account by name, a deleted one by its exact account id,
+  if you can see a file the filter would find for it.
+
 ### Changed
+- "Created by" now says who made a file. New files are recorded as they are
+  made. For existing files it is the author of the oldest version still kept,
+  which can be off for a file edited soon after it was made because old versions
+  get cleaned up. Where nobody is known it remains the owner.
 - The details panel adds and removes a favorite from its menu, as the menu of
   a search result does, instead of with a star beside the file's name.
 

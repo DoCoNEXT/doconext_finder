@@ -12,6 +12,7 @@ use OCA\DcnFinder\Search\FileScope;
 use OCA\DcnFinder\Search\InvalidQueryException;
 use OCA\DcnFinder\Search\MetadataDay;
 use OCA\DcnFinder\Search\MetadataFields;
+use OCA\DcnFinder\Search\PersonField;
 use OCA\DcnFinder\Search\ResultOrder;
 use OCP\Files\FileInfo;
 use OCP\Files\Folder;
@@ -25,6 +26,7 @@ use OCP\Files\Search\ISearchOrder;
 use OCP\Files\Storage\ISharedStorage;
 use OCP\FilesMetadata\IFilesMetadataManager;
 use OCP\FilesMetadata\IMetadataQuery;
+use OCP\FilesMetadata\Model\IFilesMetadata;
 use OCP\IDateTimeZone;
 use OCP\IDBConnection;
 use OCP\ITagManager;
@@ -224,6 +226,7 @@ class FileSearchService
                     $this->metadataFields->values($n->getId(), $metadata),
                     $editors[$n->getId()] ?? '',
                     $ranked['excerpts'][$n->getId()] ?? '',
+                    self::creatorIn($metadata[$n->getId()] ?? null),
                 ),
                 $nodes
             ),
@@ -632,6 +635,20 @@ class FileSearchService
                 : $comparison;
         }
 
+        if (PersonField::isPersonField($condition->field)) {
+            $key = PersonField::METADATA_KEYS[$condition->field];
+            if (!$this->metadataFields->isFilterable($key)) {
+                throw new InvalidQueryException('"' . $condition->field . '" is not set up on this server yet');
+            }
+
+            return CoreSearch::compare(
+                $condition->comparison(),
+                $key,
+                PersonField::token((string)$condition->value),
+                IMetadataQuery::EXTRA,
+            );
+        }
+
         $comparison = CoreSearch::compare(
             $condition->comparison(),
             $condition->field,
@@ -685,6 +702,14 @@ class FileSearchService
         ];
     }
 
+    /** Who is on record as having made a file, '' when nobody is. */
+    private static function creatorIn(?IFilesMetadata $metadata): string
+    {
+        return $metadata !== null && $metadata->hasKey(PersonField::CREATOR_ID_KEY)
+            ? $metadata->getString(PersonField::CREATOR_ID_KEY)
+            : '';
+    }
+
     /**
      * A received share's attributes, as the JSON string WebDAV hands the Files
      * app as nc:share-attributes -- it says whether the share allows downloading.
@@ -706,6 +731,7 @@ class FileSearchService
     /**
      * @param array<string,string> $metadata
      * @param string $editor uid that wrote the current revision, '' when unknown
+     * @param string $creator uid on record as having made the file, '' when unknown
      * @return array<string,mixed>
      */
     private function toArray(
@@ -715,15 +741,15 @@ class FileSearchService
         array $metadata,
         string $editor,
         string $excerpt = '',
+        string $creator = '',
     ): array {
         $path = $node->getPath();
         $relative = str_starts_with($path, $userFolderPath)
             ? ltrim(substr($path, strlen($userFolderPath)), '/')
             : ltrim($path, '/');
 
-        // The owner is the closest thing Nextcloud keeps to a creator; with no
-        // recorded editor the owner is also the only person known to have
-        // written the file. See FileAuthorService for why.
+        // With nobody on record as maker or editor, the owner is the only person
+        // known to have had anything to do with the file. See FileAuthorService.
         //
         // Only ask storages that keep one, though: the rest answer with whoever
         // is asking, which would put the reader's own name in every row of a
@@ -746,8 +772,9 @@ class FileSearchService
             'shareAttributes' => $this->shareAttributes($node),
             'favorite'     => $favorite,
             'owner'        => $owner,
-            'createdBy'    => $this->authors->displayName($owner),
-            'modifiedBy'   => $this->authors->displayName($editor !== '' ? $editor : $owner),
+            'createdBy'    => $this->authors->displayName($creator !== '' ? $creator : $owner),
+            // No write on record: whoever made the file is the last known to have.
+            'modifiedBy'   => $this->authors->displayName($editor !== '' ? $editor : ($creator !== '' ? $creator : $owner)),
             'metadata'     => $metadata,
             // The passage the content term matched, when there was one. Empty on
             // every other search, and on a file the index matched somewhere it

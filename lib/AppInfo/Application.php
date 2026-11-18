@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace OCA\DcnFinder\AppInfo;
 
+use OCA\DcnFinder\Listener\FilePeopleListener;
 use OCA\DcnFinder\Listener\GroupDeletedListener;
 use OCA\DcnFinder\Listener\UserDeletedListener;
 use OCA\DcnFinder\Notification\Notifier;
@@ -11,6 +12,11 @@ use OCP\AppFramework\App;
 use OCP\AppFramework\Bootstrap\IBootContext;
 use OCP\AppFramework\Bootstrap\IBootstrap;
 use OCP\AppFramework\Bootstrap\IRegistrationContext;
+use OCP\Files\Events\Node\BeforeNodeRenamedEvent;
+use OCP\Files\Events\Node\NodeCopiedEvent;
+use OCP\Files\Events\Node\NodeCreatedEvent;
+use OCP\Files\Events\Node\NodeRenamedEvent;
+use OCP\Files\Events\Node\NodeWrittenEvent;
 use OCP\Group\Events\GroupDeletedEvent;
 use OCP\IAppConfig;
 use OCP\INavigationManager;
@@ -52,6 +58,12 @@ class Application extends App implements IBootstrap
         $context->registerEventListener(UserDeletedEvent::class, UserDeletedListener::class);
         // Nor are the shares of searches with a group that is deleted.
         $context->registerEventListener(GroupDeletedEvent::class, GroupDeletedListener::class);
+        // Who made and who wrote a file, kept where the search backend can find it.
+        $context->registerEventListener(NodeCreatedEvent::class, FilePeopleListener::class);
+        $context->registerEventListener(NodeCopiedEvent::class, FilePeopleListener::class);
+        $context->registerEventListener(NodeWrittenEvent::class, FilePeopleListener::class);
+        $context->registerEventListener(BeforeNodeRenamedEvent::class, FilePeopleListener::class);
+        $context->registerEventListener(NodeRenamedEvent::class, FilePeopleListener::class);
         // "Alice shared the search Quotes this year with you".
         $context->registerNotifierService(Notifier::class);
     }

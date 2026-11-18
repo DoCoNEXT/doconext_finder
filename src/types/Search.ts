@@ -177,6 +177,10 @@ export interface Principal {
   type: string
   id: string
   displayName: string
+  /** What tells two people of the same name apart, where the server knows it. */
+  subname?: string
+  /** Set on someone who has left: the account is switched off, or gone. */
+  status?: 'disabled' | 'deleted'
 }
 
 export interface FieldsResponse {
@@ -191,6 +195,8 @@ export interface FieldsResponse {
   metadataOperators: Operator[]
   /** For a metadata field with a `dateKind`. Absent from an older server. */
   metadataDateOperators?: Operator[]
+  /** False while older files are not yet findable under Created by and Modified by. */
+  personFieldsComplete?: boolean
 }
 
 export interface SearchRequest {

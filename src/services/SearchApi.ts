@@ -185,12 +185,13 @@ export const SearchApi = {
   },
 
   /**
-   * People a principal metadata field can be filtered on, matched on name.
+   * People a field that names people can be filtered on, matched on name.
    *
-   * Finder asks its own server, which asks DoCoNEXT Core: the field's own rules
-   * about who may be picked live there. An empty list is a normal answer — no
-   * Core, or a field that names nobody — and the row falls back to a plain box.
-   * @param field the field being filtered, e.g. meta:dcn_core_behandelaar
+   * Finder asks its own server. For a metadata field that asks DoCoNEXT Core:
+   * the field's own rules about who may be picked live there. An empty list is
+   * a normal answer — no Core, or a field that names nobody.
+   * @param field the field being filtered: created_by, modified_by, or e.g.
+   *   meta:dcn_core_behandelaar
    * @param term what has been typed
    */
   async principals(field: string, term: string): Promise<Principal[]> {

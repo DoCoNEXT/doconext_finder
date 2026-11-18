@@ -34,6 +34,8 @@ final class FileCondition
         'creation_time' => 'integer',
         'favorite'      => 'boolean',
         'tagname'       => 'string',
+        PersonField::MODIFIED_BY => 'string',
+        PersonField::CREATED_BY  => 'string',
     ];
 
     /**
@@ -50,13 +52,17 @@ final class FileCondition
         'creation_time' => ['eq', 'lt', 'lte', 'gt', 'gte'],
         'favorite'      => ['eq'],
         'tagname'       => ['eq', 'contains'],
+        // One person, picked from a list: the index holds a hash of the account.
+        PersonField::MODIFIED_BY => ['eq'],
+        PersonField::CREATED_BY  => ['eq'],
     ];
 
     /**
      * Fields the query builder reaches through a join rather than a filecache column.
-     * `NOT` on these compares a NULL column and matches nothing, so negation is refused.
+     * `NOT` on these compares a NULL column, which never matches, so negation is refused:
+     * "not made by Alice" would silently leave out every file with no name on record.
      */
-    public const JOIN_BACKED = ['favorite', 'tagname'];
+    public const JOIN_BACKED = ['favorite', 'tagname', PersonField::MODIFIED_BY, PersonField::CREATED_BY];
 
     /**
      * Metadata is stored as one indexed string column whatever the declared type,

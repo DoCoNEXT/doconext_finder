@@ -36,7 +36,15 @@
               :filterable="false"
               :loading="searchingPrincipals"
               :placeholder="t('Type a name')"
-              @search="onPrincipalSearch" />
+              @search="onPrincipalSearch">
+      <template #option="person">
+        <NcListItemIcon :name="person.displayName"
+                        :subname="personLine(t, person, principalOptions)"
+                        :search="principalTerm"
+                        :user="hasAvatar(person) ? person.id : undefined"
+                        :is-no-user="!hasAvatar(person)" />
+      </template>
+    </NcSelect>
 
     <NcTextField v-else-if="input === 'size'"
                  v-model="sizeValue"
@@ -73,6 +81,10 @@
         <X :size="20" />
       </template>
     </NcButton>
+
+    <p v-if="mayMissOlderFiles" class="condition__note">
+      {{ t('Older files may be missing from this filter until an administrator has filled them in.') }}
+    </p>
   </div>
 </template>
 
@@ -82,6 +94,7 @@ import {
   NcButton,
   NcCheckboxRadioSwitch,
   NcDateTimePicker,
+  NcListItemIcon,
   NcSelect,
   NcTextField,
 } from '@nextcloud/vue'
@@ -93,6 +106,8 @@ import {
   fieldLabel,
   isUsable,
   operatorLabel,
+  personLine,
+  pickedLabel,
   toBytes,
   toDateInput,
   toMegabytes,
@@ -193,11 +208,17 @@ const input = computed<InputKind>(() => {
 const hint = computed(() => fieldHint(t, props.condition.field))
 
 /**
- * "favorite" and "tagname" are reached through a join, so negating them compares
- * a NULL column and matches nothing. The backend refuses it; don't offer it.
+ * "favorite", "tagname" and the two person fields are reached through a join, so
+ * negating them compares a NULL column, which never matches. The backend refuses
+ * it; don't offer it.
  */
 const canNegate = computed(() =>
-  !['favorite', 'tagname'].includes(props.condition.field))
+  !['favorite', 'tagname', 'modified_by', 'created_by'].includes(props.condition.field))
+
+/** An empty result must not read as "this person did nothing". */
+const mayMissOlderFiles = computed(() =>
+  ['modified_by', 'created_by'].includes(props.condition.field)
+  && props.schema.personFieldsComplete === false)
 
 function patch(changes: Partial<Condition>) {
   emit('update:condition', { ...props.condition, ...changes })
@@ -257,6 +278,7 @@ const sizeValue = computed({
 
 const principalOptions = ref<Principal[]>([])
 const searchingPrincipals = ref(false)
+const principalTerm = ref('')
 
 const principalValue = computed({
   get: (): Principal | null => {
@@ -265,13 +287,25 @@ const principalValue = computed({
       return null
     }
 
-    // A stored search carries the name it was picked under; without one the id
-    // is all there is, and showing it beats showing nothing.
-    return principalOptions.value.find((person) => person.id === id)
-      ?? { type: '', id, displayName: props.condition.label ?? id }
+    // The name it was picked under says which of several namesakes it is, and
+    // a stored search carries it; without one the id is all there is, and
+    // showing it beats showing nothing.
+    const known = principalOptions.value.find((person) => person.id === id)
+    return { type: known?.type ?? '', id, displayName: props.condition.label ?? known?.displayName ?? id }
   },
-  set: (next: Principal | null) => patch({ value: next?.id ?? '', label: next?.displayName }),
+  set: (next: Principal | null) => patch({
+    value: next?.id ?? '',
+    label: next ? pickedLabel(t, next, principalOptions.value) : undefined,
+  }),
 })
+
+/**
+ * A deleted account has no picture left to ask the server for.
+ * @param person
+ */
+function hasAvatar(person: Principal) {
+  return person.type === 'user' && person.status !== 'deleted'
+}
 
 let principalDebounce: ReturnType<typeof setTimeout> | undefined
 
@@ -281,6 +315,7 @@ let principalDebounce: ReturnType<typeof setTimeout> | undefined
  */
 function onPrincipalSearch(term: string, loading: (state: boolean) => void) {
   clearTimeout(principalDebounce)
+  principalTerm.value = term
   if (term.trim() === '') {
     principalOptions.value = []
     return
@@ -326,6 +361,7 @@ const dateValue = computed({
 <style scoped lang="scss">
 .condition {
   display: flex;
+  flex-wrap: wrap;
   // The two dropdowns carry a label above them and the value box does not, so
   // centring the row would hang the boxes at different heights. They line up on
   // their bottom edge instead — the line the eye follows across the row.
@@ -364,6 +400,12 @@ const dateValue = computed({
 
   &__negate {
     flex: 0 0 auto;
+  }
+
+  &__note {
+    flex: 0 0 100%;
+    margin: 0;
+    color: var(--color-text-maxcontrast);
   }
 }
 </style>

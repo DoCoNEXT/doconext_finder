@@ -86,6 +86,10 @@ class MetadataFields
 
         $fields = [];
         foreach ($known->getKeys() as $key) {
+            // Finder's own bookkeeping, offered as "Created by" and "Modified by".
+            if (in_array($key, PersonField::INTERNAL_KEYS, true)) {
+                continue;
+            }
             $labels = $named[$key] ?? [];
             if ($named !== [] && $labels === [] && str_starts_with($key, self::CORE_KEY_PREFIX)) {
                 continue;
@@ -168,6 +172,9 @@ class MetadataFields
 
         $values = [];
         foreach ($metadata->getKeys() as $key) {
+            if (in_array($key, PersonField::INTERNAL_KEYS, true)) {
+                continue;
+            }
             $value = match ($metadata->getType($key)) {
                 IMetadataValueWrapper::TYPE_INT => (string)$metadata->getInt($key),
                 IMetadataValueWrapper::TYPE_FLOAT => (string)$metadata->getFloat($key),
