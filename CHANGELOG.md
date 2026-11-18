@@ -16,7 +16,11 @@ numbers are the ones in `appinfo/info.xml`.
   server's maintenance window if it has one, or with
   `occ dcn-finder:people:backfill` to do it in one go. People who have left can be
   picked too: a disabled account by name, a deleted one by its exact account id,
-  if you can see a file the filter would find for it.
+  if you can see a file the filter would find for it. Finder keeps this
+  information itself, in Nextcloud's file metadata: for each file a hash of the
+  account that made it and of the account that last changed it, and the account
+  id of its maker. Changes made while Finder is disabled, or directly on
+  external storage, are not recorded.
 
 ### Changed
 - "Created by" now says who made a file. New files are recorded as they are
