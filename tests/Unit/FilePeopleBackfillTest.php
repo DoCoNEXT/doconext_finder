@@ -24,6 +24,14 @@ class FilePeopleBackfillTest extends TestCase
         $this->assertSame('idle', $backfill->status()['state']);
     }
 
+    public function testAStartedRunWaitsForTheBackgroundJobs(): void
+    {
+        $backfill = $this->backfill(['step' => 0, 'after' => 0, 'running' => true]);
+
+        $this->assertTrue($backfill->isRunning());
+        $this->assertSame('queued', $backfill->status()['state']);
+    }
+
     public function testAStartedRunIsRunning(): void
     {
         $backfill = $this->backfill(['step' => 2, 'after' => 10, 'running' => true]);

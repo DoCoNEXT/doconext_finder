@@ -72,7 +72,12 @@ class FilePeopleBackfill
             && $this->appConfig->getValueBool(AppConstants::APP_ID, self::CONFIG_RUNNING, false, lazy: true);
     }
 
-    /** @return array{state: 'idle'|'running'|'paused'|'done', percent: int} */
+    /**
+     * `queued` is started with nothing done yet: the work only begins when
+     * Nextcloud next runs its background jobs, which can take a while.
+     *
+     * @return array{state: 'idle'|'queued'|'running'|'paused'|'done', percent: int}
+     */
     public function status(): array
     {
         if ($this->isComplete()) {
@@ -81,9 +86,10 @@ class FilePeopleBackfill
 
         $step = $this->step();
         $after = $this->after();
+        $untouched = $step === 0 && $after === 0;
         $state = match (true) {
-            $this->isRunning() => 'running',
-            $step === 0 && $after === 0 => 'idle',
+            $this->isRunning() => $untouched ? 'queued' : 'running',
+            $untouched => 'idle',
             default => 'paused',
         };
 

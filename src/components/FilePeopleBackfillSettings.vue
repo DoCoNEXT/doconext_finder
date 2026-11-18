@@ -2,7 +2,7 @@
   <NcSettingsSection :name="t('Created by and Modified by for existing files')"
                      :description="t('New files and changes are recorded as they happen. Filling in existing files is your choice, because it writes to the database for every file.')">
     <p v-if="status" class="backfill__state">{{ stateText }}</p>
-    <NcProgressBar v-if="status && status.state !== 'idle' && status.state !== 'done'"
+    <NcProgressBar v-if="status?.state === 'running' || status?.state === 'paused'"
                    class="backfill__progress"
                    :value="status.percent" />
 
@@ -10,7 +10,7 @@
       {{ t('It runs in small steps through Nextcloud\'s background jobs. If a maintenance window is configured on this server, it only runs during that window. You can pause it at any moment, and it continues where it stopped.') }}
     </p>
 
-    <NcButton v-if="status?.state === 'running'"
+    <NcButton v-if="active"
               variant="secondary"
               :disabled="busy"
               @click="change('pause')">
@@ -35,7 +35,7 @@ import { generateUrl } from '@nextcloud/router'
 import { useI18n } from '../composables/useI18n'
 
 interface BackfillStatus {
-  state: 'idle' | 'running' | 'paused' | 'done'
+  state: 'idle' | 'queued' | 'running' | 'paused' | 'done'
   percent: number
 }
 
@@ -50,8 +50,12 @@ const status = ref<BackfillStatus | null>(null)
 const busy = ref(false)
 const error = ref('')
 
+/** Started, whether or not a background job has picked it up yet. */
+const active = computed(() => status.value?.state === 'queued' || status.value?.state === 'running')
+
 const stateText = computed(() => {
   switch (status.value?.state) {
+    case 'queued': return t('Started. It begins the next time Nextcloud runs its background jobs.')
     case 'running': return t('Running: {percent}% done.', { percent: status.value.percent })
     case 'paused': return t('Paused at {percent}%.', { percent: status.value.percent })
     case 'done': return t('Done. Existing files can be found with both filters.')
@@ -85,7 +89,7 @@ let timer: ReturnType<typeof setInterval> | undefined
 onMounted(() => {
   load()
   timer = setInterval(() => {
-    if (status.value?.state === 'running') {
+    if (active.value) {
       load()
     }
   }, REFRESH_MS)

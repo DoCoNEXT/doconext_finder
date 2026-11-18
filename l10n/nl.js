@@ -235,6 +235,7 @@ OC.L10N.register(
         "Done. Existing files can be found with both filters.": "Klaar. Bestaande bestanden zijn met beide filters te vinden.",
         "Not started. Until then both filters find only files made or changed from now on.": "Niet gestart. Tot die tijd vinden beide filters alleen bestanden die vanaf nu worden gemaakt of gewijzigd.",
         "Older files may be missing from this filter until an administrator has filled them in.": "Oudere bestanden kunnen in dit filter ontbreken totdat een beheerder ze heeft laten invullen.",
+        "Started. It begins the next time Nextcloud runs its background jobs.": "Gestart. Het begint zodra Nextcloud de achtergrondtaken weer uitvoert.",
         "Type a name": "Typ een naam",
         "Type to search": "Typ om te zoeken",
         "Understanding the question took too long. Try again, or set the filters yourself.": "Het begrijpen van de vraag duurde te lang. Probeer het opnieuw, of stel de filters zelf in.",
